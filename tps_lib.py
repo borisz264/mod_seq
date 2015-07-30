@@ -23,7 +23,7 @@ class TPS_Lib:
         self.get_rdir = experiment_settings.get_rdir
         self.get_wdir = experiment_settings.get_wdir
         self.pool_sequence_mappings = {}
-        self.initialize_pool_sequence_mappings()
+        self.initialize_pool_sequence_mappings(mapq_cutoff=0)
         self.enrichment_sorted_mappings = None
 
 
