@@ -5,7 +5,7 @@ import scipy.stats
 import subprocess
 import os
 import cPickle
-import tps_utils
+import mod_utils
 import numpy as np
 from collections import Counter
 

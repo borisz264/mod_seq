@@ -5,27 +5,6 @@ import gzip
 import numpy as np
 from scipy import stats
 
-def old_chris_formula(R, k, read_len):
-    """
-     Implements the formula Chris burge derived
-    """
-    return (4 ** k -1) * ( R * (read_len - k + 1) - (read_len - k) ) / (4 ** k + read_len - k - (R *(read_len - k +1)))
-
-
-def chris_formula(R, k, read_len):
-    """
-     Implements the formula Chris burge derived
-    """
-    return (4. ** k - 1) * (read_len - k +1 ) * (R - 1) / (4. ** k -R * (read_len -k +1))
-
-
-def get_adjacent_kmers(kmer):
-    """
-    returns all the k+1 mers that contain the kmer
-    """
-    return ['A' + kmer, 'C' + kmer, 'G' + kmer, 'T' + kmer,
-      kmer + 'A', kmer + 'C', kmer + 'G', kmer + 'T']
-
 
 def iter_RNAfold_output(energy_file):
     """

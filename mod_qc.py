@@ -5,7 +5,7 @@ import scipy.stats as stats
 import subprocess
 import os
 import cPickle
-import tps_utils
+import mod_utils
 import numpy as np
 import itertools
 import pysam
@@ -24,43 +24,7 @@ class TPS_qc:
         self.get_property = self.experiment_settings.get_property
         self.get_rdir = experiment_settings.get_rdir
         self.get_wdir = experiment_settings.get_wdir
-        tps_utils.make_dir(self.tpse.rdir_path('QC'))
-
-
-    def plot_pcr_bias(self):
-        tps_utils.make_dir(os.path.join(
-          self.experiment_settings.get_rdir(),
-          'QC','collapsed_fracs'))
-        collapsed_read_fractions = map(lambda lib_settings: self.get_collapsed_read_fractions(lib_settings),
-                                                  self.experiment_settings.iter_lib_settings())
-        fig = plt.figure(figsize=(8,8))
-        plot = fig.add_subplot(111)
-        color_index = 0
-        for col_tuple in collapsed_read_fractions:
-            sample_name, read_fractions = col_tuple
-            read_fractions = sorted(read_fractions, reverse = True)
-            cumulative_read_fractions = read_fractions[:1]
-            for read_frac in read_fractions[1:]:
-                cumulative_read_fractions.append(cumulative_read_fractions[-1]+read_frac)
-            cumulative_seq_fractions = np.array(range(1, len(cumulative_read_fractions)+1))/float(len(cumulative_read_fractions))
-
-            plot.plot(cumulative_read_fractions, cumulative_seq_fractions,color=bzUtils.rainbow[color_index/2],
-                      linestyle = bzUtils.line_styles[color_index%2], label=sample_name, lw=1)
-            color_index +=1
-        plot.plot(cumulative_seq_fractions, cumulative_seq_fractions,color=bzUtils.rainbow[color_index/2],
-              linestyle = bzUtils.line_styles[2], label='expected', lw=1)
-        plot.set_xlabel("fraction of reads")
-        plot.set_ylabel("fraction of sequences")
-        plot.set_xlim(0,1)
-        plot.set_ylim(0,1)
-        lg=plt.legend(loc=2,prop={'size':10}, labelspacing=0.2)
-        lg.draw_frame(False)
-        out_name =  os.path.join(
-          self.experiment_settings.get_rdir(),
-          'QC',
-          'pcr_bias.pdf')
-        plt.savefig(out_name, transparent='True', format='pdf')
-        plt.clf()
+        mod_utils.make_dir(self.tpse.rdir_path('QC'))
 
     def identify_contaminating_sequences(self):
         for lib_settings in self.experiment_settings.iter_lib_settings():
@@ -71,12 +35,12 @@ class TPS_qc:
 
     def map_for_contaminating_sequences_one_lib(self, lib_settings):
         #first, take unmapped sequences and map them to yeast rRNA, counting mapping stats
-        if not tps_utils.file_exists(lib_settings.get_rRNA_unmapped_reads()):
+        if not mod_utils.file_exists(lib_settings.get_rRNA_unmapped_reads()):
             subprocess.Popen('bowtie2 -f -D 20 -R 3 -N 1 -L 15 -i S,1,0.50 -x %s -p %d -U %s --un-gz %s 2>>%s | samtools view -bS - > %s 2>>%s ' % (self.experiment_settings.get_rRNA_bowtie_index(), self.threads,
                                                                                                        lib_settings.get_unmappable_reads(), lib_settings.get_rRNA_unmapped_reads(), lib_settings.get_rRNA_mapping_stats(),
                                                                                                        lib_settings.get_rRNA_mapped_reads(), lib_settings.get_log(),
                                                                                                        ), shell=True).wait()
-        if not tps_utils.file_exists(lib_settings.get_genome_unmapped_reads()):
+        if not mod_utils.file_exists(lib_settings.get_genome_unmapped_reads()):
             #take still unmapped sequences and map them to the rest of the yeast genome, counting mapping stats
             subprocess.Popen('bowtie2 -f -D 20 -R 3 -N 1 -L 15 -i S,1,0.50 -x %s -p %d -U %s --un-gz %s 2>>%s | samtools view -bS - > %s 2>>%s ' % (self.experiment_settings.get_genome_bowtie_index(), self.threads,
                                                                                                lib_settings.get_rRNA_unmapped_reads(), lib_settings.get_genome_unmapped_reads(), lib_settings.get_genome_mapping_stats(),
@@ -114,54 +78,6 @@ class TPS_qc:
         overall_alignment_percent = float(lines[5].strip().split()[0][:-1])
         f.close()
         return total_reads, unaligned_reads, uniquely_aligned_reads, multiply_aligned_reads, overall_alignment_percent
-
-
-    def get_collapsed_read_fractions(self, lib_settings):
-        out_name =  os.path.join(
-          self.experiment_settings.get_rdir(),
-          'QC','collapsed_fracs',
-          '%(sample_name)s.collapsed_read_fractions.pkl' % {'sample_name': lib_settings.sample_name})
-        if not tps_utils.file_exists(out_name) and not self.experiment_settings.get_property('force_recollapse'):
-            collapsed_reads_file = lib_settings.get_collapsed_reads()
-            read_counts = []
-            f = gzip.open(collapsed_reads_file)
-            for line in f:
-                if not line.strip() == '' and not line.startswith('#'):#ignore empty lines and commented out lines
-                    if line.startswith('>'):#> marks the start of a new sequence
-                        num_reads = int(line[1:].strip().split('-')[1])
-                        read_counts.append(num_reads)
-                    else:
-                        continue
-            f.close()
-            read_fractions = np.array(read_counts)/float(sum(read_counts))
-            bzUtils.makePickle(read_fractions, out_name)
-        else:
-            read_fractions = bzUtils.unPickle(out_name)
-
-        return (lib_settings.sample_name, read_fractions)
-
-    def get_library_enrichment_correlation(self, lib1, lib2):
-        lib1_enrichments = []
-        lib2_enrichments = []
-        for sequence in lib1.pool_sequence_mappings:
-            lib1_enrichments.append(lib1.pool_sequence_mappings[sequence].enrichment)
-            lib2_enrichments.append(lib2.pool_sequence_mappings[sequence].enrichment)
-        spearmanR, spearmanP = stats.spearmanr(lib1_enrichments, lib2_enrichments)
-        pearsonR, pearsonP = stats.pearsonr(lib1_enrichments, lib2_enrichments)
-        return pearsonR, spearmanR, pearsonP, spearmanP
-
-    def get_library_count_correlation(self, lib1, lib2):
-        lib1_counts = []
-        lib2_counts = []
-        for sequence in lib1.pool_sequence_mappings:
-            lib1_counts.append(lib1.pool_sequence_mappings[sequence].total_passing_reads)
-            lib2_counts.append(lib2.pool_sequence_mappings[sequence].total_passing_reads)
-        spearmanR, spearmanP = stats.spearmanr(lib1_counts, lib2_counts)
-        pearsonR, pearsonP = stats.pearsonr(lib1_counts, lib2_counts)
-        return pearsonR, spearmanR, pearsonP, spearmanP
-
-    def get_library_count_distribution(self, lib):
-        return [lib.pool_sequence_mappings[sequence].total_passing_reads for sequence in lib.pool_sequence_mappings]
 
     def print_library_count_concordances(self):
         out_name =  os.path.join(self.experiment_settings.get_rdir(), 'QC',

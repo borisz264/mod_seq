@@ -1,0 +1,26 @@
+[ input ]
+fastq_dir = /home/boris/TeamGilbert/GroupData/Illumina_results/SequencingData/Boris/toeprint_seq/20150626_pilot/concatenated_replicates
+fastq_gz_files = [“1_Cap_0.4_CHX+_E+_BC1.fq.gz”, “2_Cap_1.0_CHX+_E+_BC2.fq.gz”, “3_Cap_0.4_CHX-_E+_BC3.fq.gz”, “4_Cap_1.0_CHX-_E+_BC4.fq.gz”, “5_Cap_1.0_CHX-_E-_BC5.fq.gz”, “7_Uncap_1.0_CHX+_E+_BC7.fq.gz”, “9_Uncap_1.0_CHX-_E+_BC9.fq.gz”]
+sample_names = [“Cap_0.4_CHX+_E+_BC1”, “Cap_1.0_CHX+_E+_BC2”, “Cap_0.4_CHX-_E+_BC3”, “4_Cap_1.0_CHX-_E+_BC4”, “5_Cap_1.0_CHX-_E-_BC5”, “7_Uncap_1.0_CHX+_E+_BC7”, “9_Uncap_1.0_CHX-_E+_BC9”]
+rRNA_fasta = /home/boris/data/Book_4/4.141/20140708_merge20_seq130.txt
+genome_index =
+
+[ parameters ]
+experiment_name = 20150717_tp_seq_pilot
+adaptor_sequence =
+trim_adaptor = True
+first_base_to_keep = 2
+last_base_to_keep = 100
+min_base_quality = 20
+collapse_identical_reads = False
+force_read_resplit = False
+force_recollapse = False
+force_retrim = False
+force_remapping = False
+force_index_rebuild = False
+force_recount = False
+error_dir = /home/boris/data/Book_4/4.141/20150717_tps_pilot/error/
+
+[ output ]
+working_dir = /home/boris/data/Book_4/4.141/20150717_tps_pilot/scratch/
+results_dir = /home/boris/data/Book_4/4.141/20150717_tps_pilot/

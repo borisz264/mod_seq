@@ -5,9 +5,9 @@ import itertools
 import shutil
 import datetime
 
-import tps_utils
+import mod_utils
 
-class TPS_settings:
+class mod_settings:
     def __init__(self, settings_file):
         self.settings_file = settings_file
         self.process_settings(settings_file)
@@ -24,17 +24,17 @@ class TPS_settings:
             print self.settings
             raise  ValueError('cannot find %s' % property)
     def get_rdir(self):
-        tps_utils.make_dir(self.rdir)
+        mod_utils.make_dir(self.rdir)
         return self.rdir
     def get_wdir(self):
-        tps_utils.make_dir(self.wdir)
+        mod_utils.make_dir(self.wdir)
         return self.wdir
     def get_input_barcode(self):
         return self.settings['library_seq_barcode']
 
     def iter_lib_settings(self):
         for i in range(len(self.sample_names)):
-            yield TPS_lib_settings(self,
+            yield mod_lib_settings(self,
               self.sample_names[i],
               self.fastq_gz_file_handles[i])
 
@@ -43,14 +43,13 @@ class TPS_settings:
         - reads the settings file and converts str to float, list, etc.
         - stores result in self.settings as a dict()
         """
-        int_keys = [ 'first_base_to_keep', 'last_base_to_keep', 'max_reads_to_split', 'minimum_reads_for_inclusion',
-                     'pool_5trim', 'pool_3trim', 'min_post_adaptor_length']
+        int_keys = [ 'first_base_to_keep', 'last_base_to_keep', 'min_post_adaptor_length', 'min_base_quality']
         #float_keys = []
-        str_keys = ['adaptor_sequence', 'rrna_index', 'genome_index', 'pool_append', 'pool_prepend', 'primer_sequence']
+        str_keys = ['adaptor_sequence', 'rrna_index', 'genome_index']
         boolean_keys = ['collapse_identical_reads', 'force_read_resplit', 'force_remapping', 'force_recollapse',
                         'force_recount', 'force_index_rebuild', 'force_retrim', 'trim_adaptor']
         list_str_keys = ['fastq_gz_files', 'sample_names']
-        #list_float_keys = ['concentrations', 'input_rna']
+        #list_float_keys = ['probe_concentrations']
         extant_files = ['pool_fasta',]
         config = ConfigParser.ConfigParser()
         config.read(settings_file)
@@ -81,9 +80,9 @@ class TPS_settings:
         self.fastq_gz_file_handles = [os.path.join(self.fqdir, fastq_gz_file) for fastq_gz_file in
                                       settings['fastq_gz_files']]
         for file_handle in self.fastq_gz_file_handles:
-            assert tps_utils.file_exists(file_handle)
+            assert mod_utils.file_exists(file_handle)
         for k in extant_files:
-            assert tps_utils.file_exists(settings[k])
+            assert mod_utils.file_exists(settings[k])
         self.settings = settings
         self.wdir = settings['working_dir']
         self.rdir = settings['results_dir']
@@ -104,27 +103,26 @@ class TPS_settings:
         makes sure the barcodes are all totally distinguishable
         """
         for b1, b2 in itertools.combinations(self.settings['barcodes'], 2):
-            hamming_dist = tps_utils.hamming_distance(b1, b2)
+            hamming_dist = mod_utils.hamming_distance(b1, b2)
             if hamming_dist < 2:
                 raise ValueError('The barcodes supplied are not well '
                   'separated: %s-%s' % (b1, b2))
 
-    def get_bowtie_index(self):
+    def get_rRNA_fasta(self):
+        return self.get_property('rRNA_fasta')
+
+    def get_rRNA_bowtie_index(self):
         index = os.path.join(
           self.get_rdir(),
           'bowtie_indices',
-          'pool_index')
-        return index
-
-    def get_rRNA_bowtie_index(self):
-        index = index = self.get_property('rrna_index')
+          'rrna_index')
         return index
 
     def get_genome_bowtie_index(self):
         index = self.get_property('genome_index')
         return index
-    def bowtie_index_exists(self):
-        return tps_utils.file_exists(self.get_bowtie_index()+'.1.bt2')
+    def rRNA_bowtie_index_exists(self):
+        return mod_utils.file_exists(self.get_rRNA_bowtie_index()+'.1.bt2')
 
     def get_log(self):
         log = os.path.join(
@@ -146,7 +144,7 @@ class TPS_settings:
           'trimmed_pool_seqs.fasta')
         return log
 
-class TPS_lib_settings:
+class mod_lib_settings:
     def __init__(self, experiment_settings, sample_name, fastq_gz_filehandle):
         self.experiment_settings = experiment_settings
         self.sample_name = sample_name
@@ -156,13 +154,14 @@ class TPS_lib_settings:
         return self.experiment_settings.get_property(property)
 
     def get_log(self):
-        tps_utils.make_dir(os.path.join(self.experiment_settings.get_rdir(), 'logs'))
+        mod_utils.make_dir(os.path.join(self.experiment_settings.get_rdir(), 'logs'))
         log = os.path.join(
           self.experiment_settings.get_rdir(),
           'logs',
           '%(sample_name)s.log' %
            {'sample_name': self.sample_name})
         return log
+
     def write_to_log(self, text, add_time = True):
         f = open(self.get_log(), 'a')
         now = datetime.datetime.now()
@@ -188,15 +187,7 @@ class TPS_lib_settings:
         collapsed_reads = os.path.join(
           self.experiment_settings.get_rdir(),
           'adaptor_removed',
-          '%(sample_name)s.fasta.gz' %
-           {'sample_name': self.sample_name})
-        return collapsed_reads
-
-    def get_primer_trimmed_reads(self):
-        collapsed_reads = os.path.join(
-          self.experiment_settings.get_rdir(),
-          'primer_removed',
-          '%(sample_name)s.fasta.gz' %
+          '%(sample_name)s.fastq.gz' %
            {'sample_name': self.sample_name})
         return collapsed_reads
 
@@ -253,7 +244,15 @@ class TPS_lib_settings:
         trimmed_reads = os.path.join(
           self.experiment_settings.get_rdir(),
           'trimmed_reads',
-          '%(sample_name)s.trimmed.fasta.gz' %
+          '%(sample_name)s.trimmed.fastq.gz' %
+           {'sample_name': self.sample_name})
+        return trimmed_reads
+
+    def get_filtered_reads(self):
+        trimmed_reads = os.path.join(
+          self.experiment_settings.get_rdir(),
+          'filtered_reads',
+          '%(sample_name)s.filtered.fastq.gz' %
            {'sample_name': self.sample_name})
         return trimmed_reads
 
@@ -275,28 +274,28 @@ class TPS_lib_settings:
 
     def split_reads_exist(self):
         split_reads = self.get_split_reads()
-        return tps_utils.file_exists(split_reads)
+        return mod_utils.file_exists(split_reads)
 
     def collapsed_reads_exist(self):
         collapsed_reads = self.get_collapsed_reads()
-        return tps_utils.file_exists(collapsed_reads)
+        return mod_utils.file_exists(collapsed_reads)
 
     def adaptorless_reads_exist(self):
         adaptorless_reads = self.get_adaptor_trimmed_reads()
-        return tps_utils.file_exists(adaptorless_reads)
+        return mod_utils.file_exists(adaptorless_reads)
 
     def primerless_reads_exist(self):
         primerless_reads = self.get_primer_trimmed_reads()
-        return tps_utils.file_exists(primerless_reads)
+        return mod_utils.file_exists(primerless_reads)
 
     def trimmed_reads_exist(self):
         trimmed_reads = self.get_trimmed_reads()
-        return tps_utils.file_exists(trimmed_reads)
+        return mod_utils.file_exists(trimmed_reads)
 
     def mapped_reads_exist(self):
         mapped_reads = self.get_mapped_reads()
-        return tps_utils.file_exists(mapped_reads)
+        return mod_utils.file_exists(mapped_reads)
 
     def sequence_counts_exist(self):
         sequence_counts = self.get_sequence_counts()
-        return tps_utils.file_exists(sequence_counts)
+        return mod_utils.file_exists(sequence_counts)
