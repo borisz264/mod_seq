@@ -168,7 +168,8 @@ def parse_MDz_and_cigar(cigarString, MDzString, mappingLength, NMi, seq):
         A list of positions with mismatches in absolute genomic position
         the genomic distance spanned by this read
 
-
+    test all cases at:
+    http://davetang.org/muse/2011/01/28/perl-and-sam/
 
     The MD field aims to achieve SNP/indel calling without looking at the reference.
     For example, a string `10A5^AC6' means from the leftmost reference base in the
