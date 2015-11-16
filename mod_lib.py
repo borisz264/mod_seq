@@ -22,9 +22,23 @@ class TPS_Lib:
         self.get_property = self.experiment_settings.get_property
         self.get_rdir = experiment_settings.get_rdir
         self.get_wdir = experiment_settings.get_wdir
-        self.pool_sequence_mappings = {}
-        self.initialize_pool_sequence_mappings(mapq_cutoff=0)
+
+        self.count_reads()
+
         self.enrichment_sorted_mappings = None
+
+
+    def count_reads(self):
+        """
+        reads in own mapped read SAM file and computes for each rRNA:
+        1)read 5' ends mapping to each position
+        2)reads overlapping each position
+        3)mismatches at each position
+
+        4)Total read 5' ends at each nt type
+        5)total reads overlapping at each nt type
+        6)Counts for every mutation type
+        """
 
 
     def initialize_pool_sequence_mappings(self, mapq_cutoff = 30):

@@ -1,0 +1,26 @@
+[ input ]
+fastq_dir = /Users/boris/Green_Lab/Book_2/2.36/
+fastq_gz_files = ["SRR815612.fastq.gz"]
+sample_names = ["vivo_DMS_1"]
+
+[ parameters ]
+experiment_name = Rouskin_vivo_DMS_1
+rrna_fasta = /Users/boris/Green_Lab/Book_2/2.36/mod_seq/rRNA_Sequences_ucsc_20110829.txt
+adaptor_sequence = CTGTAGGCACCATCAAT
+trim_adaptor = True
+min_post_adaptor_length = 10
+first_base_to_keep = 1
+last_base_to_keep = 100
+min_base_quality = 20
+collapse_identical_reads = False
+force_read_resplit = False
+force_recollapse = False
+force_retrim = False
+force_remapping = False
+force_index_rebuild = False
+force_recount = False
+error_dir = /Users/boris/Green_Lab/Book_2/2.36/rouskin_DMS_test/error/
+
+[ output ]
+working_dir = /Users/boris/Green_Lab/Book_2/2.36/rouskin_DMS_test/scratch/
+results_dir = /Users/boris/Green_Lab/Book_2/2.36/rouskin_DMS_test/

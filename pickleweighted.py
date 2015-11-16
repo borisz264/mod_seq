@@ -153,7 +153,8 @@ def main(args):
     srt_dict = createStrandDict(strands) # Counts for 5' end of read our standard data format
     cov_dict = createStrandDict(strands) # Counts of times covered by a read
     mut_dict = createStrandDict(strands) # Counts of mismatches at a position
-    
+    types_of_mutations = defaultdict(dict) #counts different types of mutations
+
     with gzip.open(sortedfile, 'r') as f:
         for line in f: # Iterate through SAM file lines
             # Parse line into relevant strings
@@ -170,9 +171,15 @@ def main(args):
             # Skip reads with insertions or deletions. Note, some code still accomodates
             # insertions, represented as 'I', but not mismatch parsing. Deletions haven't
             # been addressed
-            if 'I' in cigarString or 'D' in cigarString:
-                continue
-            
+            #Boris- I want indels to be accommodated
+
+            #if 'I' in cigarString or 'D' in cigarString:
+            #    continue
+            #
+            '''
+            TODO:
+
+            '''
             # Add subdicts for chromosome if needed
             if chrom not in srt_dict[strand]:
                 srt_dict[strand][chrom] = defaultdict(float)
@@ -191,7 +198,7 @@ def main(args):
                 #When a read maps to the minus strand, bowtie returns the reverse complement, and indicates
                 # where this reverse mapped on the + strand. Thus the original 5' end of the read actually
                 # was x nt downstream on the + strand
-                start=int(fields[3])+genomeMappingSpan-1 
+                start=int(fields[3])+genomeMappingSpan-1
             
             # translate relative positions to absolute positions
             genome_cov = readGenomicCoverage(relGenomeCoverage, strand, start) # get genome coverage

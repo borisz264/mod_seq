@@ -8,7 +8,6 @@ import cPickle
 import mod_utils
 import numpy as np
 import itertools
-import pysam
 import math
 import gzip
 import bzUtils

@@ -33,9 +33,8 @@ class mod_seq_run:
         self.remove_adaptor()
         self.trim_reads()
         self.filter_reads_by_quality()
-        self.trim_reference_pool_fasta()
         self.build_bowtie_index()
-        self.map_reads()
+        self.map_rRNA_reads()
         self.initialize_libs()
 
     def remove_adaptor(self):
@@ -72,7 +71,7 @@ class mod_seq_run:
             else:
                 return
         mod_utils.make_dir(self.rdir_path('trimmed_reads'))
-        bzUtils.parmap(lambda lib_setting: self.trim_one_fasta_file(lib_setting), self.settings.iter_lib_settings(), nprocs = self.threads)
+        bzUtils.parmap(lambda lib_setting: self.trim_one_lib(lib_setting), self.settings.iter_lib_settings(), nprocs = self.threads)
         self.settings.write_to_log( 'trimming reads complete')
 
     def trim_one_lib(self, lib_settings):
@@ -102,23 +101,26 @@ class mod_seq_run:
         self.settings.write_to_log('quality filtering reads')
         min_score = self.settings.get_property('min_base_quality')
         self.settings.write_to_log('all bases must have quality score of at least %d' % min_score)
-        if not self.settings.get_property('force_retrim'):
-            for lib_settings in self.settings.iter_lib_settings():
-                if not lib_settings.trimmed_reads_exist():
-                    break
-            else:
-                return
+        for lib_settings in self.settings.iter_lib_settings():
+            if not lib_settings.filtered_reads_exist():
+                break
+        else:
+            return
         mod_utils.make_dir(self.rdir_path('quality_filtered_reads'))
-        bzUtils.parmap(lambda lib_setting: self.trim_one_fasta_file(lib_setting), self.settings.iter_lib_settings(), min_score, nprocs = self.threads)
+        bzUtils.parmap(lambda lib_setting: self.filter_one_lib(lib_setting, min_score), self.settings.iter_lib_settings(), min_score)
         self.settings.write_to_log( 'quality filtering reads complete')
 
     def filter_one_lib(self, lib_settings, min_score):
         lib_settings.write_to_log('quality filtering reads')
-        subprocess.Popen('gunzip -c %s | fastq_quality_filter -q %d -p 100 -z -o %s -v>>%s 2>>%s' % (lib_settings.get_trimmed_reads(),
-                                                                                                     min_score, lib_settings.get_log(),
-                                                                                                     lib_settings.get_filtered_reads(),
-                                                                                                     lib_settings.get_log()), shell=True).wait()
-        lib_settings.write_to_log('trimming_reads done')
+        lib_settings.write_to_log('all bases must have quality score of at least %d' % min_score)
+        print 'gunzip -c %s | fastq_quality_filter -Q64 -v -q %d -p 1 -z -o %s >>%s 2>>%s' % (lib_settings.get_trimmed_reads(),
+                                                                                                     min_score, lib_settings.get_filtered_reads(),
+                                                                                                     lib_settings.get_log(), lib_settings.get_log())
+        subprocess.Popen('gunzip -c %s | fastq_quality_filter -Q64 -v -q %d -p 100 -z -o %s >>%s 2>>%s' % (lib_settings.get_trimmed_reads(),
+                                                                                                     min_score, lib_settings.get_filtered_reads(),
+                                                                                                     lib_settings.get_log(), lib_settings.get_log()),
+                         shell=True).wait()
+        lib_settings.write_to_log('quality filtering reads done')
 
     def build_bowtie_index(self):
         """
@@ -126,7 +128,7 @@ class mod_seq_run:
         recommend including barcode+PCR sequences just in case of some no-insert amplicons
         """
         self.settings.write_to_log('building rRNA bowtie index')
-        if self.settings.get_property('force_index_rebuild') or not self.settings.bowtie_index_exists():
+        if self.settings.get_property('force_index_rebuild') or not self.settings.rRNA_bowtie_index_exists():
             mod_utils.make_dir(self.rdir_path('bowtie_indices'))
             subprocess.Popen('bowtie2-build -f --offrate 0 %s %s 1>>%s 2>>%s' % (self.settings.get_rRNA_fasta(),
                                                                       self.settings.get_rRNA_bowtie_index(), self.settings.get_log()+'.bwt',
@@ -149,14 +151,14 @@ class mod_seq_run:
         mod_utils.make_dir(self.rdir_path('mapping_stats'))
         mod_utils.make_dir(self.rdir_path('unmapped_reads'))
 
-        bzUtils.parmap(lambda lib_setting: self.map_one_library(lib_setting), self.settings.iter_lib_settings(),
+        bzUtils.parmap(lambda lib_setting: self.map_rRNA_one_lib(lib_setting), self.settings.iter_lib_settings(),
                        nprocs = self.threads)
         self.settings.write_to_log( 'finished mapping reads')
 
     def map_rRNA_one_lib(self, lib_settings):
         lib_settings.write_to_log('mapping_reads')
-        subprocess.Popen('bowtie2 -f -D 20 -R 3 -N 1 -L 15 --norc -i S,1,0.50 -x %s -p %d -U %s --un-gz %s -S %s 1>> %s 2>>%s' % (self.settings.get_bowtie_index(), self.threads,
-                                                                                                   lib_settings.get_trimmed_reads(), lib_settings.get_unmappable_reads(), lib_settings.get_mapped_reads_sam(),
+        subprocess.Popen('bowtie2 -q --very-sensitive --norc -x %s -p %d -U %s --un-gz %s -S %s 1>> %s 2>>%s' % (self.settings.get_rRNA_bowtie_index(), self.threads,
+                                                                                                   lib_settings.get_filtered_reads(), lib_settings.get_unmappable_reads(), lib_settings.get_mapped_reads_sam(),
                                                                                                                       lib_settings.get_log(), lib_settings.get_pool_mapping_stats()), shell=True).wait()
         #subprocess.Popen('samtools view -b -h -o %s %s 1>> %s 2>> %s' % (lib_settings.get_mapped_reads(), lib_settings.get_mapped_reads_sam(), lib_settings.get_log(), lib_settings.get_log()), shell=True).wait()
         #also, sort bam file, and make an index
@@ -165,9 +167,6 @@ class mod_seq_run:
         subprocess.Popen('samtools view -uS %s | samtools sort - %s.temp_sorted 1>>%s 2>>%s' % (lib_settings.get_mapped_reads_sam(), lib_settings.get_mapped_reads_sam(),
                                                                           lib_settings.get_log(), lib_settings.get_log()), shell=True).wait()
 
-
-        #subprocess.Popen('samtools sort %s %s.temp_sorted 1>>%s 2>>%s' % (lib_settings.get_mapped_reads_sam(), lib_settings.get_mapped_reads_sam(),
-        #                                                                  lib_settings.get_log(), lib_settings.get_log()), shell=True).wait()
         subprocess.Popen('mv %s.temp_sorted.bam %s' % (lib_settings.get_mapped_reads_sam(),
                                                                           lib_settings.get_mapped_reads()), shell = True).wait()
         subprocess.Popen('samtools index %s' % (lib_settings.get_mapped_reads()), shell = True).wait()

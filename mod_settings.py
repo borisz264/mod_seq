@@ -45,12 +45,11 @@ class mod_settings:
         """
         int_keys = [ 'first_base_to_keep', 'last_base_to_keep', 'min_post_adaptor_length', 'min_base_quality']
         #float_keys = []
-        str_keys = ['adaptor_sequence', 'rrna_index', 'genome_index']
+        str_keys = ['adaptor_sequence', 'rrna_fasta', 'experiment_name']
         boolean_keys = ['collapse_identical_reads', 'force_read_resplit', 'force_remapping', 'force_recollapse',
                         'force_recount', 'force_index_rebuild', 'force_retrim', 'trim_adaptor']
         list_str_keys = ['fastq_gz_files', 'sample_names']
         #list_float_keys = ['probe_concentrations']
-        extant_files = ['pool_fasta',]
         config = ConfigParser.ConfigParser()
         config.read(settings_file)
         settings = {}
@@ -81,8 +80,6 @@ class mod_settings:
                                       settings['fastq_gz_files']]
         for file_handle in self.fastq_gz_file_handles:
             assert mod_utils.file_exists(file_handle)
-        for k in extant_files:
-            assert mod_utils.file_exists(settings[k])
         self.settings = settings
         self.wdir = settings['working_dir']
         self.rdir = settings['results_dir']
@@ -109,7 +106,7 @@ class mod_settings:
                   'separated: %s-%s' % (b1, b2))
 
     def get_rRNA_fasta(self):
-        return self.get_property('rRNA_fasta')
+        return self.get_property('rrna_fasta')
 
     def get_rRNA_bowtie_index(self):
         index = os.path.join(
@@ -251,7 +248,7 @@ class mod_lib_settings:
     def get_filtered_reads(self):
         trimmed_reads = os.path.join(
           self.experiment_settings.get_rdir(),
-          'filtered_reads',
+          'quality_filtered_reads',
           '%(sample_name)s.filtered.fastq.gz' %
            {'sample_name': self.sample_name})
         return trimmed_reads
@@ -291,6 +288,10 @@ class mod_lib_settings:
     def trimmed_reads_exist(self):
         trimmed_reads = self.get_trimmed_reads()
         return mod_utils.file_exists(trimmed_reads)
+
+    def filtered_reads_exist(self):
+        filtered_reads = self.get_filtered_reads()
+        return mod_utils.file_exists(filtered_reads)
 
     def mapped_reads_exist(self):
         mapped_reads = self.get_mapped_reads()
