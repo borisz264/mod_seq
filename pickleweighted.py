@@ -35,6 +35,7 @@ def parseCigarString(cigarString, mappingLength):
         mappingLength - an int of the r
     returns:
         the genomic distance spanned by this read
+
         
     M 0 alignment match (can be a sequence match or mismatch)
     I 1 insertion to the reference
@@ -55,7 +56,7 @@ def parseCigarString(cigarString, mappingLength):
     '''
     
     #Parse cigar strings into numbers & tags
-    numbers = re.split('[A-Z,=]', cigarString)[:-1] #not sure why, bu this seems to produce an extra blank entry thay I'm stripping off
+    numbers = re.split('[A-Z,=]', cigarString)[:-1] #not sure why, but this seems to produce an extra blank entry thay I'm stripping off
     tags = re.split('[0-9]*', cigarString)[1:] 
     numbers = [int(n) for n in numbers]
     
@@ -78,16 +79,20 @@ def parseCigarString(cigarString, mappingLength):
         genomeMappingSpan += genome_multiplier*tag_len
         
         # Determines which  genomic positions relative to the read 5' end are covered by a read
-        # For M: positions covered by read: so add to list, and increment counter
-        # For N: positions spanned by read: increment counter 
-        # Insertions and deletions are ignored,  a read with an indel never sees this function
+        # For M, =, X: positions covered by read: so add to list, and increment counter
+        # For D (deletion) and N (skipped region, similar to deletion, meant for introns): positions covered by read:
+        #   so add to list, and increment counter, so the length of the array
+        #   can be longer than the length of the read, but it should match the genome mapping span
+        #   I include N, since for my application of mapping to rRNA, anything defined as N should be an RT deletion that
+        #   I consider spanned by the read. If there are true intronic reads, then the counter ought be incremented without
+        #   adding to the array.
         if genome_multiplier: # Increment counter if genome multiplier = 1, ie position spanned by read
-            if tag == 'M' or tag =='=' or tag == 'X':
+            if tag in 'M=XDN':
                 genomeCoverage += range(genome_pos,genome_pos+tag_len)
-            genome_pos += tag_len
+                genome_pos += tag_len
     
     assert readMappingSpan == mappingLength
-    assert mappingLength == len(genomeCoverage)
+    assert genomeMappingSpan == len(genomeCoverage)
 
     return readMappingSpan, genomeMappingSpan, genomeCoverage
 
@@ -114,6 +119,8 @@ def parseMDz(MDzString, NMi, genome_cov, seq):
         MDzString, the MD:z string for the current read
         genome_cov, a list relating position in read (i) to absolute genomic position pos_l[i]
         seq, a string representation of the read
+        mappingLength - an int of the read mapping length
+
     Returns:
         A list of positions with mismatches in absolute genomic position
     """
@@ -127,6 +134,12 @@ def parseMDz(MDzString, NMi, genome_cov, seq):
     #The string '0T0C37T' indicates the first base of the read is a mismatch from
     # the reference sequence of T, the second base is a mismatch from the reference
     # sequence C, followed by 37 matches, with a final mismatch from the reference A
+
+    #Boris 20151116 - this is getting an overhaul to deal with indels tags
+    #THomas's `10A5^AC6' example above should identify a mismatch at position 10 (zero-indexed), a deletion of length 2
+    # at position 16 (perhaps genomically it should be assigned to position 17)?
+    #
+
     
     MDz = MDzString.split(':')[2]
     MD_tags = re.findall('[0-9]+|[A-Z,^]+',MDz)
@@ -143,6 +156,111 @@ def parseMDz(MDzString, NMi, genome_cov, seq):
             read_counter += tag # Increment counter by number of matches
     
     return mm_pos
+
+def parse_MDz_and_cigar(cigarString, MDzString, mappingLength, NMi, seq):
+    """
+    Assumes:
+        cigarString - a string of [#][A-Z][#][A-Z] etc... that described the alignment of a read to the genome
+        MDzString, the MD:z string for the current read
+        genome_cov, a list relating position in read (i) to absolute genomic position pos_l[i]
+        seq, a string representation of the read
+    Returns:
+        A list of positions with mismatches in absolute genomic position
+        the genomic distance spanned by this read
+
+
+
+    The MD field aims to achieve SNP/indel calling without looking at the reference.
+    For example, a string `10A5^AC6' means from the leftmost reference base in the
+    alignment, there are 10 matches followed by an A on the reference which is
+    different from the aligned read base; the next 5 reference bases are matches
+    followed by a 2bp deletion from the reference; the deleted sequence is AC;
+    the last 6 bases are matches. The MD field ought to match the CIGAR string.
+    The string '0T0C37T' indicates the first base of the read is a mismatch from
+     the reference sequence of T, the second base is a mismatch from the reference
+     sequence C, followed by 37 matches, with a final mismatch from the reference A
+
+    Boris 20151116 - this is getting an overhaul to deal with indels tags
+    THomas's `10A5^AC6' example above should identify a mismatch at position 10 (zero-indexed), a deletion of length 2
+     at position 16 (perhaps genomically it should be assigned to position 17)?
+
+
+
+
+    M 0 alignment match (can be a sequence match or mismatch)
+    I 1 insertion to the reference
+    D 2 deletion from the reference
+    N 3 skipped region from the reference
+    S 4 soft clipping (clipped sequences present in SEQ)
+    H 5 hard clipping (clipped sequences NOT present in SEQ)
+    P 6 padding (silent deletion from padded reference)
+    = 7 sequence match
+    X 8 sequence mismatch
+    H can only be present as the
+    rst and/or last operation.
+    S may only have H operations between them and the ends of the CIGAR string.
+    For mRNA-to-genome alignment, an N operation represents an intron. For other types of
+    alignments, the interpretation of N is not de
+    ned.
+    4 Sum of lengths of the M/I/S/=/X operations shall equal the length of SEQ.
+    """
+
+    #Parse cigar strings into numbers & tags
+    numbers = re.split('[A-Z,=]', cigarString)[:-1] #not sure why, but this seems to produce an extra blank entry thay I'm stripping off
+    tags = re.split('[0-9]*', cigarString)[1:]
+    numbers = [int(n) for n in numbers]
+
+    assert len(numbers) == len(tags)
+
+    genomeMulitpliers = {'M':1, 'I':0, 'D':1, 'N':1, '=':1, 'X':1}
+    readMulitpliers = {'M':1, 'I':1, 'D':0, 'N':0, '=':1, 'X':1}
+
+    # Initialize counters
+    readMappingSpan, genomeMappingSpan, genome_pos = 0, 0, 0
+    genomeCoverage = []
+
+    #print 'New Read'
+    cigar_tups = zip(tags, numbers)
+    for cigar in cigar_tups:
+        tag, tag_len = cigar
+        genome_multiplier = genomeMulitpliers[tag]
+        read_multiplier = readMulitpliers[tag]
+        readMappingSpan += read_multiplier*tag_len
+        genomeMappingSpan += genome_multiplier*tag_len
+
+        # Determines which  genomic positions relative to the read 5' end are covered by a read
+        # For M, =, X: positions covered by read: so add to list, and increment counter
+        # For D (deletion) and N (skipped region, similar to deletion, meant for introns): positions covered by read:
+        #   so add to list, and increment counter, so the length of the array
+        #   can be longer than the length of the read, but it should match the genome mapping span
+        #   I include N, since for my application of mapping to rRNA, anything defined as N should be an RT deletion that
+        #   I consider spanned by the read. If there are true intronic reads, then the counter ought be incremented without
+        #   adding to the array.
+        if genome_multiplier: # Increment counter if genome multiplier = 1, ie position spanned by read
+            if tag in 'M=XDN':
+                genomeCoverage += range(genome_pos,genome_pos+tag_len)
+                genome_pos += tag_len
+
+    assert readMappingSpan == mappingLength
+    assert genomeMappingSpan == len(genomeCoverage)
+
+
+    MDz = MDzString.split(':')[2]
+    MD_tags = re.findall('[0-9]+|[A-Z,^]+',MDz)
+    MD_tags = [int(x) if re.match('[0-9]+',x) else x for x in MD_tags]
+
+    mm_pos = [] # A list to store positions of mismatches
+    read_counter = 0 # A counter to store the current position of the read (0 indexed)
+    for tag in MD_tags:
+        if tag in ['A','T','C','G']: #If the tag is a base it indicates a mismatch
+            if seq[read_counter] != 'N': # We want to ignore 'N' bases in sequence
+                mm_pos.append(read_counter) # Append the current position in the read
+            read_counter += 1 #Increment the counter
+        elif isinstance(tag, int): # If the tag is an int, this represents matches
+            read_counter += tag # Increment counter by number of matches
+
+    return mm_pos, readMappingSpan, genomeMappingSpan, genomeCoverage
+
     
 def main(args):
     """
@@ -153,7 +271,9 @@ def main(args):
     srt_dict = createStrandDict(strands) # Counts for 5' end of read our standard data format
     cov_dict = createStrandDict(strands) # Counts of times covered by a read
     mut_dict = createStrandDict(strands) # Counts of mismatches at a position
-    types_of_mutations = defaultdict(dict) #counts different types of mutations
+    read_cov_dict = defaultdict(float) #count coverage at each position in read( basically, how many ready were at least this long
+    read_mut_dict = defaultdict(float) #count mismatches or indels assigned to each read position
+    types_of_mutations = defaultdict(float) #counts different types of mutations
 
     with gzip.open(sortedfile, 'r') as f:
         for line in f: # Iterate through SAM file lines
@@ -177,7 +297,7 @@ def main(args):
             #    continue
             #
             '''
-            TODO:
+            TODO: add parsing of indels
 
             '''
             # Add subdicts for chromosome if needed
@@ -204,7 +324,7 @@ def main(args):
             genome_cov = readGenomicCoverage(relGenomeCoverage, strand, start) # get genome coverage
                
             srt_dict[strand][chrom][start] += counts #just add the number of counts to that start position
-            for pos in [p for p in genome_cov if p != 'I']: # Increment positions for coverage dict
+            for pos in [p for p in genome_cov]: # Increment positions for coverage dict
                 cov_dict[strand][chrom][pos] += counts
             
             # If mismatches need to parse, get the absolute genomic pos, and increment counters
