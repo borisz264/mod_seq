@@ -157,10 +157,10 @@ class mod_seq_run:
 
     def map_rRNA_one_lib(self, lib_settings):
         lib_settings.write_to_log('mapping_reads')
-        subprocess.Popen('bowtie2 -q --very-sensitive --no-unal --norc -x %s -p %d -U %s --un-gz %s --al-gz %s 1>> %s 2>>%s' % (self.settings.get_rRNA_bowtie_index(), self.threads,
-                                                                                                   lib_settings.get_filtered_reads(), lib_settings.get_unmappable_reads(), lib_settings.get_mapped_reads_sam_gz(),
-                                                                                                                      '/dev/null', lib_settings.get_rRNA_mapping_stats()), shell=True).wait()
-        #subprocess.Popen('gzip %s 1>> %s 2>>%s' % (lib_settings.get_mapped_reads_sam(), lib_settings.get_log(), lib_settings.get_log()), shell=True).wait()
+        subprocess.Popen('bowtie2 -q --very-sensitive --norc -x %s -p %d -U %s --un-gz %s -S %s 1>> %s 2>>%s' % (self.settings.get_rRNA_bowtie_index(), self.threads,
+                                                                                                   lib_settings.get_filtered_reads(), lib_settings.get_unmappable_reads(), lib_settings.get_mapped_reads_sam(),
+                                                                                                                      lib_settings.get_log(), lib_settings.get_rRNA_mapping_stats()), shell=True).wait()
+        subprocess.Popen('gzip %s 1>> %s 2>>%s' % (lib_settings.get_mapped_reads_sam(), lib_settings.get_log(), lib_settings.get_log()), shell=True).wait()
 
 
         #subprocess.Popen('samtools view -uS %s | samtools sort - %s.temp_sorted 1>>%s 2>>%s' % (lib_settings.get_mapped_reads_sam(), lib_settings.get_mapped_reads_sam(),

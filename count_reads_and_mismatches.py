@@ -320,6 +320,9 @@ def count_reads(lib_settings):
                 So, to see if a flag represents a read on the  - strand, we evaluate (16 & 'flag'), where & is the bitwise and operator,
                 which will be non-zero (True) only if this read is on the - strand
                 '''
+                if (4&flag):#if this is an unmapped read, don't bother
+                    continue
+
                 if (16&flag):
                     strand = '-'
                 else:
