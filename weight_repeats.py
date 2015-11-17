@@ -1,7 +1,7 @@
 #to convert from the mapped reads in the bowtie output to the old Bowtie1 format, and also computes mapping multiplicity
 #The SAM file is read from stdin (piped in from SAMtools)
 #2015-05-01 TMC: Now use NH:i string, not MAPQ score to calculate multiplicity of mapping.
-#2015-05-01 TMC: Now writes NM:i, and MD:z strings to output, this will allow mapping of mismatches/mutations in pickleweighted.py
+#2015-05-01 TMC: Now writes NM:i, and MD:z strings to output, this will allow mapping of mismatches/mutations in count_reads_and_mismatches.py
 
 import sys, gzip
 
@@ -20,7 +20,9 @@ def checkTag(tag, fields):
     return [field for field in fields[7:] if tag in field][0]
 
 h=gzip.open(outFile, 'w')
+print "weighting file opened"
 for line in sys.stdin:#this is the SAM file
+    print "sam file opened"
     if not line.startswith('@'):
         fields = line.strip().split('\t')
         oldID = fields[0] #the first field in the mapped file corresponds to a unique id number for that read- these should correspond to the names in the raw_seqs dictionary

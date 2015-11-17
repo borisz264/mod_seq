@@ -6,7 +6,6 @@ Intended for processing of DMS or other chemical probing data on rRNA
 Based on Alex Robertson's original RBNS pipeline, available on github
 """
 import sys
-import matplotlib
 import matplotlib.pyplot as plt
 plt.rcParams['pdf.fonttype'] = 42 #leaves most text as actual text in PDFs, not outlines
 import os
@@ -24,6 +23,7 @@ import mod_settings
 import mod_utils
 import mod_lib
 import mod_qc
+import count_reads_and_mismatches
 
 
 class mod_seq_run:
@@ -35,7 +35,7 @@ class mod_seq_run:
         self.filter_reads_by_quality()
         self.build_bowtie_index()
         self.map_rRNA_reads()
-        self.initialize_libs()
+        self.count_ends_and_mismatches()
 
     def remove_adaptor(self):
         if not self.settings.get_property('force_retrim'):
@@ -157,21 +157,39 @@ class mod_seq_run:
 
     def map_rRNA_one_lib(self, lib_settings):
         lib_settings.write_to_log('mapping_reads')
-        subprocess.Popen('bowtie2 -q --very-sensitive --norc -x %s -p %d -U %s --un-gz %s -S %s 1>> %s 2>>%s' % (self.settings.get_rRNA_bowtie_index(), self.threads,
-                                                                                                   lib_settings.get_filtered_reads(), lib_settings.get_unmappable_reads(), lib_settings.get_mapped_reads_sam(),
-                                                                                                                      lib_settings.get_log(), lib_settings.get_pool_mapping_stats()), shell=True).wait()
-        #subprocess.Popen('samtools view -b -h -o %s %s 1>> %s 2>> %s' % (lib_settings.get_mapped_reads(), lib_settings.get_mapped_reads_sam(), lib_settings.get_log(), lib_settings.get_log()), shell=True).wait()
-        #also, sort bam file, and make an index
+        subprocess.Popen('bowtie2 -q --very-sensitive --no-unal --norc -x %s -p %d -U %s --un-gz %s --al-gz %s 1>> %s 2>>%s' % (self.settings.get_rRNA_bowtie_index(), self.threads,
+                                                                                                   lib_settings.get_filtered_reads(), lib_settings.get_unmappable_reads(), lib_settings.get_mapped_reads_sam_gz(),
+                                                                                                                      '/dev/null', lib_settings.get_rRNA_mapping_stats()), shell=True).wait()
+        #subprocess.Popen('gzip %s 1>> %s 2>>%s' % (lib_settings.get_mapped_reads_sam(), lib_settings.get_log(), lib_settings.get_log()), shell=True).wait()
 
-        #samtools view -uS myfile.sam | samtools sort - myfile.sorted
-        subprocess.Popen('samtools view -uS %s | samtools sort - %s.temp_sorted 1>>%s 2>>%s' % (lib_settings.get_mapped_reads_sam(), lib_settings.get_mapped_reads_sam(),
-                                                                          lib_settings.get_log(), lib_settings.get_log()), shell=True).wait()
 
-        subprocess.Popen('mv %s.temp_sorted.bam %s' % (lib_settings.get_mapped_reads_sam(),
-                                                                          lib_settings.get_mapped_reads()), shell = True).wait()
-        subprocess.Popen('samtools index %s' % (lib_settings.get_mapped_reads()), shell = True).wait()
-        subprocess.Popen('rm %s' % (lib_settings.get_mapped_reads_sam()), shell = True).wait()
+        #subprocess.Popen('samtools view -uS %s | samtools sort - %s.temp_sorted 1>>%s 2>>%s' % (lib_settings.get_mapped_reads_sam(), lib_settings.get_mapped_reads_sam(),
+        #                                                                  lib_settings.get_log(), lib_settings.get_log()), shell=True).wait()
+        #subprocess.Popen('mv %s.temp_sorted.bam %s' % (lib_settings.get_mapped_reads_sam(),
+        #                                                                  lib_settings.get_mapped_reads()), shell = True).wait()
+        #subprocess.Popen('samtools index %s' % (lib_settings.get_mapped_reads()), shell = True).wait()
+        #subprocess.Popen('rm %s' % (lib_settings.get_mapped_reads_sam()), shell = True).wait()
         lib_settings.write_to_log('mapping_reads done')
+
+    def count_ends_and_mismatches(self):
+        self.settings.write_to_log('counting reads and mismatches')
+        if not self.settings.get_property('force_recount'):
+            for lib_settings in self.settings.iter_lib_settings():
+                if not lib_settings.counts_all_exist():
+                    break
+            else:
+                return
+        mod_utils.make_dir(self.rdir_path('read_counts'))
+
+        bzUtils.parmap(lambda lib_setting: self.count_ends_and_mismatches_one_lib(lib_setting), self.settings.iter_lib_settings(),
+                       nprocs = self.threads)
+
+        self.settings.write_to_log('counting reads and mismatches done')
+
+    def count_ends_and_mismatches_one_lib(self, lib_settings):
+        lib_settings.write_to_log('counting reads and mismatches')
+        count_reads_and_mismatches.count_reads(lib_settings)
+        lib_settings.write_to_log('counting reads and mismatches done')
 
     def initialize_libs(self):
         self.settings.write_to_log('initializing libraries, counting reads')

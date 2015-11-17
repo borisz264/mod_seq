@@ -188,19 +188,11 @@ class mod_lib_settings:
            {'sample_name': self.sample_name})
         return collapsed_reads
 
-    def get_pool_mapping_stats(self):
-        pool_mapping_stats = os.path.join(self.experiment_settings.get_rdir(), 'mapping_stats', '%(sample_name)s.pool.txt' % {'sample_name': self.sample_name})
-        return pool_mapping_stats
-
     def get_rRNA_mapping_stats(self):
-        rRNA_mapping_stats = os.path.join(self.experiment_settings.get_rdir(), 'mapping_stats', '%(sample_name)s.rRNA.txt' %{'sample_name': self.sample_name})
-        return rRNA_mapping_stats
-
-    def get_genome_mapping_stats(self):
         rRNA_mapping_stats = os.path.join(
           self.experiment_settings.get_rdir(),
           'mapping_stats',
-          '%(sample_name)s.genome.txt' %
+          '%(sample_name)s.rRNA.txt' %
            {'sample_name': self.sample_name})
         return rRNA_mapping_stats
 
@@ -211,7 +203,9 @@ class mod_lib_settings:
     def get_mapped_reads_sam(self):
         mapped_reads = os.path.join(self.experiment_settings.get_rdir(), 'mapped_reads', '%(sample_name)s.sam' % {'sample_name': self.sample_name})
         return mapped_reads
-
+    def get_mapped_reads_sam_gz(self):
+        mapped_reads = os.path.join(self.experiment_settings.get_rdir(), 'mapped_reads', '%(sample_name)s.sam.gz' % {'sample_name': self.sample_name})
+        return mapped_reads
     def get_unmappable_reads(self):
         unmapped_reads = os.path.join(
           self.experiment_settings.get_rdir(),
@@ -219,22 +213,6 @@ class mod_lib_settings:
           '%(sample_name)s.unmappable.fasta.gz' %
            {'sample_name': self.sample_name})
         return unmapped_reads
-
-    def get_rRNA_mapped_reads(self):
-        mapped_reads = os.path.join(self.experiment_settings.get_rdir(), 'mapped_reads', '%(sample_name)s_rRNA.bam' % {'sample_name': self.sample_name})
-        return mapped_reads
-
-    def get_rRNA_unmapped_reads(self):
-        mapped_reads = os.path.join(self.experiment_settings.get_rdir(), 'unmapped_reads', '%(sample_name)s_rRNA.unmapped.fasta.gz' % {'sample_name': self.sample_name})
-        return mapped_reads
-
-    def get_genome_mapped_reads(self):
-        mapped_reads = os.path.join(self.experiment_settings.get_rdir(), 'mapped_reads', '%(sample_name)s_genome.bam' % {'sample_name': self.sample_name})
-        return mapped_reads
-
-    def get_genome_unmapped_reads(self):
-        mapped_reads = os.path.join(self.experiment_settings.get_rdir(), 'unmapped_reads', '%(sample_name)s_genome.unmapped.fasta.gz' % {'sample_name': self.sample_name})
-        return mapped_reads
 
 
     def get_trimmed_reads(self):
@@ -253,13 +231,45 @@ class mod_lib_settings:
            {'sample_name': self.sample_name})
         return trimmed_reads
 
-    def get_sequence_counts(self):
-        sequence_counts = os.path.join(
+    def get_counting_prefix(self):
+        return os.path.join(
           self.experiment_settings.get_rdir(),
-          'sequence_counts',
-          '%(sample_name)s.counts.pkl' %
+          'read_counts',
+          '%(sample_name)s' %
            {'sample_name': self.sample_name})
-        return sequence_counts
+
+    def get_read_5p_counts(self):
+        return os.path.join(
+          self.experiment_settings.get_rdir(),
+          'read_counts',
+          '%(sample_name)s.5p_ends.pkl' %
+           {'sample_name': self.sample_name})
+
+    def read_5p_counts_exists(self):
+        return mod_utils.file_exists(self.get_read_5p_counts())
+
+    def get_positional_coverage(self):
+        return os.path.join(
+          self.experiment_settings.get_rdir(),
+          'read_counts',
+          '%(sample_name)s.coverage.pkl' %
+           {'sample_name': self.sample_name})
+
+    def positional_coverage_exists(self):
+        return mod_utils.file_exists(self.get_positional_coverage())
+
+    def get_mutation_counts(self):
+        return os.path.join(
+          self.experiment_settings.get_rdir(),
+          'read_counts',
+          '%(sample_name)s.mutations.pkl' %
+           {'sample_name': self.sample_name})
+
+    def mutation_counts_exists(self):
+        return mod_utils.file_exists(self.get_mutation_counts())
+
+    def counts_all_exist(self):
+        return self.mutation_counts_exists() and self.positional_coverage_exists() and self.read_5p_counts_exists()
 
     def get_overall_contamination_summary(self):
         summary_file = os.path.join(
@@ -294,9 +304,5 @@ class mod_lib_settings:
         return mod_utils.file_exists(filtered_reads)
 
     def mapped_reads_exist(self):
-        mapped_reads = self.get_mapped_reads()
+        mapped_reads = self.get_mapped_reads_sam_gz()
         return mod_utils.file_exists(mapped_reads)
-
-    def sequence_counts_exist(self):
-        sequence_counts = self.get_sequence_counts()
-        return mod_utils.file_exists(sequence_counts)

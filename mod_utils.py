@@ -4,7 +4,36 @@ import itertools
 import gzip
 import numpy as np
 from scipy import stats
+import cPickle as pickle
 
+
+'''
+Colorblind safe colors from Bang Wong, Nature Methods 8. 441 (2011)
+'''
+black = (0,0,0)
+orange = (230/255.0,159/255.0,0)
+skyBlue = (86/255.0,180/255.0,233/255.0)
+bluishGreen = (0,158/255.0,115/255.0)
+yellow = (240/255.0,228/255.0,66/255.0)
+blue = (0,114/255.0,178/255.0)
+vermillion = (213/255.0,94/255.0,0)
+reddishPurple = (204/255.0,121/255.0,167/255.0)
+colors = [black, orange, skyBlue, bluishGreen, vermillion, blue, reddishPurple, yellow]
+rainbow = [black, vermillion, orange, bluishGreen, blue, reddishPurple, 'violet']
+markers = ['.', 'o', 'v', 's', '^', 'p', 'x', '+']
+line_styles = ['solid', 'dashed', 'dotted']
+
+def unPickle(fileName):
+    #returns the pickled object stored in a pickle file
+    f = open(fileName, 'r')
+    o = pickle.load(f)
+    f.close()
+    return o
+
+def makePickle(o, fileName):
+    f = open(fileName, 'w')
+    pickle.dump(o, f)
+    f.close()
 
 def iter_RNAfold_output(energy_file):
     """
