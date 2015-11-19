@@ -43,7 +43,7 @@ class mod_settings:
         - reads the settings file and converts str to float, list, etc.
         - stores result in self.settings as a dict()
         """
-        int_keys = [ 'first_base_to_keep', 'last_base_to_keep', 'min_post_adaptor_length', 'min_base_quality']
+        int_keys = [ 'first_base_to_keep', 'last_base_to_keep', 'min_post_adaptor_length', 'min_base_quality', 'min_mapping_quality']
         #float_keys = []
         str_keys = ['adaptor_sequence', 'rrna_fasta', 'experiment_name']
         boolean_keys = ['collapse_identical_reads', 'force_read_resplit', 'force_remapping', 'force_recollapse',
@@ -203,6 +203,11 @@ class mod_lib_settings:
     def get_mapped_reads_sam(self):
         mapped_reads = os.path.join(self.experiment_settings.get_rdir(), 'mapped_reads', '%(sample_name)s.sam' % {'sample_name': self.sample_name})
         return mapped_reads
+
+    def get_mapped_reads_bam(self):
+        mapped_reads = os.path.join(self.experiment_settings.get_rdir(), 'mapped_reads', '%(sample_name)s.bam' % {'sample_name': self.sample_name})
+        return mapped_reads
+
     def get_mapped_reads_sam_gz(self):
         mapped_reads = os.path.join(self.experiment_settings.get_rdir(), 'mapped_reads', '%(sample_name)s.sam.gz' % {'sample_name': self.sample_name})
         return mapped_reads
@@ -243,6 +248,13 @@ class mod_lib_settings:
           self.experiment_settings.get_rdir(),
           'read_counts',
           '%(sample_name)s.5p_ends.pkl' %
+           {'sample_name': self.sample_name})
+
+    def get_normalized_mutation_counts(self):
+        return os.path.join(
+          self.experiment_settings.get_rdir(),
+          'normalized_mutation_counts',
+          '%(sample_name)s.norm_mut.pkl' %
            {'sample_name': self.sample_name})
 
     def read_5p_counts_exists(self):

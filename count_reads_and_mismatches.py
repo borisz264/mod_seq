@@ -10,7 +10,7 @@
 #7/21/2015 Thomas: Cleaned up code a bit, in addition to the mapping positions of the read 5p ends, it now outputs in the same format 1) number of times each position was covered by a read, 2) number of times each position was mutated relatove to reference sequence
 strands= ['+','-']
 
-import sys, cPickle as pickle, gzip, re, numpy
+import sys, cPickle as pickle, gzip, re, numpy, os
 import mod_settings, mod_utils
 import matplotlib.pyplot as plt
 plt.rcParams['pdf.fonttype'] = 42 #leaves most text as actual text in PDFs, not outlines
@@ -167,7 +167,7 @@ def parse_MDz_and_cigar(cigarString, MDzString, mappingLength, seq):
                 assert mutations_rel_read[read_counter] =='M'
                 assert mutations_rel_genome[genome_counter] =='M'
                 mutations_rel_read[read_counter] = (tag, seq[read_counter])
-                mutations_rel_genome[genome_counter] = (tag, seq[genome_counter])
+                mutations_rel_genome[genome_counter] = (tag, seq[read_counter])
                 genomic_event_positions.append(read_counter) # Append the current position in the read
             read_counter += 1 #Increment the counter
             genome_counter += 1
@@ -197,90 +197,136 @@ def checkTag(tag, fields):
     Returns:
         fields[i], containing the tag
     """
-    try:
-        return [field for field in fields[7:] if tag in field][0]
-    except:
-        print fields
-        sys.exit()
+    tag_fields = [field for field in fields[7:] if tag in field]
+    if len(tag_fields) == 0:#uh oh, no tag found
+        if tag == 'NH:i:': #my alignments seem to lack this tag
+            return 'NH:i:1'
+    return tag_fields[0]
 
-def plot_mutated_nts_pie(mutated_nts_count, out_prefix):
+def pie_read_5p_ends(read_5p_ends, genome_dict, out_prefix):
+
+    fig = plt.figure(figsize=(8,17))
+
+    plot = fig.add_subplot(211)
+    nuc_counts = defaultdict(int)
+    for chromosome in read_5p_ends['+']:
+        for position in read_5p_ends['+'][chromosome]:
+            if position-1 > 0 :
+                nuc = genome_dict[chromosome][position-1]
+                nuc_counts[nuc] += read_5p_ends['+'][chromosome][position]
+    labels = sorted(nuc_counts.keys())
+    sizes = [nuc_counts[nt] for nt in labels]
+    plot.pie(sizes, labels = labels, colors = mod_utils.rainbow)
+    plot.set_title('nt exactly at read 5p ends across rRNA')
+
+    plot = fig.add_subplot(212)
+    nuc_counts = defaultdict(int)
+    for chromosome in read_5p_ends['+']:
+        for position in read_5p_ends['+'][chromosome]:
+            if position-2 > 0 :
+                nuc = genome_dict[chromosome][position-2]
+                nuc_counts[nuc] += read_5p_ends['+'][chromosome][position]
+    labels = sorted(nuc_counts.keys())
+    sizes = [nuc_counts[nt] for nt in labels]
+    plot.pie(sizes, labels = labels, colors = mod_utils.rainbow)
+    plot.set_title('1nt upstream of read 5p ends across rRNA')
+
+    plt.savefig(out_prefix + '_nt_5p_ends_pie.pdf', transparent='True', format='pdf')
+    plt.clf()
+
+
+
+def plot_mutated_nts_pie(mutated_nts_count, title, out_prefix):
     fig = plt.figure(figsize=(8,8))
 
     plot = fig.add_subplot(111)#first a pie chart of mutated nts
-    labels = sorted(mutated_nts_count).keys()
+    labels = sorted(mutated_nts_count.keys())
     sizes = [mutated_nts_count[nt] for nt in labels]
-    plot.pie(sizes, labels = labels, colors = mod_utils.rainbow)
+    total = float(sum(sizes))
+    merged_labels = ['%s %.3f' % (labels[i], sizes[i]/total) for i in range(len(sizes))]
+    plot.pie(sizes, labels = merged_labels, colors = mod_utils.rainbow)
+    plot.set_title(title)
 
     plt.savefig(out_prefix + '.pdf', transparent='True', format='pdf')
     plt.clf()
 
-def plot_full_mutation_stats(mutations_counts, indel_distribution, title, x_label, out_prefix):
-    fig = plt.figure(figsize=(8,16))
+def plot_full_mutation_stats(mutations_counts, indel_distribution, mutations_by_position, positional_coverage, title, x_label, out_prefix):
+    fig = plt.figure(figsize=(16,16))
     fig.suptitle(title)
 
-    plot = fig.add_subplot(121)#first a pie chart of mutated nts
-    labels = sorted(mutations_counts).keys()
+    plot = fig.add_subplot(221)#first a pie chart of mutated nts
+    labels = sorted(mutations_counts.keys())
     sizes = [mutations_counts[nt] for nt in labels]
     plot.pie(sizes, labels = labels, colors = mod_utils.rainbow)
 
-    plot = fig.add_subplot(122)#second a histogram of indel sizes
+    plot = fig.add_subplot(222)#second a histogram of indel sizes
     bins = range(1, 20)
     bins.append(100)
-    plot.histogram(indel_distribution, color = mod_utils.black, bins = bins)
+    plot.hist(indel_distribution, color = mod_utils.black, bins = bins)
+    plot.set_xlim(0,10)
+    plot.set_xticks(numpy.arange(0,10)+0.5)
+    plot.set_xticklabels(numpy.arange(0,10))
+    plot.set_xlabel(x_label)
+    plot.set_ylabel("# events")
+
+    bar_width = 0.5
+    all_events = sorted(mutations_counts, key=mutations_counts.get, reverse=True)
+    top_events = all_events[:len(mod_utils.rainbow)]
+    mut_positions = sorted(mutations_by_position.keys())
+    cov_positions = sorted(positional_coverage.keys())
+
+    plot = fig.add_subplot(223)#a stacked bar graph of positional mutation rates
+    bottoms = [0]*len(mut_positions)
+    bottoms = numpy.array(bottoms)
+    plot_layers = []
+    color_index = 0
+    for event in top_events:
+        event_amounts = [mutations_by_position[position][event] if event in mutations_by_position[position] else 0 for position in mut_positions]
+        plot_layers.append(plot.bar(mut_positions, event_amounts, bar_width, bottom = bottoms, color = mod_utils.rainbow[color_index%len(mod_utils.rainbow)], label=event, lw = 0))
+        color_index += 1
+        bottoms = bottoms + numpy.array(event_amounts)
+    plot.set_ylabel("mutation counts")
+    plot.set_xlabel("read position")
+    plot.set_xticks(numpy.array(mut_positions)[::5]+bar_width/2.0)
+    plot.set_xticklabels(mut_positions[::5])
+
+    plot = fig.add_subplot(224)#a stacked bar graph of positional mutation rates normalized to coverage
+    bottoms = [0]*len(mut_positions)
+    bottoms = numpy.array(bottoms)
+    plot_layers = []
+    color_index = 0
+    for event in top_events:
+        event_amounts = [mutations_by_position[position][event]/positional_coverage[position] if event in mutations_by_position[position] else 0 for position in mut_positions]
+        plot_layers.append(plot.bar(mut_positions, event_amounts, bar_width, bottom = bottoms, color = mod_utils.rainbow[color_index%len(mod_utils.rainbow)], label=event, lw = 0))
+        color_index += 1
+        bottoms = bottoms + numpy.array(event_amounts)
+    plot.set_ylabel("mutation counts/coverage")
+    plot.set_xlabel("read position")
+    plot.set_xticks(numpy.array(mut_positions)[::5]+bar_width/2.0)
+    plot.set_xticklabels(mut_positions[::5])
+    lg=plt.legend(loc=2,prop={'size':10}, labelspacing=0.2)
+    lg.draw_frame(False)
+
+
+
+
 
     plt.savefig(out_prefix + '.pdf', transparent='True', format='pdf')
     plt.clf()
 
-def plot_positional_mutation_stats(mutations_by_position, positional_coverage, title, output_prefix):
-    fig = plt.figure(figsize=(8,16))
+def normalized_mutation_rates(mutation_counts, coverage_counts):
+    normalized_mutations = {}
+    for strand in mutation_counts:
+        if not strand in normalized_mutations:
+            normalized_mutations[strand] = {}
+        for chromosome in normalized_mutations[strand]:
+            if not chromosome in normalized_mutations[strand]:
+                normalized_mutations[strand][chromosome] = {}
+            for position in normalized_mutations[strand][chromosome][position]:
+                normalized_mutations[strand][chromosome][position] = \
+                    float(mutation_counts[strand][chromosome][position])/float(coverage_counts[strand][chromosome][position])
+    return normalized_mutations
 
-    bar_width = 0.5
-    all_events = set()
-    for position in mutations_by_position:
-        all_events = all_events.union(set(mutations_by_position[position].keys()))
-    all_events = sorted(all_events)
-    mut_positions = sorted(mutations_by_position.keys())
-    cov_positions = sorted(positional_coverage.keys())
-    assert mut_positions == cov_positions
-
-    fig.suptitle(title)
-    plots = []
-    plot = fig.add_subplot(121)#a stacked bar graph of positional mutation rates
-    plots.append(plot)
-    bottoms = [0]*len(mut_positions)
-    bottoms = numpy.array(bottoms)
-    plot_layers = []
-    color_index = 0
-    for event in all_events:
-        event_amounts = [mutations_by_position[position][event] if event in mutations_by_position[position] else 0 for position in mut_positions]
-        plot_layers.append(plot.bar(mut_positions, event_amounts, bar_width, bottom = bottoms, color = mod_utils.rainbow[color_index], label=event))
-        color_index += 1
-        bottoms = bottoms + numpy.array(event_amounts)
-    plot.set_ylabel("mutation counts")
-
-    plot = fig.add_subplot(122)#a stacked bar graph of positional mutation rates normalized to coverage
-    plots.append(plot)
-    bottoms = [0]*len(mut_positions)
-    bottoms = numpy.array(bottoms)
-    plot_layers = []
-    color_index = 0
-    for event in all_events:
-        event_amounts = [mutations_by_position[position][event]/cov_positions[position] if event in mutations_by_position[position] else 0 for position in mut_positions]
-        plot_layers.append(plot.bar(mut_positions, event_amounts, bar_width, bottom = bottoms, color = mod_utils.rainbow[color_index], label=event))
-        color_index += 1
-        bottoms = bottoms + numpy.array(event_amounts)
-    plot.set_ylabel("mutation counts/coverage")
-
-    for plot in plots:
-        plot.set_xlabel("read position")
-        plot.set_xticks(numpy.array(mut_positions)+bar_width/2.0)
-        plot.set_xticklabels(mut_positions)
-
-    lg=plt.legend(loc=2,prop={'size':10}, labelspacing=0.2)
-    lg.draw_frame(False)
-
-    plt.savefig(output_prefix + '.pdf', transparent='True', format='pdf')
-    plt.clf()
 
 def count_reads(lib_settings):
     """
@@ -299,8 +345,6 @@ def count_reads(lib_settings):
     mutated_nts = defaultdict(float)
     read_insertion_sizes = []
     genomic_deletion_sizes = []
-
-
     with gzip.open(lib_settings.get_mapped_reads_sam_gz(), 'r') as f:
         for line in f: # Iterate through SAM file lines
             if not line.startswith('@'):
@@ -328,111 +372,115 @@ def count_reads(lib_settings):
                 else:
                     strand = '+'
                 chrom = fields[2]
-                position = fields[3]
                 MAPQ = int(fields[4])
-                cigarString = fields[5]
-                seq = fields[9]
-                mappingLength = len(seq)
-                qScores = fields[10]
-                # Some lines seem to lack some strings this throws of indexing of NM:i, MD:Z, and NH:i strings
-                NHstr = checkTag('NH:i:',fields)
-                NMstr = checkTag('NM:i:',fields)
-                MDstr = checkTag('MD:Z:',fields)
-                assert 'NM:i' in NMstr
-                assert 'MD:Z' in MDstr
-                assert 'NH:i' in NHstr
-                multiplicity = float(NHstr.split(':')[2])
+                if int(MAPQ) >= lib_settings.get_property('min_mapping_quality'):
+                    cigarString = fields[5]
+                    seq = fields[9]
+                    mappingLength = len(seq)
+                    qScores = fields[10]
+                    # Some lines seem to lack some strings this throws of indexing of NM:i, MD:Z, and NH:i strings
+                    NHstr = checkTag('NH:i:',fields)
+                    NMstr = checkTag('NM:i:',fields)
+                    MDstr = checkTag('MD:Z:',fields)
+                    assert 'NM:i' in NMstr
+                    assert 'MD:Z' in MDstr
+                    assert 'NH:i' in NHstr
+                    multiplicity = float(NHstr.split(':')[2])
 
-                fields = line.strip().split('\t')
-                counts = float(1.0/multiplicity) # Weight of read
-                MDzString = MDstr
+                    fields = line.strip().split('\t')
+                    counts = float(1.0/multiplicity) # Weight of read
+                    MDzString = MDstr
 
-                # Add subdicts for chromosome if needed
-                if chrom not in srt_dict[strand]:
-                    srt_dict[strand][chrom] = defaultdict(float)
-                if chrom not in cov_dict[strand]:
-                    cov_dict[strand][chrom] = defaultdict(float)
-                if chrom not in mut_dict[strand]:
-                    mut_dict[strand][chrom] = defaultdict(float)
+                    # Add subdicts for chromosome if needed
+                    if chrom not in srt_dict[strand]:
+                        srt_dict[strand][chrom] = defaultdict(float)
+                    if chrom not in cov_dict[strand]:
+                        cov_dict[strand][chrom] = defaultdict(float)
+                    if chrom not in mut_dict[strand]:
+                        mut_dict[strand][chrom] = defaultdict(float)
 
-                # Parse cigar string, get genome mapping span, and relative genomic positions covered by read
-                rel_genomic_event_positions, rel_genome_coverage, mutations_rel_genome, mutations_rel_read, readMappingSpan, genomeMappingSpan = parse_MDz_and_cigar(cigarString, MDzString, mappingLength, seq)
+                    # Parse cigar string, get genome mapping span, and relative genomic positions covered by read
+                    rel_genomic_event_positions, rel_genome_coverage, mutations_rel_genome, mutations_rel_read, readMappingSpan, genomeMappingSpan = parse_MDz_and_cigar(cigarString, MDzString, mappingLength, seq)
 
-                for pos in range(len(mutations_rel_genome)):
-                    genome_position_coverage[pos] += counts
-                    event = mutations_rel_genome[pos]
-                    if not event == 'M': #count if it's not a match
-                        assert event[0] != 'I'
-                        if event[0] == 'D':
-                            genomic_deletion_sizes += event[1]
-                            event = event[0]
-                        if event not in mutations_by_genome_position[pos]:
-                             mutations_by_genome_position[pos] = 0
-                        mutations_by_genome_position[pos][event] += counts
-                        genome_mutations[event] += counts
-                        mutated_nts[event[0]] += counts
+                    for pos in range(len(mutations_rel_genome)):
+                        genome_position_coverage[pos] += counts
+                        event = mutations_rel_genome[pos]
+                        if not event == 'M': #count if it's not a match
+                            assert event[0] != 'I'
+                            if event[0] == 'D':
+                                genomic_deletion_sizes.append(event[1])
+                                event = event[0]
+                            if event not in mutations_by_genome_position[pos]:
+                                 mutations_by_genome_position[pos][event] = 0
+                            mutations_by_genome_position[pos][event] += counts
+                            genome_mutations[event] += counts
+                            if event[0] in 'ATCG':
+                                mutated_nts[event[0]] += counts
 
-                for pos in range(len(mutations_rel_read)):
-                    read_position_coverage[pos] += counts
-                    event = mutations_rel_read[pos]
-                    if not event == 'M': #count if it's not a match
-                        assert event[0] != 'D'
-                        if event[0] == 'I':
-                            read_insertion_sizes += event[1]
-                            event = event[0]
-                        if event not in mutations_by_read_position[pos]:
-                             mutations_by_read_position[pos] = 0
-                        mutations_by_read_position[pos][event] += counts
-                        read_mutations[event] += counts
+                    for pos in range(len(mutations_rel_read)):
+                        read_position_coverage[pos] += counts
+                        event = mutations_rel_read[pos]
+                        if not event == 'M': #count if it's not a match
+                            assert event[0] != 'D'
+                            if event[0] == 'I':
+                                read_insertion_sizes.append(event[1])
+                                event = event[0]
+                            if event not in mutations_by_read_position[pos]:
+                                 mutations_by_read_position[pos][event] = 0
+                            mutations_by_read_position[pos][event] += counts
+                            read_mutations[event] += counts
 
-                # Set start position of read
-                if strand== '+':
-                    start=int(fields[3])
-                else:
-                    #When a read maps to the minus strand, bowtie returns the reverse complement, and indicates
-                    # where this reverse mapped on the + strand. Thus the original 5' end of the read actually
-                    # was x nt downstream on the + strand
-                    start=int(fields[3])+genomeMappingSpan-1
+                    # Set start position of read
+                    if strand== '+':
+                        start=int(fields[3])
+                    else:
+                        #When a read maps to the minus strand, bowtie returns the reverse complement, and indicates
+                        # where this reverse mapped on the + strand. Thus the original 5' end of the read actually
+                        # was x nt downstream on the + strand
+                        start=int(fields[3])+genomeMappingSpan-1
 
-                # translate relative positions to absolute positions
-                genome_cov = readGenomicCoverage(rel_genome_coverage, strand, start) # get genome coverage
+                    # translate relative positions to absolute positions
+                    genome_cov = readGenomicCoverage(rel_genome_coverage, strand, start) # get genome coverage
 
-                srt_dict[strand][chrom][start] += counts #just add the number of counts to that start position
-                for pos in [p for p in genome_cov]: # Increment positions for coverage dict
-                    cov_dict[strand][chrom][pos] += counts
+                    srt_dict[strand][chrom][start] += counts #just add the number of counts to that start position
+                    for pos in [p for p in genome_cov]: # Increment positions for coverage dict
+                        cov_dict[strand][chrom][pos] += counts
 
-                # If mismatches need to parse, get the absolute genomic pos, and increment counters
-                genMismatches = readGenomicCoverage(rel_genomic_event_positions, strand, start)
-                for event_position in genMismatches:
-                    mut_dict[strand][chrom][event_position] += counts
-    
+                    # If mismatches need to parse, get the absolute genomic pos, and increment counters
+                    genMismatches = readGenomicCoverage(rel_genomic_event_positions, strand, start)
+                    for event_position in genMismatches:
+                        mut_dict[strand][chrom][event_position] += counts
+
+    normalized_mutations = normalized_mutation_rates(mut_dict, cov_dict)
+    mod_utils.makePickle(normalized_mutations, lib_settings.get_normalized_mutation_counts())
+
+
     mod_utils.makePickle(srt_dict, lib_settings.get_read_5p_counts())
     mod_utils.makePickle(cov_dict, lib_settings.get_positional_coverage())
     mod_utils.makePickle(mut_dict, lib_settings.get_mutation_counts())
 
-    mod_utils.makePickle(genome_mutations, lib_settings.get_counting_prefix() + '.genome_mutations')
-    mod_utils.makePickle(mutations_by_genome_position, lib_settings.get_counting_prefix() + '.genome_position_mutations')
-    mod_utils.makePickle(genome_position_coverage, lib_settings.get_counting_prefix() + '.genome_position_coverage')
+    mod_utils.makePickle(genome_mutations, lib_settings.get_counting_prefix() + '.genome_mutations.pkl')
+    mod_utils.makePickle(mutations_by_genome_position, lib_settings.get_counting_prefix() + '.genome_position_mutations.pkl')
+    mod_utils.makePickle(genome_position_coverage, lib_settings.get_counting_prefix() + '.genome_position_coverage.pkl')
 
-    mod_utils.makePickle(mutated_nts, lib_settings.get_counting_prefix() + '.nt_mutations')
+    mod_utils.makePickle(mutated_nts, lib_settings.get_counting_prefix() + '.nt_mutations.pkl')
 
-    mod_utils.makePickle(read_mutations, lib_settings.get_counting_prefix() + '.read_mutations')
-    mod_utils.makePickle(mutations_by_read_position, lib_settings.get_counting_prefix() + '.read_position_mutations')
-    mod_utils.makePickle(read_position_coverage, lib_settings.get_counting_prefix() + '.read_position_coverage')
+    mod_utils.makePickle(read_mutations, lib_settings.get_counting_prefix() + '.read_mutations.pkl')
+    mod_utils.makePickle(mutations_by_read_position, lib_settings.get_counting_prefix() + '.read_position_mutations.pkl')
+    mod_utils.makePickle(read_position_coverage, lib_settings.get_counting_prefix() + '.read_position_coverage.pkl')
 
-    mod_utils.makePickle(genomic_deletion_sizes, lib_settings.get_counting_prefix() + '.deletion_sizes')
+    mod_utils.makePickle(genomic_deletion_sizes, lib_settings.get_counting_prefix() + '.deletion_sizes.pkl')
 
-    mod_utils.makePickle(read_insertion_sizes, lib_settings.get_counting_prefix() + '.insertion_sizes')
+    mod_utils.makePickle(read_insertion_sizes, lib_settings.get_counting_prefix() + '.insertion_sizes.pkl')
 
-    plot_mutated_nts_pie(mutated_nts, lib_settings.get_counting_prefix()+'.mutated_nts' )
-    plot_full_mutation_stats(read_mutations, read_insertion_sizes, 'mutations wrt reads', "insertion size",
+    plot_mutated_nts_pie(mod_utils.unPickle(lib_settings.get_counting_prefix() + '.nt_mutations.pkl'), 'mutated rRNA nts in ' + lib_settings.sample_name, lib_settings.get_counting_prefix()+'.mutated_nts' )
+    plot_full_mutation_stats(mod_utils.unPickle(lib_settings.get_counting_prefix() + '.read_mutations.pkl'), mod_utils.unPickle(lib_settings.get_counting_prefix() + '.insertion_sizes.pkl'),
+                             mod_utils.unPickle(lib_settings.get_counting_prefix() + '.read_position_mutations.pkl'), mod_utils.unPickle(lib_settings.get_counting_prefix() + '.read_position_coverage.pkl'), 'mutations wrt reads', "insertion size",
                              lib_settings.get_counting_prefix()+'.read_mutations')
-    plot_full_mutation_stats(genome_mutations, genomic_deletion_sizes, 'mutations wrt genome', "deletion size",
+    plot_full_mutation_stats(mod_utils.unPickle(lib_settings.get_counting_prefix() + '.genome_mutations.pkl'), mod_utils.unPickle(lib_settings.get_counting_prefix() + '.deletion_sizes.pkl'), mod_utils.unPickle(lib_settings.get_counting_prefix() + '.genome_position_mutations.pkl'),
+                             mod_utils.unPickle(lib_settings.get_counting_prefix() + '.genome_position_coverage.pkl'), 'mutations wrt genome', "deletion size",
                              lib_settings.get_counting_prefix()+'.genome_mutations')
-    plot_positional_mutation_stats(mutations_by_read_position, read_position_coverage, 'mutations wrt read',
-                                   lib_settings.get_counting_prefix()+'.positional_read_mutations')
-    plot_positional_mutation_stats(mutations_by_genome_position, genome_position_coverage, 'mutations wrt read',
-                                   lib_settings.get_counting_prefix()+'.positional_genome_mutations')
+    pie_read_5p_ends(srt_dict, mod_utils.convertFastaToDict(lib_settings.experiment_settings.get_rRNA_fasta()), lib_settings.get_counting_prefix())
 
 def test():
     """

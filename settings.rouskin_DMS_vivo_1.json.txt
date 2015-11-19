@@ -18,7 +18,7 @@ force_recollapse = False
 force_retrim = False
 force_remapping = False
 force_index_rebuild = False
-force_recount = False
+force_recount = True
 error_dir = /Users/boris/Green_Lab/Book_2/2.36/rouskin_DMS_test/error/
 
 [ output ]

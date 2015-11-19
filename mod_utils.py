@@ -102,6 +102,26 @@ def get_index_from_kmer(kmer):
         index += base2face[base] * (4 ** power)
     return index
 
+def convertFastaToDict(fastaFile):
+    '''
+    converts a fasta file to a dict of {sequenceName:sequence}
+    '''
+    currentName = None
+    currentSequence = None
+    seqDict = {}
+    f = open(fastaFile)
+    for line in f:
+        if not line.strip() == '' and not line.startswith('#'):#ignore empty lines and commented out lines
+            if line.startswith('>'):#> marks the start of a new sequence
+                if not currentName == None: #after we've reached the firtst > line, we know what the sequence corresponds to
+                    seqDict[currentName] = currentSequence.upper()
+                currentName = line.strip()[1:]
+                currentSequence = ''
+            else:
+                currentSequence += line.strip()
+    f.close()
+    seqDict[currentName] = currentSequence.upper()
+    return seqDict
 
 def get_kmer_from_index(kmax, index):
     """
@@ -278,7 +298,13 @@ def getPaddedMismatchedAdjacentKmers(kmerSequence, padding, numMismatches):
     return kmer_list
 
 
-
+def revComp(seq, isRNA = False):
+    seq = seq.upper()
+    compDict = {'A':'T', 'T':'A', 'U':'A', 'C':'G', 'G':'C', 'N':'N', '-':'-', '.':'.', '*':'*'}
+    revComp = ''.join([compDict[c] for c in seq[::-1]])
+    if isRNA:
+        return revComp.replace('T', 'U')
+    return revComp
 
 
 

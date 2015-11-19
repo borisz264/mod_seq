@@ -51,7 +51,7 @@ class mod_seq_run:
 
     def remove_adaptor_one_lib(self, lib_settings):
         lib_settings.write_to_log('adaptor trimming')
-        command_to_run = 'cutadapt --adapter %s --overlap 3 --minimum-length %d %s --output %s 1>>%s 2>>%s' % (self.settings.get_property('adaptor_sequence'), self.settings.get_property('min_post_adaptor_length'),
+        command_to_run = 'cutadapt --adapter %s --overlap 3 --discard-untrimmed --minimum-length %d %s --output %s 1>>%s 2>>%s' % (self.settings.get_property('adaptor_sequence'), self.settings.get_property('min_post_adaptor_length'),
                            lib_settings.get_fastq_file(), lib_settings.get_adaptor_trimmed_reads(), lib_settings.get_log(),
                            lib_settings.get_log())
         subprocess.Popen(command_to_run, shell=True).wait()
@@ -113,10 +113,7 @@ class mod_seq_run:
     def filter_one_lib(self, lib_settings, min_score):
         lib_settings.write_to_log('quality filtering reads')
         lib_settings.write_to_log('all bases must have quality score of at least %d' % min_score)
-        print 'gunzip -c %s | fastq_quality_filter -Q64 -v -q %d -p 1 -z -o %s >>%s 2>>%s' % (lib_settings.get_trimmed_reads(),
-                                                                                                     min_score, lib_settings.get_filtered_reads(),
-                                                                                                     lib_settings.get_log(), lib_settings.get_log())
-        subprocess.Popen('gunzip -c %s | fastq_quality_filter -Q64 -v -q %d -p 100 -z -o %s >>%s 2>>%s' % (lib_settings.get_trimmed_reads(),
+        subprocess.Popen('gunzip -c %s | fastq_quality_filter -Q33 -v -q %d -p 100 -z -o %s >>%s 2>>%s' % (lib_settings.get_trimmed_reads(),
                                                                                                      min_score, lib_settings.get_filtered_reads(),
                                                                                                      lib_settings.get_log(), lib_settings.get_log()),
                          shell=True).wait()
@@ -149,7 +146,6 @@ class mod_seq_run:
                 return
         mod_utils.make_dir(self.rdir_path('mapped_reads'))
         mod_utils.make_dir(self.rdir_path('mapping_stats'))
-        mod_utils.make_dir(self.rdir_path('unmapped_reads'))
 
         bzUtils.parmap(lambda lib_setting: self.map_rRNA_one_lib(lib_setting), self.settings.iter_lib_settings(),
                        nprocs = self.threads)
@@ -157,17 +153,17 @@ class mod_seq_run:
 
     def map_rRNA_one_lib(self, lib_settings):
         lib_settings.write_to_log('mapping_reads')
-        subprocess.Popen('bowtie2 -q --very-sensitive --norc -x %s -p %d -U %s --un-gz %s -S %s 1>> %s 2>>%s' % (self.settings.get_rRNA_bowtie_index(), self.threads,
-                                                                                                   lib_settings.get_filtered_reads(), lib_settings.get_unmappable_reads(), lib_settings.get_mapped_reads_sam(),
+        subprocess.Popen('bowtie2 -q --very-sensitive --norc -x %s -p %d -U %s -S %s 1>> %s 2>>%s' % (self.settings.get_rRNA_bowtie_index(), self.threads,
+                                                                                                   lib_settings.get_filtered_reads(), lib_settings.get_mapped_reads_sam(),
                                                                                                                       lib_settings.get_log(), lib_settings.get_rRNA_mapping_stats()), shell=True).wait()
+
+        subprocess.Popen('samtools view -uS %s | samtools sort - %s.temp_sorted 1>>%s 2>>%s' % (lib_settings.get_mapped_reads_sam(), lib_settings.get_mapped_reads_sam(),
+                                                                          lib_settings.get_log(), lib_settings.get_log()), shell=True).wait()
         subprocess.Popen('gzip %s 1>> %s 2>>%s' % (lib_settings.get_mapped_reads_sam(), lib_settings.get_log(), lib_settings.get_log()), shell=True).wait()
+        subprocess.Popen('mv %s.temp_sorted.bam %s' % (lib_settings.get_mapped_reads_sam(),
+                                                                          lib_settings.get_mapped_reads_bam()), shell = True).wait()
+        subprocess.Popen('samtools index %s' % (lib_settings.get_mapped_reads_bam()), shell = True).wait()
 
-
-        #subprocess.Popen('samtools view -uS %s | samtools sort - %s.temp_sorted 1>>%s 2>>%s' % (lib_settings.get_mapped_reads_sam(), lib_settings.get_mapped_reads_sam(),
-        #                                                                  lib_settings.get_log(), lib_settings.get_log()), shell=True).wait()
-        #subprocess.Popen('mv %s.temp_sorted.bam %s' % (lib_settings.get_mapped_reads_sam(),
-        #                                                                  lib_settings.get_mapped_reads()), shell = True).wait()
-        #subprocess.Popen('samtools index %s' % (lib_settings.get_mapped_reads()), shell = True).wait()
         #subprocess.Popen('rm %s' % (lib_settings.get_mapped_reads_sam()), shell = True).wait()
         lib_settings.write_to_log('mapping_reads done')
 
@@ -180,6 +176,7 @@ class mod_seq_run:
             else:
                 return
         mod_utils.make_dir(self.rdir_path('read_counts'))
+        mod_utils.make_dir(self.rdir_path('normalized_mutation_counts'))
 
         bzUtils.parmap(lambda lib_setting: self.count_ends_and_mismatches_one_lib(lib_setting), self.settings.iter_lib_settings(),
                        nprocs = self.threads)
