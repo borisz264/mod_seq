@@ -113,14 +113,14 @@ def parse_MDz_and_cigar(cigarString, MDzString, mappingLength, seq):
         #   I include N, since for my application of mapping to rRNA, anything defined as N should be an RT deletion that
         #   I consider spanned by the read. If there are true intronic reads, then the counter ought be incremented without
         #   adding to the array.
-        if genome_multiplier: # Increment counter if genome multiplier = 1, ie position spanned by read
-            if tag in 'M=XDN':
-                genomeCoverage += range(genome_pos,genome_pos+tag_len)
-                genome_pos += tag_len
+        #if genome_multiplier: # Increment counter if genome multiplier = 1, ie position spanned by read
+        #    if tag in 'M=XDN':
+        #        genomeCoverage += range(genome_pos,genome_pos+tag_len)
+        #        genome_pos += tag_len
 
     assert readMappingSpan == mappingLength
-    assert genomeMappingSpan == len(genomeCoverage)
-
+    #assert genomeMappingSpan == len(genomeCoverage)
+    genomeCoverage = range(genomeMappingSpan)
     """
         test all cases at:
     http://davetang.org/muse/2011/01/28/perl-and-sam/
@@ -296,11 +296,12 @@ def plot_full_mutation_stats(mutations_counts, indel_distribution, mutations_by_
     plot_layers = []
     color_index = 0
     for event in top_events:
-        event_amounts = [mutations_by_position[position][event]/positional_coverage[position] if event in mutations_by_position[position] else 0 for position in mut_positions]
+        event_amounts = [mutations_by_position[position][event]/positional_coverage[position] if (event in mutations_by_position[position] and positional_coverage[position]>100) else 0 for position in mut_positions]
         plot_layers.append(plot.bar(mut_positions, event_amounts, bar_width, bottom = bottoms, color = mod_utils.rainbow[color_index%len(mod_utils.rainbow)], label=event, lw = 0))
         color_index += 1
         bottoms = bottoms + numpy.array(event_amounts)
     plot.set_ylabel("mutation counts/coverage")
+    plot.set_ylim(0,.02)
     plot.set_xlabel("read position")
     plot.set_xticks(numpy.array(mut_positions)[::5]+bar_width/2.0)
     plot.set_xticklabels(mut_positions[::5])
@@ -319,12 +320,13 @@ def normalized_mutation_rates(mutation_counts, coverage_counts):
     for strand in mutation_counts:
         if not strand in normalized_mutations:
             normalized_mutations[strand] = {}
-        for chromosome in normalized_mutations[strand]:
+        for chromosome in mutation_counts[strand]:
             if not chromosome in normalized_mutations[strand]:
                 normalized_mutations[strand][chromosome] = {}
-            for position in normalized_mutations[strand][chromosome][position]:
-                normalized_mutations[strand][chromosome][position] = \
-                    float(mutation_counts[strand][chromosome][position])/float(coverage_counts[strand][chromosome][position])
+            for position in mutation_counts[strand][chromosome]:
+                if float(coverage_counts[strand][chromosome][position])>0:
+                    normalized_mutations[strand][chromosome][position] = \
+                        float(mutation_counts[strand][chromosome][position])/float(coverage_counts[strand][chromosome][position])
     return normalized_mutations
 
 
@@ -345,6 +347,7 @@ def count_reads(lib_settings):
     mutated_nts = defaultdict(float)
     read_insertion_sizes = []
     genomic_deletion_sizes = []
+
     with gzip.open(lib_settings.get_mapped_reads_sam_gz(), 'r') as f:
         for line in f: # Iterate through SAM file lines
             if not line.startswith('@'):
@@ -443,7 +446,7 @@ def count_reads(lib_settings):
                     genome_cov = readGenomicCoverage(rel_genome_coverage, strand, start) # get genome coverage
 
                     srt_dict[strand][chrom][start] += counts #just add the number of counts to that start position
-                    for pos in [p for p in genome_cov]: # Increment positions for coverage dict
+                    for pos in genome_cov: # Increment positions for coverage dict
                         cov_dict[strand][chrom][pos] += counts
 
                     # If mismatches need to parse, get the absolute genomic pos, and increment counters
@@ -451,8 +454,7 @@ def count_reads(lib_settings):
                     for event_position in genMismatches:
                         mut_dict[strand][chrom][event_position] += counts
 
-    normalized_mutations = normalized_mutation_rates(mut_dict, cov_dict)
-    mod_utils.makePickle(normalized_mutations, lib_settings.get_normalized_mutation_counts())
+
 
 
     mod_utils.makePickle(srt_dict, lib_settings.get_read_5p_counts())
@@ -472,6 +474,10 @@ def count_reads(lib_settings):
     mod_utils.makePickle(genomic_deletion_sizes, lib_settings.get_counting_prefix() + '.deletion_sizes.pkl')
 
     mod_utils.makePickle(read_insertion_sizes, lib_settings.get_counting_prefix() + '.insertion_sizes.pkl')
+
+    normalized_mutations = normalized_mutation_rates(mod_utils.unPickle(lib_settings.get_mutation_counts()), mod_utils.unPickle(lib_settings.get_positional_coverage()))
+    mod_utils.makePickle(normalized_mutations, lib_settings.get_normalized_mutation_counts())
+
 
     plot_mutated_nts_pie(mod_utils.unPickle(lib_settings.get_counting_prefix() + '.nt_mutations.pkl'), 'mutated rRNA nts in ' + lib_settings.sample_name, lib_settings.get_counting_prefix()+'.mutated_nts' )
     plot_full_mutation_stats(mod_utils.unPickle(lib_settings.get_counting_prefix() + '.read_mutations.pkl'), mod_utils.unPickle(lib_settings.get_counting_prefix() + '.insertion_sizes.pkl'),
