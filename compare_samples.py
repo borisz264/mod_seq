@@ -163,7 +163,7 @@ def main():
 
     print experimental_dict_names, norm_name
 
-    normed_mutation_rate_histogram(rescaled_experimental_dicts, experimental_dict_names, os.path.join(outfolder, 'rescaled_mutation_rate_histogram'), title='mutation rate, rescaled to max', xlim = (0, 0.1), min = 0, max =1, step = 0.001)
+    normed_mutation_rate_histogram(rescaled_experimental_dicts, experimental_dict_names, os.path.join(outfolder, '%s_rescaled_mutation_rate_histogram' % norm_name), title='mutation rate, rescaled to max', xlim = (0, 0.1), min = 0, max =1, step = 0.001)
     comparisons = []
     rescaled_comparisons = []
     write_wig(control_dict, norm_name, os.path.join(outfolder, norm_name))
@@ -174,17 +174,17 @@ def main():
         comparisons.append(comparison_log2_ratios)
         rescaled_comparisons.append(rescaled_comparison_log2_ratios)
         mod_utils.makePickle(comparison_log2_ratios, os.path.join(outfolder, experimental_dict_names[i]+'_comparison_log2.pkl'))
-        mod_utils.makePickle(rescaled_comparison_log2_ratios, os.path.join(outfolder, experimental_dict_names[i]+'_rescaled_comparison_log2.pkl'))
+        #mod_utils.makePickle(rescaled_comparison_log2_ratios, os.path.join(outfolder, experimental_dict_names[i]+'_rescaled_comparison_log2.pkl'))
         write_wig(comparison_log2_ratios, experimental_dict_names[i]+'_comparison_log2', os.path.join(outfolder, experimental_dict_names[i]+'_comparison_log2'))
-        write_wig(rescaled_comparison_log2_ratios, experimental_dict_names[i]+'_rescaled)comparison_log2', os.path.join(outfolder, experimental_dict_names[i]+'_rescaled_comparison_log2'))
+        #write_wig(rescaled_comparison_log2_ratios, experimental_dict_names[i]+'_rescaled)comparison_log2', os.path.join(outfolder, experimental_dict_names[i]+'_rescaled_comparison_log2'))
         #try:
         #    plot_weighted_nts_pie(background_subtracted, genome_fasta, '%s backround-subtracted fractions' % experimental_dict_names[i], os.path.join(outfolder, experimental_dict_names[i]+'_sub_pie'))
         #except:
         #    pass
     #print comparisons
     #print rescaled_comparisons
-    normed_mutation_rate_histogram(comparisons, experimental_dict_names, os.path.join(outfolder, 'comparison_histogram'), title='log2 experiment/control', xlim = (-10, 10), min = -100, max =100, step = 0.1)
-    normed_mutation_rate_histogram(rescaled_comparisons, experimental_dict_names, os.path.join(outfolder, 'rescaled_comparison_histogram'), title='log2 rescaled experiment/control', xlim = (-10, 10), min = -100, max =100, step = 0.1)
+    normed_mutation_rate_histogram(comparisons, experimental_dict_names, os.path.join(outfolder, '%s_comparison_histogram' % norm_name), title='log2 experiment/control', xlim = (-10, 10), min = -100, max =100, step = 0.1)
+    #normed_mutation_rate_histogram(rescaled_comparisons, experimental_dict_names, os.path.join(outfolder, '%s_rescaled_comparison_histogram' % norm_name), title='log2 rescaled experiment/control', xlim = (-10, 10), min = -100, max =100, step = 0.1)
 
 
 

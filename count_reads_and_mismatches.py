@@ -365,7 +365,7 @@ def count_reads(lib_settings):
     mutated_nts = defaultdict(float)
     read_insertion_sizes = []
     genomic_deletion_sizes = []
-    """
+
     with gzip.open(lib_settings.get_mapped_reads_sam_gz(), 'r') as f:
         for line in f: # Iterate through SAM file lines
             if not line.startswith('@'):
@@ -496,7 +496,7 @@ def count_reads(lib_settings):
     normalized_mutations = normalized_mutation_rates(mod_utils.unPickle(lib_settings.get_mutation_counts()), mod_utils.unPickle(lib_settings.get_positional_coverage()))
     mod_utils.makePickle(normalized_mutations, lib_settings.get_normalized_mutation_counts())
 
-    """
+
 
     plot_mutated_nts_pie(mod_utils.unPickle(lib_settings.get_counting_prefix() + '.nt_mutations.pkl'), 'mutated rRNA nts in ' + lib_settings.sample_name, lib_settings.get_counting_prefix()+'.mutated_nts' )
     plot_full_mutation_stats(mod_utils.unPickle(lib_settings.get_counting_prefix() + '.read_mutations.pkl'), mod_utils.unPickle(lib_settings.get_counting_prefix() + '.insertion_sizes.pkl'),

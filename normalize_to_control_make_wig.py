@@ -107,7 +107,8 @@ def subtract_background(experiment_dict, normalization_dict):
         for chromosome in experiment_dict[strand]:
             subtracted_dict[strand][chromosome] = {}
             for position in experiment_dict[strand][chromosome]:
-                subtracted_dict[strand][chromosome][position] = max(experiment_dict[strand][chromosome][position]-normalization_dict[strand][chromosome][position], 0)
+                if position in experiment_dict[strand][chromosome] and position in normalization_dict[strand][chromosome]:
+                    subtracted_dict[strand][chromosome][position] = max(experiment_dict[strand][chromosome][position]-normalization_dict[strand][chromosome][position], 0)
     return subtracted_dict
 
 def normed_mutation_rate_histogram(normalized_mutations, dataset_names, output_prefix, title = ''):
