@@ -112,6 +112,36 @@ def subtract_background(experiment_dict, normalization_dict):
                 subtracted_dict[strand][chromosome][position] = max(experiment_dict[strand][chromosome][position]-normalization_dict[strand][chromosome][position], 0)
     return subtracted_dict
 
+def normed_mutation_rate_histogram(normalized_mutations, dataset_names, output_prefix):
+    fig = plt.figure(figsize=(16,16))
+    plot = fig.add_subplot(111)
+    step = 0.0001
+    max = 0.01
+    bins = numpy.arange(0,max,step)
+    bins = numpy.append(bins, 1+step)
+    for i in range(len(dataset_names)):
+        mutation_densities = []
+        for strand in normalized_mutations[i]:
+            for chromosome in normalized_mutations[i][strand]:
+                mutation_densities = mutation_densities + normalized_mutations[i][strand][chromosome].values()
+        counts, edges = numpy.histogram(mutation_densities, bins = bins)
+        #plot.hist(mutation_densities, color = mod_utils.colors  [i], bins = bins, label=dataset_names[i])
+        counts = [0]+list(counts)+[0]
+        edges = [0]+list(edges)+[edges[-1]]
+        plot.fill(edges[:-1], numpy.array(counts), alpha = 0.3, color = mod_utils.colors[i], lw=0)
+        plot.plot(edges[:-1], numpy.array(counts), color = mod_utils.colors[i], label=dataset_names[i], lw=2)
+    plot.set_xlim(0,max+step)
+    #plot.set_xticks(numpy.arange(0,10)+0.5)
+    #plot.set_xticklabels(numpy.arange(0,10))
+    plot.set_xlabel('mutations/coverage')
+    plot.set_ylabel("# positions")
+    lg=plt.legend(loc=2,prop={'size':10}, labelspacing=0.2)
+    lg.draw_frame(False)
+    #plot.set_yscale('log')
+    #plot.set_title(title)
+    plt.savefig(output_prefix + '_mut_density.pdf', transparent='True', format='pdf')
+    plt.clf()
+
 def main():
     outfolder, genome_fasta, normalization_file_name = sys.argv[1:4]
     experimental_file_names = sys.argv[4:]
@@ -120,6 +150,8 @@ def main():
     norm_name = '.'.join(os.path.basename(normalization_file_name).split('.')[:-2])
     experimental_dict_names = ['.'.join(os.path.basename(file_name).split('.')[:-2]) for file_name in experimental_file_names]
     experimental_dicts = [mod_utils.unPickle(file_name) for file_name in experimental_file_names]
+
+    normed_mutation_rate_histogram(experimental_dicts, experimental_dict_names, os.path.join(outfolder, 'mutation_rate_histogram'))
 
     write_wig(normalization_dict, norm_name, os.path.join(outfolder, norm_name))
     for i in range(len(experimental_dict_names)):

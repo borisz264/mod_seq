@@ -20,7 +20,7 @@ import matplotlib.pyplot as plt
 plt.rcParams['pdf.fonttype'] = 42 #leaves most text as actual text in PDFs, not outlines
 from collections import defaultdict
 
-def winsorize_norm_chromosome_data(read_5p_ends, chromosome, strand, genome_dict, nucs_to_count, to_winsorize = True, low = 0, high = 0.95):
+def winsorize_norm_chromosome_data(mut_density, chromosome, strand, genome_dict, nucs_to_count, to_winsorize = False, low = 0, high = 0.95):
     """
 
 
@@ -33,11 +33,11 @@ def winsorize_norm_chromosome_data(read_5p_ends, chromosome, strand, genome_dict
     :param high:
     :return: an array (now zero-indexed from 1-indexed) of densities for the given chromosome on the given strand, winsorized, and only for the given nucleotides
     """
-    max_position = max(read_5p_ends[strand][chromosome].keys())
-    density_array =numpy.array([0] * max_position)
-    for position in read_5p_ends[strand][chromosome].keys():
+    max_position = max(mut_density[strand][chromosome].keys())
+    density_array =numpy.array([0.0] * max_position)
+    for position in mut_density[strand][chromosome].keys():
         if genome_dict[chromosome][position-1] in nucs_to_count:
-            density_array[position-1] = read_5p_ends[strand][chromosome][position]
+            density_array[position-1] = mut_density[strand][chromosome][position]
     if to_winsorize:
         winsorize(density_array, limits = (low, 1-high), inplace = True)
     normed_array = density_array/float(max(density_array))
@@ -66,9 +66,9 @@ def call_positives(density_array, chromosome, strand, genome_dict, nucs_to_count
     positives = set()
 
     for i in range(len(density_array)):
-        if genome_dict[chromosome][i-1] in nucs_to_count:
+        if genome_dict[chromosome][i] in nucs_to_count:
             if density_array[i] >= cutoff:
-                positives.add(i)#adding 1 not necessary, since the modified nucleotide is the one 1 upstream of the RT stop!!!
+                positives.add(i+1)#adding 1 not necessary for RT stops, since the modified nucleotide is the one 1 upstream of the RT stop!!!
 
     return positives
 
@@ -106,30 +106,26 @@ def pie_read_5p_ends(read_5p_ends, genome_dict, out_prefix):
     plt.savefig(out_prefix + '_nt_5p_ends.pdf', transparent='True', format='pdf')
     plt.clf()
 def main():
-    read_5p_ends_file, genome_fasta, outprefix = sys.argv[1:4]
-    tp_tn_annotations = sys.argv[4:]#true positive and true negative annotations
-    genome_dict = mod_utils.convertFastaToDict(genome_fasta)
-    read_5p_ends = mod_utils.unPickle(read_5p_ends_file)
-    normed_density_array = winsorize_norm_chromosome_data(read_5p_ends, 'S.c.18S_rRNA', '+', genome_dict, 'ACTG')
-    real_tp_tn_data = []
-    for filename in tp_tn_annotations:
-        real_tp, real_tn = get_tp_tn(filename)
-        real_tp_tn_data.append((os.path.basename(filename), real_tp, real_tn))
+    tp_tn_annotations, genome_fasta, outprefix = sys.argv[1:4]
+    density_files = sys.argv[4:]
+    sample_names = [os.path.basename(filename) for filename in density_files]
+    mutation_densities = [mod_utils.unPickle(pickled_density) for pickled_density in density_files]
 
+    genome_dict = mod_utils.convertFastaToDict(genome_fasta)
+    normed_density_arrays = [winsorize_norm_chromosome_data(mutation_density, 'S.c.18S_rRNA', '+', genome_dict, 'ACTG') for mutation_density in mutation_densities]
+    real_tp, real_tn = get_tp_tn(tp_tn_annotations)
     roc_curves = {}
-    for entry in real_tp_tn_data:
-        roc_curves[entry[0]] = [[],[]]#x and y value arrays for each
+    for sample_name in sample_names:
+        roc_curves[sample_name] = [[],[]]#x and y value arrays for each
 
     stepsize = 0.0001
     for cutoff in numpy.arange(0,1.+5*stepsize, stepsize):
-        called_p = call_positives(normed_density_array, 'S.c.18S_rRNA', '+', genome_dict, 'AC', cutoff)
-        for entry in real_tp_tn_data:
-            #print called_p.intersection(entry[1])
-
-            num_tp_called = len(called_p.intersection(entry[1]))#how many true positives called at this cutoff
-            num_fp_called = len(called_p.intersection(entry[2]))#how many fp positives called at this cutoff
-            roc_curves[entry[0]][0].append(100.*num_fp_called/float(len(entry[2])))#FP rate on x axis
-            roc_curves[entry[0]][1].append(100.*num_tp_called/float(len(entry[1])))#TP rate on y axis
+        for i in range(len(sample_names)):
+            called_p = call_positives(normed_density_arrays[i], 'S.c.18S_rRNA', '+', genome_dict, 'AC', cutoff)
+            num_tp_called = len(called_p.intersection(real_tp))#how many true positives called at this cutoff
+            num_fp_called = len(called_p.intersection(real_tn))#how many fp positives called at this cutoff
+            roc_curves[sample_names[i]][1].append(100.*num_tp_called/float(len(real_tp)))#TP rate on y axis
+            roc_curves[sample_names[i]][0].append(100.*num_fp_called/float(len(real_tn)))#FP rate on x axis
 
     plot_ROC_curves(roc_curves, outprefix)
     #pie_read_5p_ends(read_5p_ends, genome_dict, outprefix)

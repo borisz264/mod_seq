@@ -308,11 +308,29 @@ def plot_full_mutation_stats(mutations_counts, indel_distribution, mutations_by_
     lg=plt.legend(loc=2,prop={'size':10}, labelspacing=0.2)
     lg.draw_frame(False)
 
-
-
-
-
     plt.savefig(out_prefix + '.pdf', transparent='True', format='pdf')
+    plt.clf()
+
+def normed_mutation_rate_histogram(normalized_mutations, title, output_prefix):
+    mutation_densities = []
+    for strand in normalized_mutations:
+        for chromosome in normalized_mutations[strand]:
+            mutation_densities = mutation_densities + normalized_mutations[strand][chromosome].values()
+    fig = plt.figure(figsize=(16,16))
+    plot = fig.add_subplot(111)
+    step = 0.0001
+    max = 0.01
+    bins = numpy.arange(0,max,step)
+    bins = numpy.append(bins, 1+step)
+    plot.hist(mutation_densities, color = mod_utils.black, bins = bins)
+    plot.set_xlim(0,max+step)
+    #plot.set_xticks(numpy.arange(0,10)+0.5)
+    #plot.set_xticklabels(numpy.arange(0,10))
+    plot.set_xlabel('mutations/coverage')
+    plot.set_ylabel("# positions")
+    #plot.set_yscale('log')
+    plot.set_title(title)
+    plt.savefig(output_prefix + '_mut_density.pdf', transparent='True', format='pdf')
     plt.clf()
 
 def normalized_mutation_rates(mutation_counts, coverage_counts):
@@ -347,7 +365,7 @@ def count_reads(lib_settings):
     mutated_nts = defaultdict(float)
     read_insertion_sizes = []
     genomic_deletion_sizes = []
-
+    """
     with gzip.open(lib_settings.get_mapped_reads_sam_gz(), 'r') as f:
         for line in f: # Iterate through SAM file lines
             if not line.startswith('@'):
@@ -478,6 +496,7 @@ def count_reads(lib_settings):
     normalized_mutations = normalized_mutation_rates(mod_utils.unPickle(lib_settings.get_mutation_counts()), mod_utils.unPickle(lib_settings.get_positional_coverage()))
     mod_utils.makePickle(normalized_mutations, lib_settings.get_normalized_mutation_counts())
 
+    """
 
     plot_mutated_nts_pie(mod_utils.unPickle(lib_settings.get_counting_prefix() + '.nt_mutations.pkl'), 'mutated rRNA nts in ' + lib_settings.sample_name, lib_settings.get_counting_prefix()+'.mutated_nts' )
     plot_full_mutation_stats(mod_utils.unPickle(lib_settings.get_counting_prefix() + '.read_mutations.pkl'), mod_utils.unPickle(lib_settings.get_counting_prefix() + '.insertion_sizes.pkl'),
@@ -486,8 +505,8 @@ def count_reads(lib_settings):
     plot_full_mutation_stats(mod_utils.unPickle(lib_settings.get_counting_prefix() + '.genome_mutations.pkl'), mod_utils.unPickle(lib_settings.get_counting_prefix() + '.deletion_sizes.pkl'), mod_utils.unPickle(lib_settings.get_counting_prefix() + '.genome_position_mutations.pkl'),
                              mod_utils.unPickle(lib_settings.get_counting_prefix() + '.genome_position_coverage.pkl'), 'mutations wrt genome', "deletion size",
                              lib_settings.get_counting_prefix()+'.genome_mutations')
-    pie_read_5p_ends(srt_dict, mod_utils.convertFastaToDict(lib_settings.experiment_settings.get_rRNA_fasta()), lib_settings.get_counting_prefix())
-
+    pie_read_5p_ends(mod_utils.unPickle(lib_settings.get_read_5p_counts()), mod_utils.convertFastaToDict(lib_settings.experiment_settings.get_rRNA_fasta()), lib_settings.get_counting_prefix())
+    normed_mutation_rate_histogram(mod_utils.unPickle(lib_settings.get_normalized_mutation_counts()), lib_settings.sample_name, lib_settings.get_counting_prefix())
 def test():
     """
 
