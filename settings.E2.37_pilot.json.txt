@@ -20,8 +20,8 @@ force_retrim = False
 force_remapping = False
 force_index_rebuild = False
 force_recount = True
-error_dir = /Users/boris/Green_Lab/Book_2/2.37/mod_seq_pilot_analysis/error/
+error_dir = /Users/boris/Green_Lab/Book_2/2.37/mod_seq_pilot_analysis2/error/
 
 [ output ]
-working_dir = /Users/boris/Green_Lab/Book_2/2.37/mod_seq_pilot_analysis/scratch/
-results_dir = /Users/boris/Green_Lab/Book_2/2.37/mod_seq_pilot_analysis
+working_dir = /Users/boris/Green_Lab/Book_2/2.37/mod_seq_pilot_analysis2/scratch/
+results_dir = /Users/boris/Green_Lab/Book_2/2.37/mod_seq_pilot_analysis2

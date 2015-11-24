@@ -6,7 +6,7 @@ takes the info file from the hopkins sequencing core, and prints formats conveni
 import sys
 
 infile = sys.argv[1]
-f = open(infile)
+f = open(infile, 'rU')
 lib_names = []
 file_names = []
 for line in f.readlines()[1:]:
