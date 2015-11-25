@@ -145,7 +145,7 @@ def normed_mutation_rate_histogram(normalized_mutations, dataset_names, output_p
 def main():
     outfolder, genome_fasta, normalization_file_name = sys.argv[1:4]
     experimental_file_names = sys.argv[4:]
-
+    mod_utils.make_dir(outfolder)
     normalization_dict = mod_utils.unPickle(normalization_file_name)
     norm_name = '.'.join(os.path.basename(normalization_file_name).split('.')[:-2])
     experimental_dict_names = ['.'.join(os.path.basename(file_name).split('.')[:-2]) for file_name in experimental_file_names]
