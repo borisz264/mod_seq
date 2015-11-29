@@ -5,7 +5,7 @@ import gzip
 import numpy as np
 from scipy import stats
 import cPickle as pickle
-
+import math
 
 '''
 Colorblind safe colors from Bang Wong, Nature Methods 8. 441 (2011)
@@ -58,6 +58,33 @@ def make_dir(dirname):
         except:
             print 'The directory was made by another thread extremely recently.'
 
+def divideWithError(num, stdDevNum, denom, stdDevDenom):
+    '''
+    divides the two values with provided standard deviations, and returns the mean and error of the ratio using standard error propogation
+    '''
+    num = float(num)
+    denom = float(denom)
+    stdDevNum = float(stdDevNum)
+    stdDevDenom = float(stdDevDenom)
+
+    ratio = num/denom
+    ratioError = ratio*math.sqrt((stdDevNum/num)**2+(stdDevDenom/denom)**2)
+
+    return ratio, ratioError
+
+def subtractWithError(num, stdDevNum, denom, stdDevDenom):
+    '''
+    divides the two values with provided standard deviations, and returns the mean and error of the ratio using standard error propogation
+    '''
+    num = float(num)
+    denom = float(denom)
+    stdDevNum = float(stdDevNum)
+    stdDevDenom = float(stdDevDenom)
+
+    ratio = num/denom
+    ratioError = ratio*math.sqrt((stdDevNum/num)**2+(stdDevDenom/denom)**2)
+
+    return ratio, ratioError
 
 def file_exists(fname):
     """
