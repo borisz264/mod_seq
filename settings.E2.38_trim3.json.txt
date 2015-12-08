@@ -1,0 +1,27 @@
+[ input ]
+fastq_dir = /Users/boris/Green_Lab/Book_2/2.37/borisz_mod_seq_E2.34/FASTQ
+fastq_gz_files = ["HFHV5BCXX_2_AGGTTT_1.fastq.gz","HFHV5BCXX_2_CCTGAG_1.fastq.gz"]
+sample_names = ["A1_80S_DMSO_DMSO","A2_80S_DMSO_20mM_DMS"]
+
+[ parameters ]
+experiment_name = E2.38_mod_seq_trim3
+rrna_fasta = /Users/boris/Green_Lab/Book_2/2.36/mod_seq/rRNA_Sequences_ucsc_20110829.txt
+adaptor_sequence = CACTCGGGCACCAAGGAC
+trim_adaptor = True
+min_post_adaptor_length = 40
+first_base_to_keep = 4
+last_base_to_keep = 100
+min_base_quality = 20
+min_mapping_quality = 10
+collapse_identical_reads = False
+force_read_resplit = False
+force_recollapse = False
+force_retrim = False
+force_remapping = False
+force_index_rebuild = False
+force_recount = False
+error_dir = /Users/boris/Green_Lab/Book_2/2.38/trim3
+
+[ output ]
+working_dir = /Users/boris/Green_Lab/Book_2/2.38/trim3
+results_dir = /Users/boris/Green_Lab/Book_2/2.38/trim3
