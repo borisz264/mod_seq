@@ -51,9 +51,14 @@ class mod_seq_run:
 
     def remove_adaptor_one_lib(self, lib_settings):
         lib_settings.write_to_log('adaptor trimming')
-        command_to_run = 'cutadapt --adapter %s --overlap 3 --discard-untrimmed --minimum-length %d %s --output %s 1>>%s 2>>%s' % (self.settings.get_property('adaptor_sequence'), self.settings.get_property('min_post_adaptor_length'),
-                           lib_settings.get_fastq_file(), lib_settings.get_adaptor_trimmed_reads(), lib_settings.get_log(),
-                           lib_settings.get_log())
+        if self.settings.get_property('discard_untrimmed'):
+            command_to_run = 'cutadapt --adapter %s --overlap 3 --discard-untrimmed --minimum-length %d %s --output %s 1>>%s 2>>%s' % (self.settings.get_property('adaptor_sequence'), self.settings.get_property('min_post_adaptor_length'),
+                               lib_settings.get_fastq_file(), lib_settings.get_adaptor_trimmed_reads(), lib_settings.get_log(),
+                               lib_settings.get_log())
+        else:
+            command_to_run = 'cutadapt --adapter %s --overlap 3 --minimum-length %d %s --output %s 1>>%s 2>>%s' % (self.settings.get_property('adaptor_sequence'), self.settings.get_property('min_post_adaptor_length'),
+                   lib_settings.get_fastq_file(), lib_settings.get_adaptor_trimmed_reads(), lib_settings.get_log(),
+                   lib_settings.get_log())
         subprocess.Popen(command_to_run, shell=True).wait()
         lib_settings.write_to_log('adaptor trimming done')
 
