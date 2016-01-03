@@ -32,10 +32,13 @@ class mod_seq_run:
         self.settings = settings
         self.remove_adaptor()
         self.trim_reads()
-        self.filter_reads_by_quality()
-        self.build_bowtie_index()
-        self.map_rRNA_reads()
-        self.count_ends_and_mismatches()
+
+
+
+        #self.filter_reads_by_quality()
+        #self.build_bowtie_index()
+        #self.map_rRNA_reads()
+        #self.count_ends_and_mismatches()
 
     def remove_adaptor(self):
         if not self.settings.get_property('force_retrim'):
@@ -97,101 +100,10 @@ class mod_seq_run:
                                                                                       lib_settings.get_log()), shell=True).wait()
         lib_settings.write_to_log('trimming_reads done')
 
-    def filter_reads_by_quality(self):
-        """
-        Trim reads by given amount, removing potential random barcoding sequences from 5' end
-        Trimming from 3' end can also help if mapping is problematic by reducing chance for indels to prevent mapping
-        :return:
-        """
-        self.settings.write_to_log('quality filtering reads')
-        min_score = self.settings.get_property('min_base_quality')
-        self.settings.write_to_log('all bases must have quality score of at least %d' % min_score)
-        for lib_settings in self.settings.iter_lib_settings():
-            if not lib_settings.filtered_reads_exist():
-                break
-        else:
-            return
-        mod_utils.make_dir(self.rdir_path('quality_filtered_reads'))
-        bzUtils.parmap(lambda lib_setting: self.filter_one_lib(lib_setting, min_score), self.settings.iter_lib_settings(), min_score)
-        self.settings.write_to_log( 'quality filtering reads complete')
+    def create_shapemapper_settings(self):
+        pass
 
-    def filter_one_lib(self, lib_settings, min_score):
-        lib_settings.write_to_log('quality filtering reads')
-        lib_settings.write_to_log('all bases must have quality score of at least %d' % min_score)
-        subprocess.Popen('gunzip -c %s | fastq_quality_filter -Q33 -v -q %d -p 100 -z -o %s >>%s 2>>%s' % (lib_settings.get_trimmed_reads(),
-                                                                                                     min_score, lib_settings.get_filtered_reads(),
-                                                                                                     lib_settings.get_log(), lib_settings.get_log()),
-                         shell=True).wait()
-        lib_settings.write_to_log('quality filtering reads done')
-
-    def build_bowtie_index(self):
-        """
-        builds a bowtie 2 index from the input fasta file
-        recommend including barcode+PCR sequences just in case of some no-insert amplicons
-        """
-        self.settings.write_to_log('building rRNA bowtie index')
-        if self.settings.get_property('force_index_rebuild') or not self.settings.rRNA_bowtie_index_exists():
-            mod_utils.make_dir(self.rdir_path('bowtie_indices'))
-            subprocess.Popen('bowtie2-build -f --offrate 0 %s %s 1>>%s 2>>%s' % (self.settings.get_rRNA_fasta(),
-                                                                      self.settings.get_rRNA_bowtie_index(), self.settings.get_log()+'.bwt',
-                                                                      self.settings.get_log()+'.bwt'), shell=True).wait()
-        self.settings.write_to_log('building rRNA bowtie index complete')
-
-    def map_rRNA_reads(self):
-        """
-        map all reads using bowtie
-        :return:
-        """
-        self.settings.write_to_log('mapping reads')
-        if not self.settings.get_property('force_remapping'):
-            for lib_settings in self.settings.iter_lib_settings():
-                if not lib_settings.mapped_reads_exist():
-                    break
-            else:
-                return
-        mod_utils.make_dir(self.rdir_path('mapped_reads'))
-        mod_utils.make_dir(self.rdir_path('mapping_stats'))
-
-        bzUtils.parmap(lambda lib_setting: self.map_rRNA_one_lib(lib_setting), self.settings.iter_lib_settings(),
-                       nprocs = self.threads)
-        self.settings.write_to_log( 'finished mapping reads')
-
-    def map_rRNA_one_lib(self, lib_settings):
-        lib_settings.write_to_log('mapping_reads')
-        subprocess.Popen('bowtie2 -q --very-sensitive --norc -x %s -p %d -U %s -S %s 1>> %s 2>>%s' % (self.settings.get_rRNA_bowtie_index(), self.threads,
-                                                                                                   lib_settings.get_filtered_reads(), lib_settings.get_mapped_reads_sam(),
-                                                                                                                      lib_settings.get_log(), lib_settings.get_rRNA_mapping_stats()), shell=True).wait()
-
-        subprocess.Popen('samtools view -uS %s | samtools sort - %s.temp_sorted 1>>%s 2>>%s' % (lib_settings.get_mapped_reads_sam(), lib_settings.get_mapped_reads_sam(),
-                                                                          lib_settings.get_log(), lib_settings.get_log()), shell=True).wait()
-        subprocess.Popen('gzip %s 1>> %s 2>>%s' % (lib_settings.get_mapped_reads_sam(), lib_settings.get_log(), lib_settings.get_log()), shell=True).wait()
-        subprocess.Popen('mv %s.temp_sorted.bam %s' % (lib_settings.get_mapped_reads_sam(),
-                                                                          lib_settings.get_mapped_reads_bam()), shell = True).wait()
-        subprocess.Popen('samtools index %s' % (lib_settings.get_mapped_reads_bam()), shell = True).wait()
-
-        #subprocess.Popen('rm %s' % (lib_settings.get_mapped_reads_sam()), shell = True).wait()
-        lib_settings.write_to_log('mapping_reads done')
-
-    def count_ends_and_mismatches(self):
-        self.settings.write_to_log('counting reads and mismatches')
-        if not self.settings.get_property('force_recount'):
-            for lib_settings in self.settings.iter_lib_settings():
-                if not lib_settings.counts_all_exist():
-                    break
-            else:
-                return
-        mod_utils.make_dir(self.rdir_path('read_counts'))
-        mod_utils.make_dir(self.rdir_path('normalized_mutation_counts'))
-
-        bzUtils.parmap(lambda lib_setting: self.count_ends_and_mismatches_one_lib(lib_setting), self.settings.iter_lib_settings(),
-                       nprocs = self.threads)
-
-        self.settings.write_to_log('counting reads and mismatches done')
-
-    def count_ends_and_mismatches_one_lib(self, lib_settings):
-        lib_settings.write_to_log('counting reads and mismatches')
-        count_reads_and_mismatches.count_reads(lib_settings)
-        lib_settings.write_to_log('counting reads and mismatches done')
+    def run_shapemapper(self):
 
     def initialize_libs(self):
         self.settings.write_to_log('initializing libraries, counting reads')
@@ -266,6 +178,7 @@ class mod_seq_run:
                                                                                   lib_settings.get_collapsed_reads()
                                                                                   ), shell=True).wait()
         lib_settings.write_to_log('collapsing_reads_done')
+
     def fastq_to_fasta(self, lib_settings):
         lib_settings.write_to_log('fasta_conversion')
         subprocess.Popen('gunzip -c %s | fastq_to_fasta -v -Q33 2>>%s | gzip > %s' % (lib_settings.get_fastq_file(),
