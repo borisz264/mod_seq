@@ -73,20 +73,20 @@ class mod_seq_run:
                 return
         mod_utils.make_dir(self.rdir_path('trimmed_reads'))
         bzUtils.parmap(lambda lib_setting: self.trim_one_lib(lib_setting), self.settings.iter_lib_settings(), nprocs = self.threads)
-        self.settings.write_to_log( 'trimming reads complete')
+        self.settings.write_to_log('trimming reads complete')
 
     def trim_one_lib(self, lib_settings):
         lib_settings.write_to_log('trimming_reads')
         first_base_to_keep = self.settings.get_property('first_base_to_keep') #the trimmer is 1-indexed. 1 means keep every base
         last_base_to_keep = self.settings.get_property('last_base_to_keep') #Will keep entire 3' end if this is greater than or equal to the read length
         if self.settings.get_property('trim_adaptor'):
-            subprocess.Popen('gunzip -c %s | fastx_trimmer -f %d -l %d -z -o %s >>%s 2>>%s' % (lib_settings.get_adaptor_trimmed_reads(),
+            subprocess.Popen('gunzip -c %s | fastx_trimmer -f %d -l %d -o %s >>%s 2>>%s' % (lib_settings.get_adaptor_trimmed_reads(),
                                                                                       first_base_to_keep, last_base_to_keep,
                                                                                       lib_settings.get_trimmed_reads(),
                                                                                       lib_settings.get_log(),
                                                                                       lib_settings.get_log()), shell=True).wait()
         else:
-            subprocess.Popen('gunzip -c %s | fastx_trimmer -f %d -l %d -z -o %s >>%s 2>>%s' % (lib_settings.get_fastq_file(),
+            subprocess.Popen('gunzip -c %s | fastx_trimmer -f %d -l %d -o %s >>%s 2>>%s' % (lib_settings.get_fastq_file(),
                                                                                       first_base_to_keep, last_base_to_keep,
                                                                                       lib_settings.get_trimmed_reads(),
                                                                                       lib_settings.get_log(),
@@ -100,8 +100,21 @@ class mod_seq_run:
         rates that shapemapper spits out
         :return:
         """
-        pass
+        self.settings.write_to_log('creating shapemapper config file')
+        mod_utils.make_dir(self.rdir_path('shapemapper'))
+        reference_config_file = open('shapemapper_BASE.cfg')
+        output_config_file = open(self.settings.get_shapemapper_config_file(), 'w')
+        rRNA_seqs = mod_utils.convertFastaToDict(self.settings.get_rRNA_fasta())
+        all_chromsomes = ', '.join(sorted(rRNA_seqs.keys()))
+        for line in reference_config_file:
+            if line.startswith("<chromosome Identifiers go here>"):
+                #this is where we map all of the library names to which chromosomes we want to map to
+                for lib_settings in self.settings.iter_lib_settings():
+                    f.write('%s: %s = %s\n' % (lib_settings.sample_name, lib_settings.))
+                    lib_settings.sample_name
 
+
+        self.settings.write_to_log('done creating shapemapper config file')
     def run_shapemapper(self):
         pass
 

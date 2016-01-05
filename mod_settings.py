@@ -126,6 +126,7 @@ class mod_settings:
           self.get_rdir(),
           'log.txt')
         return log
+
     def write_to_log(self, text, add_time = True):
         f = open(self.get_log(), 'a')
         now = datetime.datetime.now()
@@ -135,11 +136,18 @@ class mod_settings:
         else:
             f.write(text)
         f.close()
+
     def get_trimmed_pool_fasta(self):
         log = os.path.join(
           self.get_rdir(),
           'trimmed_pool_seqs.fasta')
         return log
+
+    def get_shapemapper_config_file(self):
+        fname = os.path.join(
+          self.get_rdir(), 'shapemapper',
+          'shapemapper_settings.cfg')
+        return fname
 
 class mod_lib_settings:
     def __init__(self, experiment_settings, sample_name, fastq_gz_filehandle):
@@ -224,7 +232,7 @@ class mod_lib_settings:
         trimmed_reads = os.path.join(
           self.experiment_settings.get_rdir(),
           'trimmed_reads',
-          '%(sample_name)s.trimmed.fastq.gz' %
+          '%(sample_name)s.trimmed.fastq' %
            {'sample_name': self.sample_name})
         return trimmed_reads
 
