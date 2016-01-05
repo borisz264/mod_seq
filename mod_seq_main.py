@@ -33,13 +33,6 @@ class mod_seq_run:
         self.remove_adaptor()
         self.trim_reads()
 
-
-
-        #self.filter_reads_by_quality()
-        #self.build_bowtie_index()
-        #self.map_rRNA_reads()
-        #self.count_ends_and_mismatches()
-
     def remove_adaptor(self):
         if not self.settings.get_property('force_retrim'):
             for lib_settings in self.settings.iter_lib_settings():
@@ -101,9 +94,16 @@ class mod_seq_run:
         lib_settings.write_to_log('trimming_reads done')
 
     def create_shapemapper_settings(self):
+        """
+        Create a preferences file from the default that will run shapemapper on all datasets.
+        The comparisons are essentially unimportant, as we joust want to get the mutation
+        rates that shapemapper spits out
+        :return:
+        """
         pass
 
     def run_shapemapper(self):
+        pass
 
     def initialize_libs(self):
         self.settings.write_to_log('initializing libraries, counting reads')

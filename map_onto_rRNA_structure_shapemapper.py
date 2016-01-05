@@ -86,13 +86,17 @@ def split_by_n(line, n=6):
     """
     return [line[i:i+n].strip() for i in range(0, len(line), 6)]
 
-rRNA_assignments = {3:{'d':"S.c.18S_rRNA"}, 1:{'A':"S.c.18S_rRNA"},2:{'A':"S.c.25S__rRNA", 'B':"S.c.5S___rRNA", 'C':"S.c.5.8S_rRNA"} , 4:{'K':"S.c.25S__rRNA", 'L':"S.c.5S___rRNA", 'M':"S.c.5.8S_rRNA",}, 2:{'C':"S.c.5.8S_rRNA"}}
+#rRNA_assignments = {3:{'d':"S.c.18S_rRNA"}, 1:{'A':"S.c.18S_rRNA"}, 2:{'A':"S.c.25S__rRNA", 'B':"S.c.5S___rRNA", 'C':"S.c.5.8S_rRNA"} , 4:{'K':"S.c.25S__rRNA", 'L':"S.c.5S___rRNA", 'M':"S.c.5.8S_rRNA"}}
+rRNA_assignments = {3:{'d':"S.c.18S_rRNA"}, 1:{'A':"S.c.18S_rRNA"}, 2:{'A':"S.c.25S__rRNA", 'B':"S.c.5S___rRNA", 'C':"S.c.5.8S_rRNA"} , 4:{'I':"S.c.25S__rRNA", 'L':"S.c.5S___rRNA", 'M':"S.c.5.8S_rRNA"}}
 
 def main():
     outprefix, bundle1, bundle2, bundle3, bundle4, bundle5, datafile_name  = sys.argv[1:8]
 
     bundles = [bundle1, bundle2, bundle3, bundle4, bundle5]
-    reactivities = normalize_dict_to_max(mod_utils.unPickle(datafile_name))
+    reactivities = mod_utils.unPickle(datafile_name)
+
+    scaling_factor = 1000. #all values will be multiplied byt his factor. This is necessary because the values produced are often very small, and the B factors in the PDB file are limited to 6 characters
+
     for i in range(1,6):
         infile = open(bundles[i-1])
         outfile = open(outprefix+'_bundle'+str(i)+'.pdb' ,'w')
@@ -105,7 +109,8 @@ def main():
                 #print rRNA_assignments[i][chain]
                 #print reactivities[rRNA_assignments[i][chain]]
                 if i in rRNA_assignments and chain in rRNA_assignments[i] and resi in reactivities[rRNA_assignments[i][chain]]:
-                    new_line = '%s%6.3f%s' % (line[:60], reactivities[rRNA_assignments[i][chain]][resi], line[66:])
+                    insert = '%6.3f' % (scaling_factor*reactivities[rRNA_assignments[i][chain]][resi])
+                    new_line = '%s%s%s' % (line[:60], insert[:6], line[66:])
                     assert len(line) == len(new_line)
                 else:
                     new_line = '%s%6.4f%s' % (line[:60], 0.0, line[66:])
