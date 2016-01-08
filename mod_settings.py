@@ -45,10 +45,10 @@ class mod_settings:
         """
         int_keys = [ 'first_base_to_keep', 'last_base_to_keep', 'min_post_adaptor_length', 'min_base_quality', 'min_mapping_quality']
         #float_keys = []
-        str_keys = ['adaptor_sequence', 'rrna_fasta', 'experiment_name']
+        str_keys = ['adaptor_sequence', 'rrna_fasta', 'experiment_name', 'shapemapper_ref_file']
         boolean_keys = ['collapse_identical_reads', 'force_read_resplit', 'force_remapping', 'force_recollapse',
                         'force_recount', 'force_index_rebuild', 'force_retrim', 'trim_adaptor', 'discard_untrimmed']
-        list_str_keys = ['fastq_gz_files', 'sample_names']
+        list_str_keys = ['fastq_gz_files', 'sample_names', 'experimentals', 'no_mod_controls', 'with_mod_controls']
         #list_float_keys = ['probe_concentrations']
         config = ConfigParser.ConfigParser()
         config.read(settings_file)
@@ -76,6 +76,21 @@ class mod_settings:
             settings[k] = simplejson.loads(settings[k])
         self.fqdir = settings['fastq_dir']
         self.sample_names = settings['sample_names']
+        self.experimentals = settings['experimentals']
+        self.no_mod_controls = settings['no_mod_controls']
+        self.with_mod_controls = settings['with_mod_controls']
+        try:
+            assert len(self.experimentals) == len(self.no_mod_controls)
+            assert len(self.experimentals) == len(self.with_mod_controls)
+        except:
+            print 'error: experimentals, no_mod_controls, and with_mod_controls should all be the same length'
+            print 'for mutation rate purposes, its ok to reuse a dataset here, it really doesnt matter'
+        try:
+            for sample_name in self.experimentals+self.no_mod_controls+self.with_mod_controls:
+                assert sample_name in self.sample_names
+        except:
+            print sample_name, ' not in sample names, make sure you are using regular quotation marks'
+
         self.fastq_gz_file_handles = [os.path.join(self.fqdir, fastq_gz_file) for fastq_gz_file in
                                       settings['fastq_gz_files']]
         for file_handle in self.fastq_gz_file_handles:

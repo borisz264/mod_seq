@@ -7,7 +7,7 @@ Based on Alex Robertson's original RBNS pipeline, available on github
 """
 import sys
 import matplotlib.pyplot as plt
-plt.rcParams['pdf.fonttype'] = 42 #leaves most text as actual text in PDFs, not outlines
+plt.rcParams['pdf.fonttype'] = 42  #leaves most text as actual text in PDFs, not outlines
 import os
 import argparse
 import itertools
@@ -32,6 +32,7 @@ class mod_seq_run:
         self.settings = settings
         self.remove_adaptor()
         self.trim_reads()
+        self.create_shapemapper_settings()
 
     def remove_adaptor(self):
         if not self.settings.get_property('force_retrim'):
@@ -43,7 +44,8 @@ class mod_seq_run:
 
         if self.settings.get_property('trim_adaptor'):
             mod_utils.make_dir(self.rdir_path('adaptor_removed'))
-            bzUtils.parmap(lambda lib_setting: self.remove_adaptor_one_lib(lib_setting), self.settings.iter_lib_settings(), nprocs = self.threads)
+            bzUtils.parmap(lambda lib_setting: self.remove_adaptor_one_lib(lib_setting),
+                           self.settings.iter_lib_settings(), nprocs=self.threads)
 
     def remove_adaptor_one_lib(self, lib_settings):
         lib_settings.write_to_log('adaptor trimming')
@@ -72,13 +74,16 @@ class mod_seq_run:
             else:
                 return
         mod_utils.make_dir(self.rdir_path('trimmed_reads'))
-        bzUtils.parmap(lambda lib_setting: self.trim_one_lib(lib_setting), self.settings.iter_lib_settings(), nprocs = self.threads)
+        bzUtils.parmap(lambda lib_setting: self.trim_one_lib(lib_setting), self.settings.iter_lib_settings(),
+                       nprocs = self.threads)
         self.settings.write_to_log('trimming reads complete')
 
     def trim_one_lib(self, lib_settings):
         lib_settings.write_to_log('trimming_reads')
-        first_base_to_keep = self.settings.get_property('first_base_to_keep') #the trimmer is 1-indexed. 1 means keep every base
-        last_base_to_keep = self.settings.get_property('last_base_to_keep') #Will keep entire 3' end if this is greater than or equal to the read length
+        first_base_to_keep = self.settings.get_property('first_base_to_keep')  #the trimmer is 1-indexed. 1 means keep
+                                                                               #  every base
+        last_base_to_keep = self.settings.get_property('last_base_to_keep')  #Will keep entire 3' end if this is greater
+                                                                             #than or equal to the read length
         if self.settings.get_property('trim_adaptor'):
             subprocess.Popen('gunzip -c %s | fastx_trimmer -f %d -l %d -o %s >>%s 2>>%s' % (lib_settings.get_adaptor_trimmed_reads(),
                                                                                       first_base_to_keep, last_base_to_keep,
@@ -102,7 +107,7 @@ class mod_seq_run:
         """
         self.settings.write_to_log('creating shapemapper config file')
         mod_utils.make_dir(self.rdir_path('shapemapper'))
-        reference_config_file = open('shapemapper_BASE.cfg')
+        reference_config_file = open(self.settings.get_property('shapemapper_ref_file'))
         output_config_file = open(self.settings.get_shapemapper_config_file(), 'w')
         rRNA_seqs = mod_utils.convertFastaToDict(self.settings.get_rRNA_fasta())
         all_chromsomes = ', '.join(sorted(rRNA_seqs.keys()))
@@ -110,13 +115,30 @@ class mod_seq_run:
             if line.startswith("<chromosome Identifiers go here>"):
                 #this is where we map all of the library names to which chromosomes we want to map to
                 for lib_settings in self.settings.iter_lib_settings():
-                    f.write('%s: %s = %s\n' % (lib_settings.sample_name, lib_settings.))
-                    lib_settings.sample_name
-
-
+                    output_config_file.write('%s: %s = %s\n' % (lib_settings.sample_name,
+                                                                lib_settings.get_trimmed_reads(), all_chromsomes))
+            elif line.startswith('<profiles go here>'):
+                for i in range(len(self.settings.get_property('experimentals'))):
+                    output_config_file.write('name = %s_%s\n' % (sorted(rRNA_seqs.keys())[0],
+                                                                 self.settings.get_property('experimentals')[i]))
+                    output_config_file.write('target = %s\n' % (sorted(rRNA_seqs.keys())[0]))
+                    output_config_file.write('plus_reagent = %s\n' % (self.settings.get_property('experimentals')[i]))
+                    output_config_file.write('minus_reagent = %s\n' % (self.settings.get_property('no_mod_controls')[i]))
+                    output_config_file.write('denat_control = %s\n\n' % (self.settings.get_property('with_mod_controls')[i]))
+            else:
+                output_config_file.write(line)
+        reference_config_file.close()
+        output_config_file.close()
         self.settings.write_to_log('done creating shapemapper config file')
+
     def run_shapemapper(self):
-        pass
+        """
+        runs shapemapper from the preferences file created above
+        :return:
+        """
+        self.settings.write_to_log('running shapemapper')
+        subprocess.Popen('ShapeMapper.py %s' % (self.settings.get_shapemapper_config_file()), shell=True).wait()
+        self.settings.write_to_log('done running shapemapper')
 
     def initialize_libs(self):
         self.settings.write_to_log('initializing libraries, counting reads')
@@ -124,7 +146,6 @@ class mod_seq_run:
         self.libs = []
         map(lambda lib_settings: self.initialize_lib(lib_settings), self.settings.iter_lib_settings())
         self.settings.write_to_log('initializing libraries, counting reads, done')
-
 
 
     def initialize_lib(self, lib_settings):
