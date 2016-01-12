@@ -142,8 +142,15 @@ class mod_seq_run:
             return True
         else:
             rRNA_seqs = mod_utils.convertFastaToDict(self.settings.get_rRNA_fasta())
-            for sample_name in len(self.settings.get_property('experimentals'))):
-
+            shapemapper_output_dir = os.path.join(os.path.dirname(self.settings.get_shapemapper_config_file()),
+                                                  'output', 'counted_mutations_columns')
+            for sample_name in self.settings.get_property('experimentals') + self.settings.get_property(
+                    'no_mod_controls')+ self.settings.get_property('with_mod_controls'):
+                for rRNA_name in rRNA_seqs:
+                    expected_file_name = os.path.join(shapemapper_output_dir, sample_name+'_'+rRNA_name+'.csv')
+                    if not mod_utils.file_exists(expected_file_name):
+                        return True
+            return False
 
     def run_shapemapper(self):
         """
