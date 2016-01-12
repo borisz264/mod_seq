@@ -8,8 +8,6 @@ import cPickle
 import mod_utils
 import numpy as np
 from collections import Counter
-
-import pysam
 import bzUtils
 
 class ModLib:
