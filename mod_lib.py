@@ -12,7 +12,7 @@ from collections import Counter
 import pysam
 import bzUtils
 
-class TPS_Lib:
+class ModLib:
     def __init__(self, experiment_settings, lib_settings):
         """
         Constructor for Library class

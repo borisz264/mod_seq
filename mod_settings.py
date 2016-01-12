@@ -47,7 +47,7 @@ class mod_settings:
         #float_keys = []
         str_keys = ['adaptor_sequence', 'rrna_fasta', 'experiment_name', 'shapemapper_ref_file']
         boolean_keys = ['collapse_identical_reads', 'force_read_resplit', 'force_remapping', 'force_recollapse',
-                        'force_recount', 'force_index_rebuild', 'force_retrim', 'trim_adaptor', 'discard_untrimmed']
+                        'force_recount', 'force_index_rebuild', 'force_retrim', 'trim_adaptor', 'discard_untrimmed', 'force_shapemapper']
         list_str_keys = ['fastq_gz_files', 'sample_names', 'experimentals', 'no_mod_controls', 'with_mod_controls']
         #list_float_keys = ['probe_concentrations']
         config = ConfigParser.ConfigParser()
@@ -160,7 +160,8 @@ class mod_settings:
 
     def get_shapemapper_config_file(self):
         fname = os.path.join(
-          self.get_rdir(), 'shapemapper',
+          self.get_rdir(),
+          'trimmed_reads',
           'shapemapper_settings.cfg')
         return fname
 

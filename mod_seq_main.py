@@ -33,6 +33,7 @@ class mod_seq_run:
         self.remove_adaptor()
         self.trim_reads()
         self.create_shapemapper_settings()
+        self.run_shapemapper()
 
     def remove_adaptor(self):
         if not self.settings.get_property('force_retrim'):
@@ -105,8 +106,7 @@ class mod_seq_run:
         rates that shapemapper spits out
         :return:
         """
-        self.settings.write_to_log('creating shapemapper config file')
-        mod_utils.make_dir(self.rdir_path('shapemapper'))
+        self.settings.write_to_log('creating shapemapper config file and fasta files')
         reference_config_file = open(self.settings.get_property('shapemapper_ref_file'))
         output_config_file = open(self.settings.get_shapemapper_config_file(), 'w')
         rRNA_seqs = mod_utils.convertFastaToDict(self.settings.get_rRNA_fasta())
@@ -116,7 +116,7 @@ class mod_seq_run:
                 #this is where we map all of the library names to which chromosomes we want to map to
                 for lib_settings in self.settings.iter_lib_settings():
                     output_config_file.write('%s: %s = %s\n' % (lib_settings.sample_name,
-                                                                lib_settings.get_trimmed_reads(), all_chromsomes))
+                                                                os.path.basename(lib_settings.get_trimmed_reads()), all_chromsomes))
             elif line.startswith('<profiles go here>'):
                 for i in range(len(self.settings.get_property('experimentals'))):
                     output_config_file.write('name = %s_%s\n' % (sorted(rRNA_seqs.keys())[0],
@@ -129,7 +129,21 @@ class mod_seq_run:
                 output_config_file.write(line)
         reference_config_file.close()
         output_config_file.close()
-        self.settings.write_to_log('done creating shapemapper config file')
+        #shapemapper needs an individual FASTA file for each RNA seq that's being mapped to
+        for rna_name in rRNA_seqs:
+            f = open(os.path.join(os.path.dirname(lib_settings.get_trimmed_reads()), rna_name+'.fa'), 'w')
+            f.write('>%s\n' % rna_name)
+            f.write(rRNA_seqs[rna_name])
+            f.close()
+        self.settings.write_to_log('done creating shapemapper config file and fasta files')
+
+    def need_to_run_shapemapper(self):
+        if self.settings.get_property('force_shapemapper'):
+            return True
+        else:
+            rRNA_seqs = mod_utils.convertFastaToDict(self.settings.get_rRNA_fasta())
+            for sample_name in len(self.settings.get_property('experimentals'))):
+
 
     def run_shapemapper(self):
         """
@@ -137,7 +151,9 @@ class mod_seq_run:
         :return:
         """
         self.settings.write_to_log('running shapemapper')
-        subprocess.Popen('ShapeMapper.py %s' % (self.settings.get_shapemapper_config_file()), shell=True).wait()
+        os.chdir(os.path.dirname(self.settings.get_shapemapper_config_file()))
+        if self.need_to_run_shapemapper():
+            subprocess.Popen('ShapeMapper.py %s' % (self.settings.get_shapemapper_config_file()), shell=True).wait()
         self.settings.write_to_log('done running shapemapper')
 
     def initialize_libs(self):
@@ -149,22 +165,16 @@ class mod_seq_run:
 
 
     def initialize_lib(self, lib_settings):
-        lib = mod_lib.TPS_Lib(self.settings, lib_settings)
+        lib = mod_lib.ModLib(self.settings, lib_settings)
         self.libs.append(lib)
 
 
     def make_tables(self):
         mod_utils.make_dir(self.rdir_path('tables'))
-        self.make_counts_table()
 
     def make_plots(self):
         mod_utils.make_dir(self.rdir_path('plots'))
-        self.plot_AUG_reads()
-        self.plot_AUG_reads(unique_only = True,)
-        self.plot_last_AUG_reads()
-        self.plot_last_AUG_reads(unique_only = True,)
-        self.plot_AUG_reads(which_AUG = 2, unique_only = True)
-        self.plot_AUG_reads(which_AUG = 2)
+
 
 
     def make_table_header(self, of):
@@ -220,7 +230,6 @@ class mod_seq_run:
                                                                                   lib_settings.get_collapsed_reads()
                                                                                   ), shell=True).wait()
         lib_settings.write_to_log('fasta_conversion done')
-
 
     def plot_rRNA_read_distributions(self, sequence_name):
         fig = plt.figure(figsize=(8,8))
