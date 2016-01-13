@@ -19,11 +19,12 @@ import numpy
 import scipy.stats as stats
 
 import bzUtils
+#TODO move all bzUtils functions used here into mod_utils
 import mod_settings
 import mod_utils
 import mod_lib
 import mod_qc
-import count_reads_and_mismatches
+import mod_plotting
 
 
 class mod_seq_run:
@@ -35,6 +36,7 @@ class mod_seq_run:
         self.create_shapemapper_settings()
         self.run_shapemapper()
         self.initialize_libs()
+        self.make_plots()
 
     def remove_adaptor(self):
         if not self.settings.get_property('force_retrim'):
@@ -171,15 +173,25 @@ class mod_seq_run:
 
 
     def initialize_lib(self, lib_settings):
-        lib = mod_lib.ModLib(self.settings, lib_settings)
+        lib = mod_lib.ModLib(self, self.settings, lib_settings)
         self.libs.append(lib)
 
+    def get_lib_from_name(self, normalizing_lib_name):
+        for lib in self.libs:
+            if lib.lib_settings.sample_name == normalizing_lib_name:
+                return lib
+        return None
 
     def make_tables(self):
         mod_utils.make_dir(self.rdir_path('tables'))
 
     def make_plots(self):
         mod_utils.make_dir(self.rdir_path('plots'))
+        mod_plotting.plot_mutated_nts_pie(self.libs, os.path.join(self.rdir_path('plots'), 'raw_mutation_fractions'))
+        mod_plotting.plot_mutated_nts_pie(self.libs,
+                                          os.path.join(self.rdir_path('plots'),
+                                                       'background_sub_mutation_fractions'), subtract_background = True)
+
 
 
 

@@ -4,8 +4,11 @@
 #History:
 #   1.0.1  08/28/2013   PV  Modified this to work with pipeline v60 upwards. Changed how the script looks for QC files
 
-import sys, numpy, os, re
-import plottingFuncs as plot
+import sys
+import os
+
+from unused_scripts import plottingFuncs as plot
+
 
 def plotAnnotations(annotationFiles, directories, outputPrefix):
     plotDict={}
