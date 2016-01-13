@@ -6,7 +6,7 @@ import numpy as np
 from scipy import stats
 import cPickle as pickle
 import math
-
+import multiprocessing
 '''
 Colorblind safe colors from Bang Wong, Nature Methods 8. 441 (2011)
 '''
@@ -22,6 +22,30 @@ colors = [black, orange, skyBlue, bluishGreen, vermillion, blue, reddishPurple, 
 rainbow = [black, vermillion, orange, bluishGreen, blue, reddishPurple, 'violet']
 markers = ['.', 'o', 'v', 's', '^', 'p', 'x', '+']
 line_styles = ['solid', 'dashed', 'dotted']
+
+#parralellization code from
+# http://stackoverflow.com/questions/3288595/multiprocessing-using-pool-map-on-a-function-defined-in-a-class
+def spawn(f):
+    def fun(q_in,q_out):
+        while True:
+            i,x = q_in.get()
+            if i == None:
+                break
+            q_out.put((i,f(x)))
+    return fun
+
+def parmap(f, X, nprocs = multiprocessing.cpu_count()):
+    q_in   = multiprocessing.Queue(1)
+    q_out  = multiprocessing.Queue()
+    proc = [multiprocessing.Process(target=spawn(f),args=(q_in,q_out)) for _ in range(nprocs)]
+    for p in proc:
+        p.daemon = True
+        p.start()
+    sent = [q_in.put((i,x)) for i,x in enumerate(X)]
+    [q_in.put((None,None)) for _ in range(nprocs)]
+    res = [q_out.get() for _ in range(len(sent))]
+    [p.join() for p in proc]
+    return [x for i,x in sorted(res)]
 
 def unPickle(fileName):
     #returns the pickled object stored in a pickle file

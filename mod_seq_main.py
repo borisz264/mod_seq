@@ -18,8 +18,6 @@ import subprocess
 import numpy
 import scipy.stats as stats
 
-import bzUtils
-#TODO move all bzUtils functions used here into mod_utils
 import mod_settings
 import mod_utils
 import mod_lib
@@ -48,7 +46,7 @@ class mod_seq_run:
 
         if self.settings.get_property('trim_adaptor'):
             mod_utils.make_dir(self.rdir_path('adaptor_removed'))
-            bzUtils.parmap(lambda lib_setting: self.remove_adaptor_one_lib(lib_setting),
+            mod_utils.parmap(lambda lib_setting: self.remove_adaptor_one_lib(lib_setting),
                            self.settings.iter_lib_settings(), nprocs=self.threads)
 
     def remove_adaptor_one_lib(self, lib_settings):
@@ -78,7 +76,7 @@ class mod_seq_run:
             else:
                 return
         mod_utils.make_dir(self.rdir_path('trimmed_reads'))
-        bzUtils.parmap(lambda lib_setting: self.trim_one_lib(lib_setting), self.settings.iter_lib_settings(),
+        mod_utils.parmap(lambda lib_setting: self.trim_one_lib(lib_setting), self.settings.iter_lib_settings(),
                        nprocs = self.threads)
         self.settings.write_to_log('trimming reads complete')
 
@@ -228,9 +226,9 @@ class mod_seq_run:
                 return
         mod_utils.make_dir(self.rdir_path('collapsed_reads'))
         if self.settings.get_property('collapse_identical_reads'):
-            bzUtils.parmap(lambda lib_setting: self.collapse_one_fastq_file(lib_setting), self.settings.iter_lib_settings(), nprocs = self.threads)
+            mod_utils.parmap(lambda lib_setting: self.collapse_one_fastq_file(lib_setting), self.settings.iter_lib_settings(), nprocs = self.threads)
         else:
-            bzUtils.parmap(lambda lib_setting: self.fastq_to_fasta(lib_setting), self.settings.iter_lib_settings(), nprocs = self.threads)
+            mod_utils.parmap(lambda lib_setting: self.fastq_to_fasta(lib_setting), self.settings.iter_lib_settings(), nprocs = self.threads)
         self.settings.write_to_log('collapsing reads complete')
 
     def collapse_one_fastq_file(self, lib_settings):
@@ -257,7 +255,7 @@ class mod_seq_run:
             mapping = lib.pool_sequence_mappings[sequence_name]
             positions = numpy.array(range(0, len(mapping.full_sequence)))
             fractions = [mapping.fraction_at_position(position) for position in positions]
-            plot.plot(positions , fractions,color=bzUtils.rainbow[colorIndex], lw=1, label = lib.lib_settings.sample_name)
+            plot.plot(positions , fractions,color=mod_utils.rainbow[colorIndex], lw=1, label = lib.lib_settings.sample_name)
             colorIndex+=1
         for AUG_pos in mapping.positions_of_subsequence('ATG'):
             plot.axvline(AUG_pos+16, ls='--')
