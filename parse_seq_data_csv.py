@@ -1,6 +1,6 @@
 __author__ = 'boris'
 """
-takes the info file from the hopkins sequencing core, and prints formats convenient to this pipeline
+takes the info (key) file from the hopkins sequencing core, and prints formats convenient to this pipeline
 """
 
 import sys
