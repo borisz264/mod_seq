@@ -34,6 +34,7 @@ class mod_seq_run:
         self.trim_reads()
         self.create_shapemapper_settings()
         self.run_shapemapper()
+        self.initialize_libs()
 
     def remove_adaptor(self):
         if not self.settings.get_property('force_retrim'):
@@ -109,8 +110,7 @@ class mod_seq_run:
         self.settings.write_to_log('creating shapemapper config file and fasta files')
         reference_config_file = open(self.settings.get_property('shapemapper_ref_file'))
         output_config_file = open(self.settings.get_shapemapper_config_file(), 'w')
-        rRNA_seqs = mod_utils.convertFastaToDict(self.settings.get_rRNA_fasta())
-        all_chromsomes = ', '.join(sorted(rRNA_seqs.keys()))
+        all_chromsomes = ', '.join(sorted(self.settings.rRNA_seqs.keys()))
         for line in reference_config_file:
             if line.startswith("<chromosome Identifiers go here>"):
                 #this is where we map all of the library names to which chromosomes we want to map to
@@ -119,9 +119,9 @@ class mod_seq_run:
                                                                 os.path.basename(lib_settings.get_trimmed_reads()), all_chromsomes))
             elif line.startswith('<profiles go here>'):
                 for i in range(len(self.settings.get_property('experimentals'))):
-                    output_config_file.write('name = %s_%s\n' % (sorted(rRNA_seqs.keys())[0],
+                    output_config_file.write('name = %s_%s\n' % (sorted(self.settings.rRNA_seqs.keys())[0],
                                                                  self.settings.get_property('experimentals')[i]))
-                    output_config_file.write('target = %s\n' % (sorted(rRNA_seqs.keys())[0]))
+                    output_config_file.write('target = %s\n' % (sorted(self.settings.rRNA_seqs.keys())[0]))
                     output_config_file.write('plus_reagent = %s\n' % (self.settings.get_property('experimentals')[i]))
                     output_config_file.write('minus_reagent = %s\n' % (self.settings.get_property('no_mod_controls')[i]))
                     output_config_file.write('denat_control = %s\n\n' % (self.settings.get_property('with_mod_controls')[i]))
@@ -130,10 +130,10 @@ class mod_seq_run:
         reference_config_file.close()
         output_config_file.close()
         #shapemapper needs an individual FASTA file for each RNA seq that's being mapped to
-        for rna_name in rRNA_seqs:
+        for rna_name in self.settings.rRNA_seqs:
             f = open(os.path.join(os.path.dirname(lib_settings.get_trimmed_reads()), rna_name+'.fa'), 'w')
             f.write('>%s\n' % rna_name)
-            f.write(rRNA_seqs[rna_name])
+            f.write(self.settings.rRNA_seqs[rna_name])
             f.close()
         self.settings.write_to_log('done creating shapemapper config file and fasta files')
 
@@ -141,12 +141,11 @@ class mod_seq_run:
         if self.settings.get_property('force_shapemapper'):
             return True
         else:
-            rRNA_seqs = mod_utils.convertFastaToDict(self.settings.get_rRNA_fasta())
             shapemapper_output_dir = os.path.join(os.path.dirname(self.settings.get_shapemapper_config_file()),
                                                   'output', 'counted_mutations_columns')
             for sample_name in self.settings.get_property('experimentals') + self.settings.get_property(
                     'no_mod_controls')+ self.settings.get_property('with_mod_controls'):
-                for rRNA_name in rRNA_seqs:
+                for rRNA_name in self.settings.rRNA_seqs:
                     expected_file_name = os.path.join(shapemapper_output_dir, sample_name+'_'+rRNA_name+'.csv')
                     if not mod_utils.file_exists(expected_file_name):
                         return True

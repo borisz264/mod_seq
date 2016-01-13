@@ -17,4 +17,4 @@ for line in f.readlines()[1:]:
 f.close()
 
 print 'fastq_gz_files = [%s]' % (','.join(file_names))
-print 'sample_names = = [%s]' % (','.join(lib_names))
+print 'sample_names = [%s]' % (','.join(lib_names))

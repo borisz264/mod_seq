@@ -11,6 +11,8 @@ class mod_settings:
     def __init__(self, settings_file):
         self.settings_file = settings_file
         self.process_settings(settings_file)
+        self.rRNA_seqs = mod_utils.convertFastaToDict(self.get_rRNA_fasta())
+
     def get_force_recount(self, count_type):
         return self.settings['force_%s_recount' % count_type]
     def get_settings_file(self):
