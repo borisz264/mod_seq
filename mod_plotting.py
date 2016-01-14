@@ -48,20 +48,22 @@ def plot_mutation_rate_cdfs(libraries, out_prefix):
     colormap = plt.get_cmap('jet')
     colorindex = 0
     for library in libraries:
-        all_mutation_rates = library.list_mutation_rates(subtract_background=False)
+        all_mutation_rates = [math.log(val, 10) for val in  library.list_mutation_rates(subtract_background=False)]
         plot.hist(all_mutation_rates, 10000, normed=1, cumulative=True, histtype='step', color=colormap(colorindex/float(len(libraries))),
                   label=library.lib_settings.sample_name, lw=2)
         colorindex += 1
+    plot.set_xlabel("log10 mutation rate")
     plot.set_title('raw mutation rates')
     plot = fig.add_subplot(122)
     colorindex = 0
     libraries = [library for library in libraries if library.lib_settings.sample_name in
              library.experiment_settings.get_property('experimentals')]
     for library in libraries:
-        all_mutation_rates = library.list_mutation_rates(subtract_background=True)
+        all_mutation_rates = [math.log(val, 10) for val in  library.list_mutation_rates(subtract_background=True)]
         plot.hist(all_mutation_rates, 10000, normed=1, cumulative=True, histtype='step', color=colormap(colorindex/float(len(libraries))),
                   label=library.lib_settings.sample_name, lw=2)
         colorindex += 1
+    plot.set_xlabel("background-subtracted log10 mutation rate")
     plot.set_title('normalized mutation rates')
 
     plt.savefig(out_prefix + '.pdf', transparent='True', format='pdf')
