@@ -122,7 +122,6 @@ class rRNA_mutations:
 
     def list_mutation_rates(self, subtract_background = False):
         """
-        NOTE: this behaves differently from above, and background-subtracted rates are allowed to go below zero
         :param subtract_background:
         :return:
         """
@@ -130,7 +129,7 @@ class rRNA_mutations:
         for nucleotide in self.nucleotides.values():
             if subtract_background:
                 rates.append(max((nucleotide.mutation_rate - self.lib.get_normalizing_lib().
-                                                get_mutation_rate_at_position(self.rRNA_name, nucleotide.position)), 0.))
+                                                get_mutation_rate_at_position(self.rRNA_name, nucleotide.position)), 0.0000001))
             else:
                 rates.append(nucleotide.mutation_rate)
         return rates
