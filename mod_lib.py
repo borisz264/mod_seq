@@ -37,19 +37,26 @@ class ModLib:
             self.rRNA_mutation_data[rRNA_name] = rRNA_mutations(self, self.lib_settings, self.experiment_settings,
                                                                 shapemapper_output_file)
 
-    def count_mutations_by_nucleotide(self, subtract_background = False):
+    def count_mutation_rates_by_nucleotide(self, subtract_background = False):
         """
-        counts, over all RNAs, the total number of mutations at each of A, T, C, G
+        counts, over all RNAs, the total number of mutation rates at each of A, T, C, G
         This is to get an idea of which nucleotides are being affected by a modification.
         :return: a dict like {A: 1054, T:32, C: 604, G:99}
         """
         total_counts = defaultdict(int)
 
         for rRNA_name in self.rRNA_mutation_data:
-            rRNA_counts = self.rRNA_mutation_data[rRNA_name].count_mutations_by_nucleotide(subtract_background=subtract_background)
+            rRNA_counts = self.rRNA_mutation_data[rRNA_name].count_mutation_rates_by_nucleotide(subtract_background=subtract_background)
             for nucleotide_type in rRNA_counts:
                 total_counts[nucleotide_type] += rRNA_counts[nucleotide_type]
         return total_counts
+
+    def list_mutation_rates(self, subtract_background = False):
+        all_mutation_rates = []
+        for rRNA_name in self.rRNA_mutation_data:
+            all_mutation_rates.extend(self.rRNA_mutation_data[rRNA_name].
+                                      list_mutation_rates(subtract_background = subtract_background))
+        return all_mutation_rates
 
     def get_normalizing_lib(self):
         """
@@ -65,6 +72,11 @@ class ModLib:
     def get_mutation_count_at_position(self, rRNA_name, position):
         return self.rRNA_mutation_data[rRNA_name].nucleotides[position].total_mutation_counts
 
+    def get_coverage_at_position(self, rRNA_name, position):
+        return self.rRNA_mutation_data[rRNA_name].nucleotides[position].sequencing_depth
+
+    def get_mutation_rate_at_position(self, rRNA_name, position):
+        return self.rRNA_mutation_data[rRNA_name].nucleotides[position].mutation_rate
 
 
 class rRNA_mutations:
@@ -90,20 +102,38 @@ class rRNA_mutations:
                 self.nucleotides[nucleotide_data.position] = nucleotide_data
         f.close()
 
-    def count_mutations_by_nucleotide(self, subtract_background = False):
+    def count_mutation_rates_by_nucleotide(self, subtract_background = False):
         """
         counts, over this RNA, the total number of mutations at each of A, T, C, G
         This is to get an idea of which nucleotides are being affected by a modification.
+
+        NOTE that this will set any background-subtracted rate of less than zero to zero
+
         :return: a dict like {A: 1054, T:32, C: 604, G:99}
         """
         counts = defaultdict(int)
         for nucleotide in self.nucleotides.values():
             if subtract_background:
-                counts[nucleotide.identity] += (nucleotide.total_mutation_counts - self.lib.get_normalizing_lib().
-                                                get_mutation_count_at_position(self.rRNA_name, nucleotide.position))
+                counts[nucleotide.identity] += max((nucleotide.mutation_rate - self.lib.get_normalizing_lib().
+                                                get_mutation_rate_at_position(self.rRNA_name, nucleotide.position)), 0.)
             else:
-                counts[nucleotide.identity] += nucleotide.total_mutation_counts
+                counts[nucleotide.identity] += nucleotide.mutation_rate
         return counts
+
+    def list_mutation_rates(self, subtract_background = False):
+        """
+        NOTE: this behaves differently from above, and background-subtracted rates are allowed to go below zero
+        :param subtract_background:
+        :return:
+        """
+        rates = []
+        for nucleotide in self.nucleotides.values():
+            if subtract_background:
+                rates.append(max((nucleotide.mutation_rate - self.lib.get_normalizing_lib().
+                                                get_mutation_rate_at_position(self.rRNA_name, nucleotide.position)), 0.))
+            else:
+                rates.append(nucleotide.mutation_rate)
+        return rates
 
 class Nucleotide:
     def __init__(self, rRNA, headers, mutation_data_line):
@@ -116,10 +146,14 @@ class Nucleotide:
         self.position = int(ll[0])
         self.identity = ll[1]
         assert self.rRNA.sequence[self.position-1] == self.identity #the rRNA is 1-indexed, but python strings 0-indexed
-        self.total_mutation_counts = sum([int(ll[i]) for i in range(2, 18)])
-        self.sequencing_depth = int(ll[19])
+        self.total_mutation_counts = sum([float(ll[i]) for i in range(2, 18)])
+        self.sequencing_depth = float(ll[19])
+        try:
+            self.mutation_rate = self.total_mutation_counts/self.sequencing_depth
+        except:
+            self.mutation_rate = 0
         for i in range(2, 18):
-            self.mutations_by_type[headers[i]] = int(ll[i])
+            self.mutations_by_type[headers[i]] = float(ll[i])
 
 
 

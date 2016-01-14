@@ -23,17 +23,46 @@ def plot_mutated_nts_pie(libraries, out_prefix, subtract_background = False):
     plot_index =1
     for library in libraries:
         plot = fig.add_subplot(num_plots_high, num_plots_wide, plot_index)
-        mutated_nts_count = library.count_mutations_by_nucleotide(subtract_background = subtract_background)
+        mutated_nts_count = library.count_mutation_rates_by_nucleotide(subtract_background = subtract_background)
         labels = sorted(mutated_nts_count.keys())
-        sizes = [mutated_nts_count[nt] for nt in labels]
+        sizes = numpy.array([mutated_nts_count[nt] for nt in labels])
         total = float(sum(sizes))
-        merged_labels = ['%s %.3f' % (labels[i], sizes[i]/total) for i in range(len(sizes))]
+        sizes = sizes/total
+        merged_labels = ['%s %.3f' % (labels[i], sizes[i]) for i in range(len(sizes))]
         plot.pie(sizes, labels = merged_labels, colors = mod_utils.rainbow)
         plot.set_title(library.lib_settings.sample_name)
         plot_index += 1
     if subtract_background:
-        plt.suptitle('background-subtracted fractions of mutated nts')
+        plt.suptitle('background-subtracted mutation rate fractions')
     else:
-        plt.suptitle('fractions of mutated nts')
+        plt.suptitle('mutation rate fractions')
+    plt.savefig(out_prefix + '.pdf', transparent='True', format='pdf')
+    plt.clf()
+
+def plot_mutation_rate_cdfs(libraries, out_prefix):
+    #Makes 2 CDF plots. One of all libraries, showing the coverage-normalized mutation rates
+    # and one showing background-subtracted mutation rates
+
+    fig = plt.figure(figsize=(16,8))
+    plot = fig.add_subplot(121)
+    colormap = plt.get_cmap('jet')
+    colorindex = 0
+    for library in libraries:
+        all_mutation_rates = library.list_mutation_rates(subtract_background=False)
+        plot.hist(all_mutation_rates, 10000, normed=1, cumulative=True, histtype='step', color=colormap(colorindex/float(len(libraries))),
+                  label=library.lib_settings.sample_name, lw=2)
+        colorindex += 1
+    plot.set_title('raw mutation rates')
+    plot = fig.add_subplot(122)
+    colorindex = 0
+    libraries = [library for library in libraries if library.lib_settings.sample_name in
+             library.experiment_settings.get_property('experimentals')]
+    for library in libraries:
+        all_mutation_rates = library.list_mutation_rates(subtract_background=True)
+        plot.hist(all_mutation_rates, 10000, normed=1, cumulative=True, histtype='step', color=colormap(colorindex/float(len(libraries))),
+                  label=library.lib_settings.sample_name, lw=2)
+        colorindex += 1
+    plot.set_title('normalized mutation rates')
+
     plt.savefig(out_prefix + '.pdf', transparent='True', format='pdf')
     plt.clf()
