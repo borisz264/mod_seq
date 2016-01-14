@@ -75,15 +75,17 @@ def call_positives(density_array, chromosome, genome_dict, nucs_to_count, cutoff
 def plot_ROC_curves(roc_curves, out_prefix):
     fig = plt.figure(figsize=(8,8))
     plot = fig.add_subplot(111)#first a pie chart of mutated nts
+    colormap = plt.get_cmap('spectral')
     color_index = 0
-    for name in roc_curves:
+    for name in sorted(roc_curves.keys()):
         x, y = roc_curves[name]
-        plot.plot(x, y, lw =2, label = name, color = mod_utils.rainbow[color_index])
+        area_under_curve = numpy.trapz(numpy.array(y[::-1])/100., x=numpy.array(x[::-1])/100.)
+        plot.plot(x, y, lw =2, label = '%s   %.3f' % (name, area_under_curve), color = colormap(color_index/float(len(roc_curves))))
         color_index +=1
     plot.plot(numpy.arange(0,100,0.1), numpy.arange(0,100,0.1), lw =1, ls = 'dashed', color = mod_utils.black, label = 'y=x')
     plot.set_xlabel('False positive rate (%) (100-specificity)')
     plot.set_ylabel('True positive rate (%) (sensitivity)')
-    lg=plt.legend(loc=2,prop={'size':10}, labelspacing=0.2)
+    lg=plt.legend(loc=4,prop={'size':10}, labelspacing=0.2)
     lg.draw_frame(False)
     plt.savefig(out_prefix + '.pdf', transparent='True', format='pdf')
     plt.clf()

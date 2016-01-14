@@ -59,18 +59,6 @@ def makePickle(o, fileName):
     pickle.dump(o, f)
     f.close()
 
-def iter_RNAfold_output(energy_file):
-    """
-    iterates through RNAfold input and returns an energy iterator
-    """
-    for l1, l2 in iterLinePairs(energy_file):
-        yield float(l2.split(' (')[1].replace(')', ''))
-
-
-def iterLinePairs(inFile):
-    for l1, l2 in iterNlines(inFile, 2):
-        yield l1, l2
-
 
 def make_dir(dirname):
     """
@@ -82,6 +70,9 @@ def make_dir(dirname):
         except:
             print 'The directory was made by another thread extremely recently.'
 
+##########
+#MATH
+##########
 def divideWithError(num, stdDevNum, denom, stdDevDenom):
     '''
     divides the two values with provided standard deviations, and returns the mean and error of the ratio using standard error propogation

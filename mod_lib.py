@@ -10,7 +10,8 @@ import numpy as np
 from collections import Counter
 
 #TODO: consider adding options for ignoring nucleotides that are modified in vivo
-
+#TODO: need method to write out mutation rates to wig
+#TODO: add methods to take in shapemapper processed data with errors, and use them for comparing libraries.
 class ModLib:
     def __init__(self, experiment, experiment_settings, lib_settings):
         """
@@ -78,6 +79,28 @@ class ModLib:
     def get_mutation_rate_at_position(self, rRNA_name, position):
         return self.rRNA_mutation_data[rRNA_name].nucleotides[position].mutation_rate
 
+    def pickle_mutation_rates(self, output_name, subtract_background = False):
+        """
+        stores mutation rates as a simple pickle, of {rRNA_name:{position:mutation rate}}
+        :param subtract_background:
+        :return:
+        """
+        output_dict = {}
+        for rRNA in self.rRNA_mutation_data:
+            output_dict[rRNA] = {}
+            for position in self.rRNA_mutation_data[rRNA].nucleotides:
+                nucleotide =  self.rRNA_mutation_data[rRNA].nucleotides[position]
+                if subtract_background:
+                    output_dict[rRNA][position] = max((nucleotide.mutation_rate - self.get_normalizing_lib().
+                                                get_mutation_rate_at_position(rRNA, nucleotide.position)), 0.)
+                else:
+                    output_dict[rRNA][position] = nucleotide.mutation_rate
+        mod_utils.makePickle(output_dict, output_name)
+
+
+
+
+
 
 class rRNA_mutations:
     def __init__(self, lib, lib_settings, experiment_settings, mutation_filename):
@@ -128,8 +151,9 @@ class rRNA_mutations:
         rates = []
         for nucleotide in self.nucleotides.values():
             if subtract_background:
+
                 rates.append(max((nucleotide.mutation_rate - self.lib.get_normalizing_lib().
-                                                get_mutation_rate_at_position(self.rRNA_name, nucleotide.position)), 0.0000001))
+                                                get_mutation_rate_at_position(self.rRNA_name, nucleotide.position)),0.))
             else:
                 rates.append(nucleotide.mutation_rate)
         return rates

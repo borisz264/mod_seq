@@ -35,6 +35,7 @@ class mod_seq_run:
         self.run_shapemapper()
         self.initialize_libs()
         self.make_plots()
+        self.make_tables()
 
     def remove_adaptor(self):
         if not self.settings.get_property('force_retrim'):
@@ -180,8 +181,26 @@ class mod_seq_run:
                 return lib
         return None
 
+    def get_normalizable_libs(self):
+        normalizeable_libs = []
+        for lib in self.libs:
+            if lib.lib_settings.sample_name in self.settings.get_property('experimentals'):
+                normalizeable_libs.append(lib)
+        return normalizeable_libs
+
     def make_tables(self):
         mod_utils.make_dir(self.rdir_path('tables'))
+        self.pickle_mutation_rates('mutation_rates.pkl')
+        self.pickle_mutation_rates('back_subtracted_mutation_rates.pkl', subtract_background=True)
+
+    def pickle_mutation_rates(self, suffix, subtract_background=False):
+        if subtract_background:
+            libs_to_pickle = self.get_normalizable_libs()
+        else:
+            libs_to_pickle = self.libs
+        for lib in libs_to_pickle:
+            lib.pickle_mutation_rates(os.path.join(self.rdir_path('tables'), lib.lib_settings.sample_name+'_'+suffix),
+                                      subtract_background=subtract_background)
 
     def make_plots(self):
         mod_utils.make_dir(self.rdir_path('plots'))
@@ -247,34 +266,6 @@ class mod_seq_run:
                                                                                   lib_settings.get_collapsed_reads()
                                                                                   ), shell=True).wait()
         lib_settings.write_to_log('fasta_conversion done')
-
-    def plot_rRNA_read_distributions(self, sequence_name):
-        fig = plt.figure(figsize=(8,8))
-        plot = fig.add_subplot(111)
-        colorIndex = 0
-        for lib in self.libs:
-            mapping = lib.pool_sequence_mappings[sequence_name]
-            positions = numpy.array(range(0, len(mapping.full_sequence)))
-            fractions = [mapping.fraction_at_position(position) for position in positions]
-            plot.plot(positions , fractions,color=mod_utils.rainbow[colorIndex], lw=1, label = lib.lib_settings.sample_name)
-            colorIndex+=1
-        for AUG_pos in mapping.positions_of_subsequence('ATG'):
-            plot.axvline(AUG_pos+16, ls='--')
-            plot.axvline(AUG_pos+19, ls='--')
-
-        plot.set_xticks(positions[::10])
-        plot.set_xticklabels(positions[::10])
-        plot.set_xlim(-1, len(mapping.full_sequence))
-        plot.set_xlabel("position of read 5' end from RNA end (--expected AUG toeprints)")
-        plot.set_ylabel("read fraction")
-        lg=plt.legend(loc=2,prop={'size':10}, labelspacing=0.2)
-        lg.draw_frame(False)
-        out_name =  os.path.join(
-          self.settings.get_rdir(),
-          'plots',
-          '%(sequence_name)s.read_positions.pdf' % {'sequence_name': sequence_name})
-        plt.savefig(out_name, transparent='True', format='pdf')
-        plt.clf()
 
     def get_barcode_match(self, barcode, barcodes):
         """

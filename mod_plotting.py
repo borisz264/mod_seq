@@ -44,27 +44,37 @@ def plot_mutation_rate_cdfs(libraries, out_prefix):
     # and one showing background-subtracted mutation rates
 
     fig = plt.figure(figsize=(16,8))
+    plots = []
     plot = fig.add_subplot(121)
-    colormap = plt.get_cmap('jet')
+    plots.append(plot)
+    colormap = plt.get_cmap('spectral')
     colorindex = 0
     for library in libraries:
-        all_mutation_rates = [math.log(val, 10) for val in  library.list_mutation_rates(subtract_background=False)]
+        all_mutation_rates = [math.log(val, 10) for val in  library.list_mutation_rates(subtract_background=False) if val>0]
         plot.hist(all_mutation_rates, 10000, normed=1, cumulative=True, histtype='step', color=colormap(colorindex/float(len(libraries))),
                   label=library.lib_settings.sample_name, lw=2)
         colorindex += 1
     plot.set_xlabel("log10 mutation rate")
     plot.set_title('raw mutation rates')
+    lg=plt.legend(loc=2,prop={'size':6}, labelspacing=0.2)
+    lg.draw_frame(False)
     plot = fig.add_subplot(122)
+    plots.append(plot)
     colorindex = 0
     libraries = [library for library in libraries if library.lib_settings.sample_name in
              library.experiment_settings.get_property('experimentals')]
     for library in libraries:
-        all_mutation_rates = [math.log(val, 10) for val in  library.list_mutation_rates(subtract_background=True)]
+        all_mutation_rates = [math.log(val, 10) for val in  library.list_mutation_rates(subtract_background=True) if val>0]
         plot.hist(all_mutation_rates, 10000, normed=1, cumulative=True, histtype='step', color=colormap(colorindex/float(len(libraries))),
                   label=library.lib_settings.sample_name, lw=2)
         colorindex += 1
     plot.set_xlabel("background-subtracted log10 mutation rate")
     plot.set_title('normalized mutation rates')
-
+    lg=plt.legend(loc=2,prop={'size':6}, labelspacing=0.2)
+    lg.draw_frame(False)
+    for plot in plots:
+        plot.set_ylabel("cumulative fraction of rRNA nucleotides")
+        plot.set_ylim(0, 1)
+        plot.set_xlim(-5, -1)
     plt.savefig(out_prefix + '.pdf', transparent='True', format='pdf')
     plt.clf()
