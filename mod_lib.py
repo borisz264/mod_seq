@@ -12,6 +12,7 @@ from collections import Counter
 #TODO: consider adding options for ignoring nucleotides that are modified in vivo
 #TODO: need method to write out mutation rates to wig
 #TODO: add methods to take in shapemapper processed data with errors, and use them for comparing libraries.
+#TODO: add options to limit output to specific nucleotides (like A and C for DMS)
 class ModLib:
     def __init__(self, experiment, experiment_settings, lib_settings):
         """
@@ -52,11 +53,12 @@ class ModLib:
                 total_counts[nucleotide_type] += rRNA_counts[nucleotide_type]
         return total_counts
 
-    def list_mutation_rates(self, subtract_background = False):
+    def list_mutation_rates(self, subtract_background = False, nucleotides_to_count = 'ATCG'):
         all_mutation_rates = []
         for rRNA_name in self.rRNA_mutation_data:
             all_mutation_rates.extend(self.rRNA_mutation_data[rRNA_name].
-                                      list_mutation_rates(subtract_background = subtract_background))
+                                      list_mutation_rates(subtract_background = subtract_background,
+                                                          nucleotides_to_count = nucleotides_to_count))
         return all_mutation_rates
 
     def get_normalizing_lib(self):
@@ -143,19 +145,21 @@ class rRNA_mutations:
                 counts[nucleotide.identity] += nucleotide.mutation_rate
         return counts
 
-    def list_mutation_rates(self, subtract_background = False):
+    def list_mutation_rates(self, subtract_background=False, nucleotides_to_count='ATCG'):
         """
+        #note that these values may be less than zero when background is subtracted
         :param subtract_background:
         :return:
         """
         rates = []
         for nucleotide in self.nucleotides.values():
-            if subtract_background:
+            if nucleotide.identity in nucleotides_to_count:
+                if subtract_background:
 
-                rates.append(max((nucleotide.mutation_rate - self.lib.get_normalizing_lib().
-                                                get_mutation_rate_at_position(self.rRNA_name, nucleotide.position)),0.))
-            else:
-                rates.append(nucleotide.mutation_rate)
+                    rates.append((nucleotide.mutation_rate - self.lib.get_normalizing_lib().
+                                                    get_mutation_rate_at_position(self.rRNA_name, nucleotide.position)))
+                else:
+                    rates.append(nucleotide.mutation_rate)
         return rates
 
 class Nucleotide:

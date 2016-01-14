@@ -47,7 +47,7 @@ class mod_settings:
         """
         int_keys = [ 'first_base_to_keep', 'last_base_to_keep', 'min_post_adaptor_length', 'min_base_quality', 'min_mapping_quality']
         #float_keys = []
-        str_keys = ['adaptor_sequence', 'rrna_fasta', 'experiment_name', 'shapemapper_ref_file']
+        str_keys = ['adaptor_sequence', 'rrna_fasta', 'experiment_name', 'shapemapper_ref_file', 'affected_nucleotides']
         boolean_keys = ['collapse_identical_reads', 'force_read_resplit', 'force_remapping', 'force_recollapse',
                         'force_recount', 'force_index_rebuild', 'force_retrim', 'trim_adaptor', 'discard_untrimmed', 'force_shapemapper']
         list_str_keys = ['fastq_gz_files', 'sample_names', 'experimentals', 'no_mod_controls', 'with_mod_controls']

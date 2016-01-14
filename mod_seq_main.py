@@ -208,7 +208,8 @@ class mod_seq_run:
         mod_plotting.plot_mutated_nts_pie(self.libs,
                                           os.path.join(self.rdir_path('plots'),
                                                        'background_sub_mutation_fractions'), subtract_background = True)
-        mod_plotting.plot_mutation_rate_cdfs(self.libs, os.path.join(self.rdir_path('plots'), 'mutation_rate_cdf'))
+        mod_plotting.plot_mutation_rate_cdfs(self.libs, os.path.join(self.rdir_path('plots'), 'mutation_rate_cdf'),
+                                             nucleotides_to_count=self.settings.get_property('affected_nucleotides'))
 
 
 
