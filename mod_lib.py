@@ -99,6 +99,15 @@ class ModLib:
                     output_dict[rRNA][position] = nucleotide.mutation_rate
         mod_utils.makePickle(output_dict, output_name)
 
+    def write_mutation_rates_to_wigs(self, output_prefix, subtract_background = False):
+        """
+        write out mutation rates to a wig file that can be opened with a program like IGV or mochiview,
+        given the corresponding rRNA fasta as a genome, of course
+        :param output_prefix:
+        :param subtract_background:
+        :return:
+        """
+
 
 
 
