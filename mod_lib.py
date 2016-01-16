@@ -10,9 +10,7 @@ import numpy as np
 from collections import Counter
 
 #TODO: consider adding options for ignoring nucleotides that are modified in vivo
-#TODO: need method to write out mutation rates to wig
 #TODO: add methods to take in shapemapper processed data with errors, and use them for comparing libraries.
-#TODO: add options to limit output to specific nucleotides (like A and C for DMS)
 class ModLib:
     def __init__(self, experiment, experiment_settings, lib_settings):
         """
