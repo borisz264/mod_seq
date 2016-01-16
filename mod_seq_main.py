@@ -192,6 +192,18 @@ class mod_seq_run:
         mod_utils.make_dir(self.rdir_path('tables'))
         self.pickle_mutation_rates('mutation_rates.pkl')
         self.pickle_mutation_rates('back_subtracted_mutation_rates.pkl', subtract_background=True)
+        self.write_wigs('')
+        self.write_wigs('back_subtract', subtract_background=True)
+
+    def write_wigs(self, suffix, subtract_background=False):
+        mod_utils.make_dir(self.rdir_path('wigs'))
+        if subtract_background:
+            libs_to_write = self.get_normalizable_libs()
+        else:
+            libs_to_write = self.libs
+        for lib in libs_to_write:
+            lib.write_mutation_rates_to_wig(os.path.join(self.rdir_path('wigs'), lib.lib_settings.sample_name+'_'+suffix),
+                                      subtract_background=subtract_background)
 
     def pickle_mutation_rates(self, suffix, subtract_background=False):
         if subtract_background:

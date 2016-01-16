@@ -99,7 +99,7 @@ class ModLib:
                     output_dict[rRNA][position] = nucleotide.mutation_rate
         mod_utils.makePickle(output_dict, output_name)
 
-    def write_mutation_rates_to_wigs(self, output_prefix, subtract_background = False):
+    def write_mutation_rates_to_wig(self, output_prefix, subtract_background = False):
         """
         write out mutation rates to a wig file that can be opened with a program like IGV or mochiview,
         given the corresponding rRNA fasta as a genome, of course
@@ -107,7 +107,18 @@ class ModLib:
         :param subtract_background:
         :return:
         """
-
+        wig = gzip.open(output_prefix+'.wig.gz', 'w')
+        wig.write('track type=wiggle_0 name=%s\n' % (self.lib_settings.sample_name))
+        for rRNA_name in self.rRNA_mutation_data:
+            wig.write('variableStep chrom=%s\n' % (chr))
+            for position in sorted(self.rRNA_mutation_data[rRNA_name].nucleotides.keys()):
+                if subtract_background:
+                    wig.write('%d\t%f\n' % (position, self.rRNA_mutation_data[rRNA_name].
+                                            nucleotides[position].mutation_rate))
+                else:
+                    wig.write('%d\t%f\n' % (position, self.rRNA_mutation_data[rRNA_name].
+                                            nucleotides[position].mutation_rate))
+        wig.close()
 
 
 
@@ -190,6 +201,8 @@ class Nucleotide:
             self.mutation_rate = 0
         for i in range(2, 18):
             self.mutations_by_type[headers[i]] = float(ll[i])
+        self.back_sub_mutation_rate = self.mutation_rate - \
+                                      self.rRNA.lib.get_mutation_rate_at_position(self.rRNA.rRNA_name, self.position)
 
 
 
