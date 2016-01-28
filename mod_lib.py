@@ -6,6 +6,7 @@ import subprocess
 import os
 import cPickle
 import mod_utils
+import gzip
 import numpy as np
 from collections import Counter
 
@@ -199,8 +200,10 @@ class Nucleotide:
             self.mutation_rate = 0
         for i in range(2, 18):
             self.mutations_by_type[headers[i]] = float(ll[i])
-        self.back_sub_mutation_rate = self.mutation_rate - \
-                                      self.rRNA.lib.get_mutation_rate_at_position(self.rRNA.rRNA_name, self.position)
+
+    def get_back_sub_mutation_rate(self):
+        return (self.mutation_rate - self.rRNA.lib.get_normalizing_lib().\
+            get_mutation_rate_at_position(self.rRNA.rRNA_name, self.position))
 
 
 

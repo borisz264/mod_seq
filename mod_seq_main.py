@@ -10,13 +10,7 @@ import matplotlib.pyplot as plt
 plt.rcParams['pdf.fonttype'] = 42  #leaves most text as actual text in PDFs, not outlines
 import os
 import argparse
-import itertools
-import collections
-from collections import defaultdict
-import gzip
 import subprocess
-import numpy
-import scipy.stats as stats
 
 import mod_settings
 import mod_utils
