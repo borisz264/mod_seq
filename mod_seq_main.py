@@ -195,10 +195,14 @@ class mod_seq_run:
             libs_to_write = self.get_normalizable_libs()
         else:
             libs_to_write = self.libs
+        #will also write a file to make batch import into mochiview easier
+        f = open(os.path.join(self.rdir_path('wigs'), 'mochi_batch_'+suffix+'.txt'), 'w')
+        f.write('SEQUENCE_SET\tFILE_NAME\tDATA_TYPE\tNAME\n')
         for lib in libs_to_write:
+            f.write('<replace>\t%s\t<replace>\t%s\n' % (lib.lib_settings.sample_name+'_'+suffix+'.wig.gz', lib.lib_settings.sample_name+'_'+suffix))
             lib.write_mutation_rates_to_wig(os.path.join(self.rdir_path('wigs'), lib.lib_settings.sample_name+'_'+suffix),
                                       subtract_background=subtract_background)
-
+        f.close()
     def pickle_mutation_rates(self, suffix, subtract_background=False):
         if subtract_background:
             libs_to_pickle = self.get_normalizable_libs()
@@ -253,9 +257,11 @@ class mod_seq_run:
                 return
         mod_utils.make_dir(self.rdir_path('collapsed_reads'))
         if self.settings.get_property('collapse_identical_reads'):
-            mod_utils.parmap(lambda lib_setting: self.collapse_one_fastq_file(lib_setting), self.settings.iter_lib_settings(), nprocs = self.threads)
+            mod_utils.parmap(lambda lib_setting: self.collapse_one_fastq_file(lib_setting), self.settings.iter_lib_settings(),
+                             nprocs = self.threads)
         else:
-            mod_utils.parmap(lambda lib_setting: self.fastq_to_fasta(lib_setting), self.settings.iter_lib_settings(), nprocs = self.threads)
+            mod_utils.parmap(lambda lib_setting: self.fastq_to_fasta(lib_setting), self.settings.iter_lib_settings(),
+                             nprocs = self.threads)
         self.settings.write_to_log('collapsing reads complete')
 
     def collapse_one_fastq_file(self, lib_settings):

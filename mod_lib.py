@@ -109,14 +109,24 @@ class ModLib:
         wig = gzip.open(output_prefix+'.wig.gz', 'w')
         wig.write('track type=wiggle_0 name=%s\n' % (self.lib_settings.sample_name))
         for rRNA_name in self.rRNA_mutation_data:
-            wig.write('variableStep chrom=%s\n' % (chr))
-            for position in sorted(self.rRNA_mutation_data[rRNA_name].nucleotides.keys()):
-                if subtract_background:
-                    wig.write('%d\t%f\n' % (position, self.rRNA_mutation_data[rRNA_name].
-                                            nucleotides[position].mutation_rate))
-                else:
-                    wig.write('%d\t%f\n' % (position, self.rRNA_mutation_data[rRNA_name].
-                                            nucleotides[position].mutation_rate))
+            if subtract_background:
+                wig.write('variableStep chrom=%s\n' % (rRNA_name+'_back_sub'))
+                for position in sorted(self.rRNA_mutation_data[rRNA_name].nucleotides.keys()):
+                    if subtract_background:
+                        wig.write('%d\t%f\n' % (position, self.rRNA_mutation_data[rRNA_name].
+                                                nucleotides[position].get_back_sub_mutation_rate()))
+                    else:
+                        wig.write('%d\t%f\n' % (position, self.rRNA_mutation_data[rRNA_name].
+                                                nucleotides[position].get_back_sub_mutation_rate()))
+            else:
+                wig.write('variableStep chrom=%s\n' % (rRNA_name))
+                for position in sorted(self.rRNA_mutation_data[rRNA_name].nucleotides.keys()):
+                    if subtract_background:
+                        wig.write('%d\t%f\n' % (position, self.rRNA_mutation_data[rRNA_name].
+                                                nucleotides[position].mutation_rate))
+                    else:
+                        wig.write('%d\t%f\n' % (position, self.rRNA_mutation_data[rRNA_name].
+                                                nucleotides[position].mutation_rate))
         wig.close()
 
 
