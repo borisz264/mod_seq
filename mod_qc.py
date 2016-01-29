@@ -10,7 +10,7 @@ import numpy as np
 import itertools
 import math
 import gzip
-import bzUtils
+#import bzUtils
 
 class TPS_qc:
     def __init__(self, tpse, experiment_settings, threads):

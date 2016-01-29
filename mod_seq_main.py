@@ -82,13 +82,13 @@ class mod_seq_run:
         last_base_to_keep = self.settings.get_property('last_base_to_keep')  #Will keep entire 3' end if this is greater
                                                                              #than or equal to the read length
         if self.settings.get_property('trim_adaptor'):
-            subprocess.Popen('gunzip -c %s | fastx_trimmer -f %d -l %d -o %s >>%s 2>>%s' % (lib_settings.get_adaptor_trimmed_reads(),
+            subprocess.Popen('gunzip -c %s | fastx_trimmer -f %d -Q33 -l %d -o %s >>%s 2>>%s' % (lib_settings.get_adaptor_trimmed_reads(),
                                                                                       first_base_to_keep, last_base_to_keep,
                                                                                       lib_settings.get_trimmed_reads(),
                                                                                       lib_settings.get_log(),
                                                                                       lib_settings.get_log()), shell=True).wait()
         else:
-            subprocess.Popen('gunzip -c %s | fastx_trimmer -f %d -l %d -o %s >>%s 2>>%s' % (lib_settings.get_fastq_file(),
+            subprocess.Popen('gunzip -c %s | fastx_trimmer -f %d -Q33 -l %d -o %s >>%s 2>>%s' % (lib_settings.get_fastq_file(),
                                                                                       first_base_to_keep, last_base_to_keep,
                                                                                       lib_settings.get_trimmed_reads(),
                                                                                       lib_settings.get_log(),
@@ -186,12 +186,14 @@ class mod_seq_run:
         mod_utils.make_dir(self.rdir_path('tables'))
         self.pickle_mutation_rates('mutation_rates.pkl')
         self.pickle_mutation_rates('back_subtracted_mutation_rates.pkl', subtract_background=True)
+        self.pickle_mutation_rates('control_subtracte_mutation_rates.pkl', subtract_control=True)
         self.write_wigs('')
         self.write_wigs('back_subtract', subtract_background=True)
+        self.write_wigs('control_subtract', subtract_control=True)
 
-    def write_wigs(self, suffix, subtract_background=False):
+    def write_wigs(self, suffix, subtract_background=False, subtract_control=False):
         mod_utils.make_dir(self.rdir_path('wigs'))
-        if subtract_background:
+        if subtract_background or subtract_control:
             libs_to_write = self.get_normalizable_libs()
         else:
             libs_to_write = self.libs
@@ -201,16 +203,17 @@ class mod_seq_run:
         for lib in libs_to_write:
             f.write('<replace>\t%s\t<replace>\t%s\n' % (lib.lib_settings.sample_name+'_'+suffix+'.wig.gz', lib.lib_settings.sample_name+'_'+suffix))
             lib.write_mutation_rates_to_wig(os.path.join(self.rdir_path('wigs'), lib.lib_settings.sample_name+'_'+suffix),
-                                      subtract_background=subtract_background)
+                                      subtract_background=subtract_background, subtract_control=subtract_control)
         f.close()
-    def pickle_mutation_rates(self, suffix, subtract_background=False):
-        if subtract_background:
+
+    def pickle_mutation_rates(self, suffix, subtract_background=False, subtract_control=False):
+        if subtract_background or subtract_control:
             libs_to_pickle = self.get_normalizable_libs()
         else:
             libs_to_pickle = self.libs
         for lib in libs_to_pickle:
             lib.pickle_mutation_rates(os.path.join(self.rdir_path('tables'), lib.lib_settings.sample_name+'_'+suffix),
-                                      subtract_background=subtract_background)
+                                      subtract_background=subtract_background, subtract_control=subtract_control)
 
     def make_plots(self):
         mod_utils.make_dir(self.rdir_path('plots'))
@@ -218,6 +221,9 @@ class mod_seq_run:
         mod_plotting.plot_mutated_nts_pie(self.libs,
                                           os.path.join(self.rdir_path('plots'),
                                                        'background_sub_mutation_fractions'), subtract_background = True)
+        mod_plotting.plot_mutated_nts_pie(self.libs,
+                                          os.path.join(self.rdir_path('plots'),
+                                                       'control_sub_mutation_fractions'), subtract_control = True)
         mod_plotting.plot_mutation_rate_cdfs(self.libs, os.path.join(self.rdir_path('plots'), 'mutation_rate_cdf'),
                                              nucleotides_to_count=self.settings.get_property('affected_nucleotides'))
 
