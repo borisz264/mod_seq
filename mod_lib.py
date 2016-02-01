@@ -90,6 +90,37 @@ class ModLib:
     def get_mutation_rate_at_position(self, rRNA_name, position):
         return self.rRNA_mutation_data[rRNA_name].nucleotides[position].mutation_rate
 
+    def write_tsv_tables(self, tsv_filename, subtract_background, subtract_control):
+        if subtract_background and subtract_control:
+            raise SyntaxError('Cannot subtract background and control simultaneously')
+
+        f = open(tsv_filename, 'w')
+
+        if subtract_background:
+                f.write('CHROMOSOME\tPOSITION\tMUTATION_RATE\tBKGD_SUB_MUT_RATE\tBKGD_SUB_ERROR\n')
+        elif subtract_control:
+                f.write('CHROMOSOME\tPOSITION\tMUTATION_RATE\tCTRL_SUB_MUT_RATE\tCTRL_SUB_ERROR\n')
+        elif not subtract_background and not subtract_control:
+                f.write('CHROMOSOME\tPOSITION\tMUTATION_RATE\tERROR\n')
+
+
+        for rRNA_name in self.rRNA_mutation_data:
+            for position in self.rRNA_mutation_data[rRNA_name].nucleotides:
+                nucleotide = self.rRNA_mutation_data[rRNA_name].nucleotides[position]
+                if subtract_background:
+                    f.write(self.rRNA_mutation_data[rRNA_name].rRNA_name+'\t'+str(nucleotide.position)+'\t'
+                            +str(nucleotide.mutation_rate)+'\t'+str(nucleotide.get_back_sub_mutation_rate())+'\t'
+                            +str(nucleotide.get_back_sub_error())+'\n')
+                elif subtract_control:
+                    f.write(self.rRNA_mutation_data[rRNA_name].rRNA_name+'\t'+str(nucleotide.position)+'\t'
+                            +str(nucleotide.mutation_rate)+'\t'+str(nucleotide.get_control_sub_mutation_rate())+'\t'
+                            +str(nucleotide.get_control_sub_error())+'\n')
+                elif not subtract_background and not subtract_control:
+                    f.write(self.rRNA_mutation_data[rRNA_name].rRNA_name+'\t'+str(nucleotide.position)+'\t'
+                            +str(nucleotide.mutation_rate)+'\t'+str(nucleotide.get_error())+'\n')
+
+        f.close()
+
     def pickle_mutation_rates(self, output_name, subtract_background = False, subtract_control = False):
         """
         stores mutation rates as a simple pickle, of {rRNA_name:{position:mutation rate}}
@@ -100,10 +131,9 @@ class ModLib:
         for rRNA in self.rRNA_mutation_data:
             output_dict[rRNA] = {}
             for position in self.rRNA_mutation_data[rRNA].nucleotides:
-                nucleotide =  self.rRNA_mutation_data[rRNA].nucleotides[position]
+                nucleotide = self.rRNA_mutation_data[rRNA].nucleotides[position]
                 if subtract_background and subtract_control:
-                    print "Cannot subtract background and control simultaneously"
-                    quit()
+                    raise SyntaxError('Cannot subtract background and control simultaneously')
                 if subtract_background:
                     output_dict[rRNA][position] = max((nucleotide.mutation_rate - self.get_normalizing_lib().
                                                 get_mutation_rate_at_position(rRNA, nucleotide.position)), 0.)
@@ -114,7 +144,7 @@ class ModLib:
                     output_dict[rRNA][position] = nucleotide.mutation_rate
         mod_utils.makePickle(output_dict, output_name)
 
-    def write_mutation_rates_to_wig(self, output_prefix, subtract_background = False, subtract_control = True):
+    def write_mutation_rates_to_wig(self, output_prefix, subtract_background = False, subtract_control = False):
         """
         write out mutation rates to a wig file that can be opened with a program like IGV or mochiview,
         given the corresponding rRNA fasta as a genome, of course
@@ -126,6 +156,9 @@ class ModLib:
         wig = gzip.open(output_prefix+'.wig.gz', 'w')
         wig.write('track type=wiggle_0 name=%s\n' % (self.lib_settings.sample_name))
         for rRNA_name in self.rRNA_mutation_data:
+            if subtract_background and subtract_control:
+                    raise SyntaxError('Cannot subtract background and control simultaneously')
+
             if subtract_background:
                 wig.write('variableStep chrom=%s\n' % (rRNA_name+'_back_sub'))
                 for position in sorted(self.rRNA_mutation_data[rRNA_name].nucleotides.keys()):
@@ -216,8 +249,8 @@ class rRNA_mutations:
         for nucleotide in self.nucleotides.values():
             if nucleotide.identity in nucleotides_to_count:
                 if subtract_background and subtract_control:
-                    print "Cannot subtract background and control simultaneously"
-                    quit()
+                    raise SyntaxError('Cannot subtract background and control simultaneously')
+
                 if subtract_background:
 
                     rates.append((nucleotide.mutation_rate - self.lib.get_normalizing_lib().
@@ -258,4 +291,27 @@ class Nucleotide:
         return (self.mutation_rate - self.rRNA.lib.get_normalizing_lib_with_mod().\
             get_mutation_rate_at_position(self.rRNA.rRNA_name, self.position))
 
+    def get_error(self):
+        try:
+            return(np.sqrt(self.mutation_rate/self.sequencing_depth))
+        except ZeroDivisionError:
+            return(0)
+
+    def get_back_sub_error(self):
+        mutation_rate = self.get_back_sub_mutation_rate()
+        if mutation_rate < 0:
+            mutation_rate = 0
+        try:
+            return(np.sqrt(mutation_rate/self.sequencing_depth))
+        except ZeroDivisionError:
+            return(0)
+
+    def get_control_sub_error(self):
+        mutation_rate = self.get_back_sub_mutation_rate()
+        if mutation_rate < 0:
+            mutation_rate = 0
+        try:
+            return(np.sqrt(mutation_rate/self.sequencing_depth))
+        except ZeroDivisionError:
+            return(0)
 

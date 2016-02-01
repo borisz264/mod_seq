@@ -28,7 +28,7 @@ class mod_seq_run:
         self.create_shapemapper_settings()
         self.run_shapemapper()
         self.initialize_libs()
-        self.make_plots()
+        #self.make_plots()
         self.make_tables()
 
     def remove_adaptor(self):
@@ -186,10 +186,29 @@ class mod_seq_run:
         mod_utils.make_dir(self.rdir_path('tables'))
         self.pickle_mutation_rates('mutation_rates.pkl')
         self.pickle_mutation_rates('back_subtracted_mutation_rates.pkl', subtract_background=True)
-        self.pickle_mutation_rates('control_subtracte_mutation_rates.pkl', subtract_control=True)
+        self.pickle_mutation_rates('control_subtracted_mutation_rates.pkl', subtract_control=True)
         self.write_wigs('')
         self.write_wigs('back_subtract', subtract_background=True)
         self.write_wigs('control_subtract', subtract_control=True)
+        self.write_mutation_rates_tsv('mutation_rates.tsv')
+        self.write_mutation_rates_tsv('back_subtracted_mutation_rates.tsv', subtract_background=True)
+        self.write_mutation_rates_tsv('control_subtracted_mutation_rates.tsv', subtract_control=True)
+
+
+    def write_mutation_rates_tsv(self, suffix, subtract_background=False, subtract_control=False):
+
+        if subtract_background or subtract_control:
+            libs_to_write = self.get_normalizable_libs()
+        else:
+            libs_to_write = self.libs
+
+        for lib in libs_to_write:
+            lib.write_tsv_tables(os.path.join(self.rdir_path('tables'), lib.lib_settings.sample_name+'_'+suffix),
+                                 subtract_background=subtract_background, subtract_control=subtract_control)
+
+
+
+
 
     def write_wigs(self, suffix, subtract_background=False, subtract_control=False):
         mod_utils.make_dir(self.rdir_path('wigs'))
