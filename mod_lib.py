@@ -36,7 +36,7 @@ class ModLib:
             shapemapper_output_file = os.path.join(shapemapper_output_dir, sample_name+'_'+rRNA_name+'.csv')
             assert mod_utils.file_exists(shapemapper_output_file)
             self.rRNA_mutation_data[rRNA_name] = rRNA_mutations(self, self.lib_settings, self.experiment_settings,
-                                                                shapemapper_output_file)
+                                                                shapemapper_output_file, rRNA_name)
 
     def count_mutation_rates_by_nucleotide(self, subtract_background = False, subtract_control = False):
         """
@@ -154,13 +154,19 @@ class ModLib:
         :return:
         """
         wig = gzip.open(output_prefix+'.wig.gz', 'w')
-        wig.write('track type=wiggle_0 name=%s\n' % (self.lib_settings.sample_name))
+
+        if subtract_background:
+            wig.write('track type=wiggle_0 name=%s\n' % (self.lib_settings.sample_name+'_back_sub'))
+        elif subtract_control:
+            wig.write('track type=wiggle_0 name=%s\n' % (self.lib_settings.sample_name+'_control_sub'))
+        elif not subtract_background and not subtract_control:
+            wig.write('track type=wiggle_0 name=%s\n' % (self.lib_settings.sample_name))
         for rRNA_name in self.rRNA_mutation_data:
             if subtract_background and subtract_control:
                     raise SyntaxError('Cannot subtract background and control simultaneously')
 
             if subtract_background:
-                wig.write('variableStep chrom=%s\n' % (rRNA_name+'_back_sub'))
+                wig.write('variableStep chrom=%s\n' % (rRNA_name))
                 for position in sorted(self.rRNA_mutation_data[rRNA_name].nucleotides.keys()):
                     if subtract_background:
                         wig.write('%d\t%f\n' % (position, self.rRNA_mutation_data[rRNA_name].
@@ -168,8 +174,8 @@ class ModLib:
                     else:
                         wig.write('%d\t%f\n' % (position, self.rRNA_mutation_data[rRNA_name].
                                                 nucleotides[position].get_back_sub_mutation_rate()))
-            if subtract_control:
-                wig.write('variableStep chrom=%s\n' % (rRNA_name+'_control_sub'))
+            elif subtract_control:
+                wig.write('variableStep chrom=%s\n' % (rRNA_name))
                 for position in sorted(self.rRNA_mutation_data[rRNA_name].nucleotides.keys()):
                     if subtract_control:
                         wig.write('%d\t%f\n' % (position, self.rRNA_mutation_data[rRNA_name].
@@ -193,12 +199,13 @@ class ModLib:
 
 
 class rRNA_mutations:
-    def __init__(self, lib, lib_settings, experiment_settings, mutation_filename):
+    def __init__(self, lib, lib_settings, experiment_settings, mutation_filename, rRNA_name):
         self.lib = lib
         self.lib_settings = lib_settings
         self.experiment_settings = experiment_settings
         self.nucleotides = {}
         self.parse_mutations_columns(mutation_filename)
+        self.remove_constitutive()
 
 
     def parse_mutations_columns(self, filename):
@@ -214,6 +221,17 @@ class rRNA_mutations:
                 nucleotide_data = Nucleotide(self, headers, line)
                 self.nucleotides[nucleotide_data.position] = nucleotide_data
         f.close()
+
+    def remove_constitutive(self):
+        try:
+            exclusions = self.lib_settings.experiment_settings.exclude_constitutive[self.rRNA_name]
+            nucleotides = self.nucleotides
+            for position in nucleotides:
+                if position in exclusions:
+                    nucleotides[position].mutation_rate = 0
+        except KeyError:
+            pass
+
 
     def count_mutation_rates_by_nucleotide(self, subtract_background = False, subtract_control = False):
         """

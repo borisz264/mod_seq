@@ -28,7 +28,7 @@ class mod_seq_run:
         self.create_shapemapper_settings()
         self.run_shapemapper()
         self.initialize_libs()
-        #self.make_plots()
+        self.make_plots()
         self.make_tables()
 
     def remove_adaptor(self):

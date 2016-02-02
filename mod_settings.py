@@ -50,7 +50,7 @@ class mod_settings:
         str_keys = ['adaptor_sequence', 'rrna_fasta', 'experiment_name', 'shapemapper_ref_file', 'affected_nucleotides']
         boolean_keys = ['collapse_identical_reads', 'force_read_resplit', 'force_remapping', 'force_recollapse',
                         'force_recount', 'force_index_rebuild', 'force_retrim', 'trim_adaptor', 'discard_untrimmed', 'force_shapemapper']
-        list_str_keys = ['fastq_gz_files', 'sample_names', 'experimentals', 'no_mod_controls', 'with_mod_controls']
+        list_str_keys = ['fastq_gz_files', 'sample_names', 'experimentals', 'no_mod_controls', 'with_mod_controls', 'exclude_constitutive']
         #list_float_keys = ['probe_concentrations']
         config = ConfigParser.ConfigParser()
         config.read(settings_file)
@@ -81,6 +81,7 @@ class mod_settings:
         self.experimentals = settings['experimentals']
         self.no_mod_controls = settings['no_mod_controls']
         self.with_mod_controls = settings['with_mod_controls']
+        self.exclude_constitutive = settings['exclude_constitutive']
         try:
             assert len(self.experimentals) == len(self.no_mod_controls)
             assert len(self.experimentals) == len(self.with_mod_controls)
