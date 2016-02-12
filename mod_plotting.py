@@ -9,7 +9,7 @@ import mod_utils
 plt.rcParams['pdf.fonttype'] = 42 #leaves most text as actual text in PDFs, not outlines
 
 
-def plot_mutated_nts_pie(libraries, out_prefix, subtract_background = False, subtract_control = False):
+def plot_mutated_nts_pie(libraries, out_prefix, subtract_background=False, subtract_control=False, exclude_constitutive=False):
     #Makes an array of pie charts, 1 per library
     if subtract_background or subtract_control:
         #if subtracting background, need to only look at those which have a defined control
@@ -23,7 +23,8 @@ def plot_mutated_nts_pie(libraries, out_prefix, subtract_background = False, sub
     plot_index =1
     for library in libraries:
         plot = fig.add_subplot(num_plots_high, num_plots_wide, plot_index)
-        mutated_nts_count = library.count_mutation_rates_by_nucleotide(subtract_background = subtract_background, subtract_control = subtract_control)
+        mutated_nts_count = library.count_mutation_rates_by_nucleotide(subtract_background=subtract_background, subtract_control=subtract_control,
+                                                                       exclude_constitutive=exclude_constitutive)
         labels = sorted(mutated_nts_count.keys())
         sizes = numpy.array([mutated_nts_count[nt] for nt in labels])
         total = float(sum(sizes))
@@ -41,7 +42,7 @@ def plot_mutated_nts_pie(libraries, out_prefix, subtract_background = False, sub
     plt.savefig(out_prefix + '.pdf', transparent='True', format='pdf')
     plt.clf()
 
-def plot_mutation_rate_cdfs(libraries, out_prefix, nucleotides_to_count='ATCG'):
+def plot_mutation_rate_cdfs(libraries, out_prefix, nucleotides_to_count='ATCG', exclude_constitutive=False):
     #Makes 2 CDF plots. One of all libraries, showing the coverage-normalized mutation rates
     # and one showing background-subtracted mutation rates
 
@@ -54,7 +55,7 @@ def plot_mutation_rate_cdfs(libraries, out_prefix, nucleotides_to_count='ATCG'):
     for library in libraries:
         all_mutation_rates = [val for val in
                               library.list_mutation_rates(subtract_background=False, subtract_control=False,
-                                                          nucleotides_to_count=nucleotides_to_count)]
+                                                          nucleotides_to_count=nucleotides_to_count, exclude_constitutive=exclude_constitutive)]
         plot.hist(all_mutation_rates, 10000, normed=1, cumulative=True, histtype='step', color=colormap(colorindex/float(len(libraries))),
                   label=library.lib_settings.sample_name, lw=2)
         colorindex += 1
@@ -72,7 +73,7 @@ def plot_mutation_rate_cdfs(libraries, out_prefix, nucleotides_to_count='ATCG'):
     for library in libraries_to_plot:
         all_mutation_rates = [val for val in
                               library.list_mutation_rates(subtract_background=True, subtract_control=False,
-                                                          nucleotides_to_count=nucleotides_to_count)]
+                                                          nucleotides_to_count=nucleotides_to_count, exclude_constitutive=exclude_constitutive)]
         plot.hist(all_mutation_rates, 10000, normed=1, cumulative=True, histtype='step', color=colormap(colorindex/float(len(libraries))),
                   label=library.lib_settings.sample_name, lw=2)
         colorindex += 1
@@ -90,7 +91,7 @@ def plot_mutation_rate_cdfs(libraries, out_prefix, nucleotides_to_count='ATCG'):
     for library in libraries_to_plot:
         all_mutation_rates = [val for val in
                               library.list_mutation_rates(subtract_background=False, subtract_control=True,
-                                                          nucleotides_to_count=nucleotides_to_count)]
+                                                          nucleotides_to_count=nucleotides_to_count, exclude_constitutive=exclude_constitutive)]
         plot.hist(all_mutation_rates, 10000, normed=1, cumulative=True, histtype='step', color=colormap(colorindex/float(len(libraries))),
                   label=library.lib_settings.sample_name, lw=2)
         colorindex += 1
@@ -107,7 +108,7 @@ def plot_mutation_rate_cdfs(libraries, out_prefix, nucleotides_to_count='ATCG'):
     for library in libraries:
         all_mutation_rates = [math.log(val, 10) for val in
                               library.list_mutation_rates(subtract_background=False, subtract_control=False,
-                                                          nucleotides_to_count=nucleotides_to_count) if val>0]
+                                                          nucleotides_to_count=nucleotides_to_count, exclude_constitutive=exclude_constitutive) if val>0]
         plot.hist(all_mutation_rates, 10000, normed=1, cumulative=True, histtype='step', color=colormap(colorindex/float(len(libraries))),
                   label=library.lib_settings.sample_name, lw=2)
         colorindex += 1
@@ -125,7 +126,7 @@ def plot_mutation_rate_cdfs(libraries, out_prefix, nucleotides_to_count='ATCG'):
     for library in libraries_to_plot:
         all_mutation_rates = [math.log(val, 10) for val in
                               library.list_mutation_rates(subtract_background=True, subtract_control=False,
-                                                          nucleotides_to_count=nucleotides_to_count) if val>0]
+                                                          nucleotides_to_count=nucleotides_to_count, exclude_constitutive=exclude_constitutive) if val>0]
         plot.hist(all_mutation_rates, 10000, normed=1, cumulative=True, histtype='step', color=colormap(colorindex/float(len(libraries))),
                   label=library.lib_settings.sample_name, lw=2)
         colorindex += 1
@@ -143,7 +144,7 @@ def plot_mutation_rate_cdfs(libraries, out_prefix, nucleotides_to_count='ATCG'):
     for library in libraries_to_plot:
         all_mutation_rates = [math.log(val, 10) for val in
                               library.list_mutation_rates(subtract_background=False, subtract_control=True,
-                                                          nucleotides_to_count=nucleotides_to_count) if val>0]
+                                                          nucleotides_to_count=nucleotides_to_count, exclude_constitutive=exclude_constitutive) if val>0]
         plot.hist(all_mutation_rates, 10000, normed=1, cumulative=True, histtype='step', color=colormap(colorindex/float(len(libraries))),
                   label=library.lib_settings.sample_name, lw=2)
         colorindex += 1

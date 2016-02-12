@@ -29,7 +29,9 @@ class mod_seq_run:
         self.run_shapemapper()
         self.initialize_libs()
         self.make_plots()
+        self.make_plots(exclude_constitutive=True)
         self.make_tables()
+        self.make_tables(exclude_constitutive=True)
 
     def remove_adaptor(self):
         if not self.settings.get_property('force_retrim'):
@@ -182,33 +184,36 @@ class mod_seq_run:
                 normalizeable_libs.append(lib)
         return normalizeable_libs
 
-    def make_tables(self):
+    def make_tables(self, exclude_constitutive=False):
         mod_utils.make_dir(self.rdir_path('tables'))
-        self.pickle_mutation_rates('mutation_rates.pkl')
-        self.pickle_mutation_rates('back_subtracted_mutation_rates.pkl', subtract_background=True)
-        self.pickle_mutation_rates('control_subtracted_mutation_rates.pkl', subtract_control=True)
+        mod_utils.make_dir(self.rdir_path('tables/exclude_constitutive'))
+        self.pickle_mutation_rates('mutation_rates.pkl', exclude_constitutive=exclude_constitutive)
+        self.pickle_mutation_rates('back_subtracted_mutation_rates.pkl', subtract_background=True, exclude_constitutive=exclude_constitutive)
+        self.pickle_mutation_rates('control_subtracted_mutation_rates.pkl', subtract_control=True, exclude_constitutive=exclude_constitutive)
         self.write_wigs('')
         self.write_wigs('back_subtract', subtract_background=True)
         self.write_wigs('control_subtract', subtract_control=True)
-        self.write_mutation_rates_tsv('mutation_rates.tsv')
-        self.write_mutation_rates_tsv('back_subtracted_mutation_rates.tsv', subtract_background=True)
-        self.write_mutation_rates_tsv('control_subtracted_mutation_rates.tsv', subtract_control=True)
+        self.write_mutation_rates_tsv('mutation_rates.tsv', exclude_constitutive=exclude_constitutive)
+        self.write_mutation_rates_tsv('back_subtracted_mutation_rates.tsv', subtract_background=True, exclude_constitutive=exclude_constitutive)
+        self.write_mutation_rates_tsv('control_subtracted_mutation_rates.tsv', subtract_control=True, exclude_constitutive=exclude_constitutive)
 
 
-    def write_mutation_rates_tsv(self, suffix, subtract_background=False, subtract_control=False):
+    def write_mutation_rates_tsv(self, suffix, subtract_background=False, subtract_control=False, exclude_constitutive=False):
 
         if subtract_background or subtract_control:
             libs_to_write = self.get_normalizable_libs()
         else:
             libs_to_write = self.libs
 
-        for lib in libs_to_write:
-            lib.write_tsv_tables(os.path.join(self.rdir_path('tables'), lib.lib_settings.sample_name+'_'+suffix),
-                                 subtract_background=subtract_background, subtract_control=subtract_control)
-
-
-
-
+        if exclude_constitutive:
+            for lib in libs_to_write:
+                lib.write_tsv_tables(os.path.join(self.rdir_path('tables/exclude_constitutive'),
+                                                  lib.lib_settings.sample_name+'_'+suffix[:-4]+'_exclude_constitutive'+suffix[-4:]),
+                                     subtract_background=subtract_background, subtract_control=subtract_control, exclude_constitutive=exclude_constitutive)
+        else:
+            for lib in libs_to_write:
+                lib.write_tsv_tables(os.path.join(self.rdir_path('tables'), lib.lib_settings.sample_name+'_'+suffix),
+                                     subtract_background=subtract_background, subtract_control=subtract_control, exclude_constitutive=exclude_constitutive)
 
     def write_wigs(self, suffix, subtract_background=False, subtract_control=False):
         mod_utils.make_dir(self.rdir_path('wigs'))
@@ -225,26 +230,42 @@ class mod_seq_run:
                                       subtract_background=subtract_background, subtract_control=subtract_control)
         f.close()
 
-    def pickle_mutation_rates(self, suffix, subtract_background=False, subtract_control=False):
+    def pickle_mutation_rates(self, suffix, subtract_background=False, subtract_control=False, exclude_constitutive=False):
         if subtract_background or subtract_control:
             libs_to_pickle = self.get_normalizable_libs()
         else:
             libs_to_pickle = self.libs
-        for lib in libs_to_pickle:
-            lib.pickle_mutation_rates(os.path.join(self.rdir_path('tables'), lib.lib_settings.sample_name+'_'+suffix),
-                                      subtract_background=subtract_background, subtract_control=subtract_control)
+        if exclude_constitutive:
+            for lib in libs_to_pickle:
+                lib.pickle_mutation_rates(os.path.join(self.rdir_path('tables/exclude_constitutive'),
+                                                       lib.lib_settings.sample_name+'_'+suffix[:-4]+'_exclude_constitutive'+suffix[-4:]),
+                                                       subtract_background=subtract_background, subtract_control=subtract_control,
+                                                       exclude_constitutive=exclude_constitutive)
+        else:
+            for lib in libs_to_pickle:
+                lib.pickle_mutation_rates(os.path.join(self.rdir_path('tables'), lib.lib_settings.sample_name+'_'+suffix),
+                                          subtract_background=subtract_background, subtract_control=subtract_control, exclude_constitutive=exclude_constitutive)
 
-    def make_plots(self):
-        mod_utils.make_dir(self.rdir_path('plots'))
-        mod_plotting.plot_mutated_nts_pie(self.libs, os.path.join(self.rdir_path('plots'), 'raw_mutation_fractions'))
+    def make_plots(self, exclude_constitutive=False):
+        if exclude_constitutive:
+            mod_utils.make_dir(self.rdir_path('plots/exclude_constitutive'))
+            rdir = self.rdir_path('plots/exclude_constitutive')
+            file_tag = '_exclude_constitutive'
+        else:
+            mod_utils.make_dir(self.rdir_path('plots'))
+            rdir = self.rdir_path('plots')
+            file_tag = ''
+
+        mod_plotting.plot_mutated_nts_pie(self.libs, os.path.join(rdir, 'raw_mutation_fractions'+file_tag), exclude_constitutive=exclude_constitutive)
         mod_plotting.plot_mutated_nts_pie(self.libs,
-                                          os.path.join(self.rdir_path('plots'),
-                                                       'background_sub_mutation_fractions'), subtract_background = True)
+                                          os.path.join(rdir, 'background_sub_mutation_fractions'+file_tag),
+                                          subtract_background = True, exclude_constitutive=exclude_constitutive)
         mod_plotting.plot_mutated_nts_pie(self.libs,
-                                          os.path.join(self.rdir_path('plots'),
-                                                       'control_sub_mutation_fractions'), subtract_control = True)
-        mod_plotting.plot_mutation_rate_cdfs(self.libs, os.path.join(self.rdir_path('plots'), 'mutation_rate_cdf'),
-                                             nucleotides_to_count=self.settings.get_property('affected_nucleotides'))
+                                          os.path.join(rdir, 'control_sub_mutation_fractions'+file_tag),
+                                          subtract_control = True, exclude_constitutive=exclude_constitutive)
+        mod_plotting.plot_mutation_rate_cdfs(self.libs, os.path.join(rdir, 'mutation_rate_cdf'+file_tag),
+                                             nucleotides_to_count=self.settings.get_property('affected_nucleotides'),
+                                             exclude_constitutive=exclude_constitutive)
 
 
 

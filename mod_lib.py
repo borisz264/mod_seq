@@ -38,7 +38,7 @@ class ModLib:
             self.rRNA_mutation_data[rRNA_name] = rRNA_mutations(self, self.lib_settings, self.experiment_settings,
                                                                 shapemapper_output_file, rRNA_name)
 
-    def count_mutation_rates_by_nucleotide(self, subtract_background = False, subtract_control = False):
+    def count_mutation_rates_by_nucleotide(self, subtract_background = False, subtract_control = False, exclude_constitutive=False):
         """
         counts, over all RNAs, the total number of mutation rates at each of A, T, C, G
         This is to get an idea of which nucleotides are being affected by a modification.
@@ -47,17 +47,18 @@ class ModLib:
         total_counts = defaultdict(int)
 
         for rRNA_name in self.rRNA_mutation_data:
-            rRNA_counts = self.rRNA_mutation_data[rRNA_name].count_mutation_rates_by_nucleotide(subtract_background=subtract_background, subtract_control=subtract_control)
+            rRNA_counts = self.rRNA_mutation_data[rRNA_name].count_mutation_rates_by_nucleotide(subtract_background=subtract_background,
+                                                                                                subtract_control=subtract_control, exclude_constitutive=exclude_constitutive)
             for nucleotide_type in rRNA_counts:
                 total_counts[nucleotide_type] += rRNA_counts[nucleotide_type]
         return total_counts
 
-    def list_mutation_rates(self, subtract_background = False, subtract_control = False, nucleotides_to_count = 'ATCG'):
+    def list_mutation_rates(self, subtract_background = False, subtract_control = False, nucleotides_to_count = 'ATCG', exclude_constitutive=False):
         all_mutation_rates = []
         for rRNA_name in self.rRNA_mutation_data:
             all_mutation_rates.extend(self.rRNA_mutation_data[rRNA_name].
                                       list_mutation_rates(subtract_background = subtract_background, subtract_control = subtract_control,
-                                                          nucleotides_to_count = nucleotides_to_count))
+                                                          nucleotides_to_count = nucleotides_to_count, exclude_constitutive=exclude_constitutive))
         return all_mutation_rates
 
     def get_normalizing_lib(self):
@@ -90,7 +91,7 @@ class ModLib:
     def get_mutation_rate_at_position(self, rRNA_name, position):
         return self.rRNA_mutation_data[rRNA_name].nucleotides[position].mutation_rate
 
-    def write_tsv_tables(self, tsv_filename, subtract_background, subtract_control):
+    def write_tsv_tables(self, tsv_filename, subtract_background=False, subtract_control=False, exclude_constitutive=False):
         if subtract_background and subtract_control:
             raise SyntaxError('Cannot subtract background and control simultaneously')
 
@@ -107,21 +108,34 @@ class ModLib:
         for rRNA_name in self.rRNA_mutation_data:
             for position in self.rRNA_mutation_data[rRNA_name].nucleotides:
                 nucleotide = self.rRNA_mutation_data[rRNA_name].nucleotides[position]
-                if subtract_background:
-                    f.write(self.rRNA_mutation_data[rRNA_name].rRNA_name+'\t'+str(nucleotide.position)+'\t'
-                            +str(nucleotide.mutation_rate)+'\t'+str(nucleotide.get_back_sub_mutation_rate())+'\t'
-                            +str(nucleotide.get_back_sub_error())+'\n')
-                elif subtract_control:
-                    f.write(self.rRNA_mutation_data[rRNA_name].rRNA_name+'\t'+str(nucleotide.position)+'\t'
-                            +str(nucleotide.mutation_rate)+'\t'+str(nucleotide.get_control_sub_mutation_rate())+'\t'
-                            +str(nucleotide.get_control_sub_error())+'\n')
-                elif not subtract_background and not subtract_control:
-                    f.write(self.rRNA_mutation_data[rRNA_name].rRNA_name+'\t'+str(nucleotide.position)+'\t'
-                            +str(nucleotide.mutation_rate)+'\t'+str(nucleotide.get_error())+'\n')
+                if exclude_constitutive and nucleotide.exclude_constitutive:
+                    if subtract_background:
+                        f.write(self.rRNA_mutation_data[rRNA_name].rRNA_name+'\t'+str(nucleotide.position)+'\t'
+                                +'0'+'\t'+'0'+'\t'
+                                +'0'+'\n')
+                    elif subtract_control:
+                        f.write(self.rRNA_mutation_data[rRNA_name].rRNA_name+'\t'+str(nucleotide.position)+'\t'
+                                +'0'+'\t'+'0'+'\t'
+                                +'0'+'\n')
+                    elif not subtract_background and not subtract_control:
+                        f.write(self.rRNA_mutation_data[rRNA_name].rRNA_name+'\t'+str(nucleotide.position)+'\t'
+                                +'0'+'\t'+'0'+'\n')
+                else:
+                    if subtract_background:
+                        f.write(self.rRNA_mutation_data[rRNA_name].rRNA_name+'\t'+str(nucleotide.position)+'\t'
+                                +str(nucleotide.mutation_rate)+'\t'+str(nucleotide.get_back_sub_mutation_rate())+'\t'
+                                +str(nucleotide.get_back_sub_error())+'\n')
+                    elif subtract_control:
+                        f.write(self.rRNA_mutation_data[rRNA_name].rRNA_name+'\t'+str(nucleotide.position)+'\t'
+                                +str(nucleotide.mutation_rate)+'\t'+str(nucleotide.get_control_sub_mutation_rate())+'\t'
+                                +str(nucleotide.get_control_sub_error())+'\n')
+                    elif not subtract_background and not subtract_control:
+                        f.write(self.rRNA_mutation_data[rRNA_name].rRNA_name+'\t'+str(nucleotide.position)+'\t'
+                                +str(nucleotide.mutation_rate)+'\t'+str(nucleotide.get_error())+'\n')
 
         f.close()
 
-    def pickle_mutation_rates(self, output_name, subtract_background = False, subtract_control = False):
+    def pickle_mutation_rates(self, output_name, subtract_background=False, subtract_control=False, exclude_constitutive=False):
         """
         stores mutation rates as a simple pickle, of {rRNA_name:{position:mutation rate}}
         :param subtract_background:
@@ -132,16 +146,19 @@ class ModLib:
             output_dict[rRNA] = {}
             for position in self.rRNA_mutation_data[rRNA].nucleotides:
                 nucleotide = self.rRNA_mutation_data[rRNA].nucleotides[position]
-                if subtract_background and subtract_control:
-                    raise SyntaxError('Cannot subtract background and control simultaneously')
-                if subtract_background:
-                    output_dict[rRNA][position] = max((nucleotide.mutation_rate - self.get_normalizing_lib().
-                                                get_mutation_rate_at_position(rRNA, nucleotide.position)), 0.)
-                elif subtract_control:
-                    output_dict[rRNA][position] = max((nucleotide.mutation_rate - self.get_normalizing_lib_with_mod().
-                                                get_mutation_rate_at_position(rRNA, nucleotide.position)), 0.)
+                if exclude_constitutive and nucleotide.exclude_constitutive:
+                    output_dict[rRNA][position] = 0
                 else:
-                    output_dict[rRNA][position] = nucleotide.mutation_rate
+                    if subtract_background and subtract_control:
+                        raise SyntaxError('Cannot subtract background and control simultaneously')
+                    if subtract_background:
+                        output_dict[rRNA][position] = max((nucleotide.mutation_rate - self.get_normalizing_lib().
+                                                    get_mutation_rate_at_position(rRNA, nucleotide.position)), 0.)
+                    elif subtract_control:
+                        output_dict[rRNA][position] = max((nucleotide.mutation_rate - self.get_normalizing_lib_with_mod().
+                                                    get_mutation_rate_at_position(rRNA, nucleotide.position)), 0.)
+                    else:
+                        output_dict[rRNA][position] = nucleotide.mutation_rate
         mod_utils.makePickle(output_dict, output_name)
 
     def write_mutation_rates_to_wig(self, output_prefix, subtract_background = False, subtract_control = False):
@@ -205,8 +222,6 @@ class rRNA_mutations:
         self.experiment_settings = experiment_settings
         self.nucleotides = {}
         self.parse_mutations_columns(mutation_filename)
-        self.remove_constitutive()
-
 
     def parse_mutations_columns(self, filename):
         f= open(filename, 'rU')
@@ -218,22 +233,11 @@ class rRNA_mutations:
         headers = lines[2].strip().split(',')
         for line in lines[3:]:
             if line.strip().strip(',') != '':
-                nucleotide_data = Nucleotide(self, headers, line)
+                nucleotide_data = Nucleotide(self, headers, line, self.lib_settings)
                 self.nucleotides[nucleotide_data.position] = nucleotide_data
         f.close()
 
-    def remove_constitutive(self):
-        try:
-            exclusions = self.lib_settings.experiment_settings.exclude_constitutive[self.rRNA_name]
-            nucleotides = self.nucleotides
-            for position in nucleotides:
-                if position in exclusions:
-                    nucleotides[position].mutation_rate = 0
-        except KeyError:
-            pass
-
-
-    def count_mutation_rates_by_nucleotide(self, subtract_background = False, subtract_control = False):
+    def count_mutation_rates_by_nucleotide(self, subtract_background=False, subtract_control=False, exclude_constitutive=False):
         """
         counts, over this RNA, the total number of mutations at each of A, T, C, G
         This is to get an idea of which nucleotides are being affected by a modification.
@@ -244,20 +248,23 @@ class rRNA_mutations:
         """
         counts = defaultdict(int)
         for nucleotide in self.nucleotides.values():
-            if subtract_background and subtract_control:
-                print "Cannot subtract background and control simultaneously"
-                quit()
-            if subtract_background:
-                counts[nucleotide.identity] += max((nucleotide.mutation_rate - self.lib.get_normalizing_lib().
-                                                get_mutation_rate_at_position(self.rRNA_name, nucleotide.position)), 0.)
-            elif subtract_control:
-                counts[nucleotide.identity] += max((nucleotide.mutation_rate - self.lib.get_normalizing_lib_with_mod().
-                                                get_mutation_rate_at_position(self.rRNA_name, nucleotide.position)), 0.)
+            if exclude_constitutive and nucleotide.exclude_constitutive:
+                counts[nucleotide.identity] += 0
             else:
-                counts[nucleotide.identity] += nucleotide.mutation_rate
+                if subtract_background and subtract_control:
+                    raise SyntaxError('Cannot subtract background and control simultaneously')
+
+                if subtract_background:
+                    counts[nucleotide.identity] += max((nucleotide.mutation_rate - self.lib.get_normalizing_lib().
+                                                    get_mutation_rate_at_position(self.rRNA_name, nucleotide.position)), 0.)
+                elif subtract_control:
+                    counts[nucleotide.identity] += max((nucleotide.mutation_rate - self.lib.get_normalizing_lib_with_mod().
+                                                    get_mutation_rate_at_position(self.rRNA_name, nucleotide.position)), 0.)
+                else:
+                    counts[nucleotide.identity] += nucleotide.mutation_rate
         return counts
 
-    def list_mutation_rates(self, subtract_background=False, subtract_control = False, nucleotides_to_count='ATCG'):
+    def list_mutation_rates(self, subtract_background=False, subtract_control = False, nucleotides_to_count='ATCG', exclude_constitutive=False):
         """
         #note that these values may be less than zero when background is subtracted
         :param subtract_background:
@@ -266,26 +273,31 @@ class rRNA_mutations:
         rates = []
         for nucleotide in self.nucleotides.values():
             if nucleotide.identity in nucleotides_to_count:
-                if subtract_background and subtract_control:
-                    raise SyntaxError('Cannot subtract background and control simultaneously')
-
-                if subtract_background:
-
-                    rates.append((nucleotide.mutation_rate - self.lib.get_normalizing_lib().
-                                                    get_mutation_rate_at_position(self.rRNA_name, nucleotide.position)))
-                elif subtract_control:
-
-                    rates.append((nucleotide.mutation_rate - self.lib.get_normalizing_lib_with_mod().
-                                                    get_mutation_rate_at_position(self.rRNA_name, nucleotide.position)))
+                if exclude_constitutive and nucleotide.exclude_constitutive:
+                    rates.append(0)
                 else:
-                    rates.append(nucleotide.mutation_rate)
+                    if subtract_background and subtract_control:
+                        raise SyntaxError('Cannot subtract background and control simultaneously')
+
+                    if subtract_background:
+
+                        rates.append((nucleotide.mutation_rate - self.lib.get_normalizing_lib().
+                                                        get_mutation_rate_at_position(self.rRNA_name, nucleotide.position)))
+                    elif subtract_control:
+
+                        rates.append((nucleotide.mutation_rate - self.lib.get_normalizing_lib_with_mod().
+                                                        get_mutation_rate_at_position(self.rRNA_name, nucleotide.position)))
+                    else:
+                        rates.append(nucleotide.mutation_rate)
         return rates
 
 class Nucleotide:
-    def __init__(self, rRNA, headers, mutation_data_line):
+    def __init__(self, rRNA, headers, mutation_data_line, lib_settings):
         self.rRNA = rRNA
         self.mutations_by_type = {} #will map each type of mutation to the number of such mutations detected
+        self.lib_settings = lib_settings
         self.parse_mutation_data_line(headers, mutation_data_line)
+        self.set_exclusion_flag()
 
     def parse_mutation_data_line(self, headers, mutation_data_line):
         ll = mutation_data_line.strip().split(',')
@@ -300,6 +312,17 @@ class Nucleotide:
             self.mutation_rate = 0
         for i in range(2, 18):
             self.mutations_by_type[headers[i]] = float(ll[i])
+
+    def set_exclusion_flag(self):
+            try:
+                exclusions = self.lib_settings.experiment_settings.exclude_constitutive[self.rRNA.rRNA_name]
+                if self.position in exclusions:
+                    self.exclude_constitutive = True
+                else:
+                    self.exclude_constitutive = False
+            except KeyError:
+                self.exclude_constitutive = False
+
 
     def get_back_sub_mutation_rate(self):
         return (self.mutation_rate - self.rRNA.lib.get_normalizing_lib().\
