@@ -87,7 +87,7 @@ def split_by_n(line, n=6):
     return [line[i:i+n].strip() for i in range(0, len(line), 6)]
 
 #rRNA_assignments = {3:{'d':"S.c.18S_rRNA"}, 1:{'A':"S.c.18S_rRNA"}, 2:{'A':"S.c.25S__rRNA", 'B':"S.c.5S___rRNA", 'C':"S.c.5.8S_rRNA"} , 4:{'K':"S.c.25S__rRNA", 'L':"S.c.5S___rRNA", 'M':"S.c.5.8S_rRNA"}}
-rRNA_assignments = {3:{'d':"S.c.18S_rRNA"}, 1:{'A':"S.c.18S_rRNA"}, 2:{'A':"S.c.25S__rRNA", 'B':"S.c.5S___rRNA", 'C':"S.c.5.8S_rRNA"} , 4:{'I':"S.c.25S__rRNA", 'L':"S.c.5S___rRNA", 'M':"S.c.5.8S_rRNA"}}
+rRNA_assignments = {3:{'d':"S.c.18S_rRNA"}, 1:{'A':"S.c.18S_rRNA"}, 2:{'A':"S.c.25S__rRNA", 'B':"S.c.5S___rRNA", 'C':"S.c.5.8S_rRNA"} , 4:{'K':"S.c.25S__rRNA", 'L':"S.c.5S___rRNA", 'M':"S.c.5.8S_rRNA"}}
 
 def main():
     outprefix, bundle1, bundle2, bundle3, bundle4, bundle5, datafile_name  = sys.argv[1:8]

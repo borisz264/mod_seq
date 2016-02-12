@@ -101,6 +101,9 @@ def subtractWithError(num, stdDevNum, denom, stdDevDenom):
 
     return ratio, ratioError
 
+def next_square_number(number):
+    return int(math.ceil(math.sqrt(number)))**2
+
 def file_exists(fname):
     """
     makes sure a given file exists
