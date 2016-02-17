@@ -102,7 +102,7 @@ class TPS_qc:
 
         fig = plt.figure(figsize=(8,8))
         plot = fig.add_subplot(111)
-        plot.bar(positions , averages,color=bzUtils.rainbow[0], lw=0)
+        plot.bar(positions , averages,color=mod_utils.rainbow[0], lw=0)
         plot.set_xticks(positions[::10]+0.5)
         plot.set_xticklabels(positions[::10])
         plot.set_xlabel("position of read 5' end from RNA end")
@@ -123,12 +123,12 @@ class TPS_qc:
         hbins = np.arange(0, 400, 10)
         hbins = np.append(hbins, 10000000)
         for lib in self.tpse.libs:
-            plot = fig.add_subplot(math.sqrt(bzUtils.next_square_number(num_libs)), math.sqrt(bzUtils.next_square_number(num_libs)), plot_index)
+            plot = fig.add_subplot(math.sqrt(mod_utils.next_square_number(num_libs)), math.sqrt(mod_utils.next_square_number(num_libs)), plot_index)
             sample_name = lib.lib_settings.sample_name
             dist = self.get_library_count_distribution(lib)
-            plot.hist(dist, bins = hbins, color=bzUtils.skyBlue, histtype='stepfilled', edgecolor = None, lw = 0)
+            plot.hist(dist, bins = hbins, color=mod_utils.skyBlue, histtype='stepfilled', edgecolor = None, lw = 0)
             plot.set_xlabel("# reads", fontsize = 10)
-            plot.set_ylabel("# genes (%d have >= %d reads)" % (bzUtils.number_passing_cutoff(dist, cutoff), cutoff), fontsize = 10)
+            plot.set_ylabel("# genes (%d have >= %d reads)" % (mod_utils.number_passing_cutoff(dist, cutoff), cutoff), fontsize = 10)
             plot.set_xlim(0, 400)
             #plot.set_ylim(0,1)
             plot.axvline(cutoff, ls = 'dashed')
@@ -152,7 +152,7 @@ class TPS_qc:
             cutoff = 100
             hbins = np.arange(0, 51, 1)
             for lib in self.tpse.libs:
-                plot = fig.add_subplot(math.sqrt(bzUtils.next_square_number(num_libs)), math.sqrt(bzUtils.next_square_number(num_libs)), plot_index)
+                plot = fig.add_subplot(math.sqrt(bzUtils.next_square_number(num_libs)), math.sqrt(mod_utils.next_square_number(num_libs)), plot_index)
                 sample_name = lib.lib_settings.sample_name
                 dist = self.get_insert_sizes(lib)
                 plot.hist(dist, bins = hbins, color=bzUtils.skyBlue, histtype='stepfilled', edgecolor = None, lw = 0)

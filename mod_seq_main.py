@@ -42,9 +42,11 @@ class mod_seq_run:
                 return
 
         if self.settings.get_property('trim_adaptor'):
+            self.settings.write_to_log( 'trimming adaptors')
             mod_utils.make_dir(self.rdir_path('adaptor_removed'))
             mod_utils.parmap(lambda lib_setting: self.remove_adaptor_one_lib(lib_setting),
                            self.settings.iter_lib_settings(), nprocs=self.threads)
+            self.settings.write_to_log( 'trimming adaptors done')
 
     def remove_adaptor_one_lib(self, lib_settings):
         lib_settings.write_to_log('adaptor trimming')

@@ -99,8 +99,8 @@ class mod_settings:
         for file_handle in self.fastq_gz_file_handles:
             assert mod_utils.file_exists(file_handle)
         self.settings = settings
-        self.wdir = settings['working_dir']
         self.rdir = settings['results_dir']
+        mod_utils.make_dir(self.rdir)
         shutil.copy(settings_file, self.rdir)
 
     def check_barcode_lens(self):
