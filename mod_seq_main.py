@@ -28,8 +28,8 @@ class mod_seq_run:
         self.create_shapemapper_settings()
         self.run_shapemapper()
         self.initialize_libs()
-        self.make_plots()
-        self.make_plots(exclude_constitutive=True)
+        #self.make_plots()
+        #self.make_plots(exclude_constitutive=True)
         self.make_tables()
         self.make_tables(exclude_constitutive=True)
 
@@ -200,7 +200,6 @@ class mod_seq_run:
 
 
     def write_mutation_rates_tsv(self, suffix, subtract_background=False, subtract_control=False, exclude_constitutive=False):
-
         if subtract_background or subtract_control:
             libs_to_write = self.get_normalizable_libs()
         else:

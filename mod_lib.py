@@ -103,7 +103,7 @@ class ModLib:
         elif subtract_control:
                 f.write('CHROMOSOME\tPOSITION\tEXP_MUTATION_RATE\tnorm_EXP_95%_min\tnorm_EXP_95%_max'
                         '\twilson_EXP_95%_min\twilson_EXP_95%_max\tCTRL_MUT_RATE\tnorm_CTRL_95%_min\tnorm_CTRL_95%_max'
-                        '\twilson_CTRL_95%_min\twilson_CTRL_95%_max\tEXP-CTRL\tCTRL_POISSON_SUB_ERROR\tBINOMIAL_P\n')
+                        '\twilson_CTRL_95%_min\twilson_CTRL_95%_max\tEXP-CTRL\tCTRL_POISSON_SUB_ERROR\n')
         elif not subtract_background and not subtract_control:
                 f.write('CHROMOSOME\tPOSITION\tMUTATION_RATE\tERROR\n')
 
@@ -129,15 +129,13 @@ class ModLib:
                                 +str(nucleotide.get_back_sub_error())+'\n')
                     elif subtract_control:
                         ctrl_nuc = nucleotide.get_control_nucleotide()
-                        exp_norm_bottom, exp_norm_top = nucleotide.get_normal_approximate_score_interval()
-                        ctrl_norm_bottom, ctrl_norm_top = ctrl_nuc.get_normal_approximate_score_interval()
-                        exp_wil_bottom, exp_wil_top = nucleotide.get_normal_approximate_score_interval()
-                        ctrl_wil_bottom, ctrl_wil_top = ctrl_nuc.get_normal_approximate_score_interval()
-                        f.write('%s\t%d\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\n' %
-                                (rRNA_name, nucleotide.position, nucleotide.mutation_rate, exp_norm_bottom, exp_norm_top,
-                                exp_wil_bottom, exp_wil_top, ctrl_nuc.mutation_rate, ctrl_norm_bottom, ctrl_norm_top,
+                        exp_wil_bottom, exp_wil_top = nucleotide.get_wilson_approximate_score_interval()
+                        ctrl_wil_bottom, ctrl_wil_top = ctrl_nuc.get_wilson_approximate_score_interval()
+                        f.write('%s\t%d\t%s\t%f\t%f\t\t%f\t%f\t%f\t%f\t%f\t%f\t%f\n' %
+                                (rRNA_name, nucleotide.position, nucleotide.identity, nucleotide.mutation_rate,
+                                exp_wil_bottom, exp_wil_top, ctrl_nuc.mutation_rate,
                                 ctrl_wil_bottom, ctrl_wil_top, nucleotide.get_control_sub_mutation_rate(),
-                                nucleotide.get_control_sub_error(), nucleotide.get_binomial_difference_p()))
+                                nucleotide.get_control_sub_error()))
                     elif not subtract_background and not subtract_control:
                         f.write(self.rRNA_mutation_data[rRNA_name].rRNA_name+'\t'+str(nucleotide.position)+'\t'
                                 +str(nucleotide.mutation_rate)+'\t'+str(nucleotide.get_error())+'\n')
@@ -344,54 +342,22 @@ class Nucleotide:
     def get_control_nucleotide(self):
         return self.rRNA.lib.get_normalizing_lib_with_mod().rRNA_mutation_data[self.rRNA.rRNA_name].nucleotides[self.position]
 
-    def get_binomial_difference_p(self):
-        """
-        this method will compare this nucleotide to one in the control (also treated with modifying agent) dataset.
-        I think that each read at a position can be treated as a trial in a binomial experiment, and each mutation
-        counted as a success, so a binomial test is a fair comparison. However, this requires the P from the control to
-        be taken as an absolute, which is not necessarily proper.
-        NOTE: this is a 2-sided test. 1 sided may often be more appropriate, given that often we are looking for protection
-        in other words, a reduction in modification, in the experimental sample. in that the p value here is 2x too high
-        :return:
-        """
-        control_mutation_rate = self.rRNA.lib.get_normalizing_lib_with_mod().\
-            get_mutation_rate_at_position(self.rRNA.rRNA_name, self.position)
-        binomial_p = scipy.stats.binom_test(self.total_mutation_counts, n=self.sequencing_depth, p=control_mutation_rate)
-        return binomial_p
-
     def get_wilson_approximate_score_interval(self, confidence_interval = 0.95):
         """
         Computes the wilson score interval, which APPROXIMATES the confidence interval for the mean of the binomial
         distribution, given a sampling of the distribution.
         :return:
         """
-        alpha = (1-confidence_interval)
-        z = 1-(alpha/2.0)
+        alpha = (1.0-confidence_interval)
+        z = 1.0-(alpha/2.0)
         n = self.sequencing_depth
         p = self.mutation_rate
         #breaking up equation
-        a = 1.0/(1.0+(z**2.0)/n)
-        b = p+((z**2.0)/(2.0*n))
-        c = z*math.sqrt((p*(1.0-p))/n + (z**2)/(4*n**2))
+        a = 1.0/(1.0+(z**2)/n)
+        b = p+((z**2)/(2.0*n))
+        c = z*math.sqrt((p*(1.0-p))/n + (z**2)/(4*(n**2)))
         interval_bottom = a*(b-c)
         interval_top = a*(b+c)
-        return interval_bottom, interval_top
-
-    def get_normal_approximate_score_interval(self, confidence_interval = 0.95):
-        """
-        Computes the normal-approximated score interval, which APPROXIMATES the confidence interval for the mean of the binomial
-        distribution, given a sampling of the distribution.
-        :return:
-        """
-        alpha = (1-confidence_interval)
-        z = 1-(alpha/2.0)
-        n = self.sequencing_depth
-        p = self.mutation_rate
-        #breaking up equation
-        interval_half_size = z-(alpha/2.0)*math.sqrt(p*(1-p)/n)
-
-        interval_bottom = p-interval_half_size
-        interval_top = p+interval_half_size
         return interval_bottom, interval_top
 
 

@@ -104,6 +104,20 @@ def subtractWithError(num, stdDevNum, denom, stdDevDenom):
 def next_square_number(number):
     return int(math.ceil(math.sqrt(number)))**2
 
+def ranges_overlap(min1, max1, min2, max2):
+    """
+
+    :param min1:
+    :param max1:
+    :param min2:
+    :param max2:
+    :return: return True if the 2 ranges overlap (edge inclusive), else False
+    """
+
+    if min1 <= max2 and min2 <= max1:
+        return True
+    return False
+
 def file_exists(fname):
     """
     makes sure a given file exists
