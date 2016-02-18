@@ -163,7 +163,6 @@ class mod_seq_run:
 
     def initialize_libs(self):
         self.settings.write_to_log('initializing libraries, counting reads')
-        mod_utils.make_dir(self.rdir_path('sequence_counts'))
         self.libs = []
         map(lambda lib_settings: self.initialize_lib(lib_settings), self.settings.iter_lib_settings())
         self.settings.write_to_log('initializing libraries, counting reads, done')
@@ -364,21 +363,6 @@ class mod_seq_run:
 def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument("settings_file")
-    parser.add_argument("--make-tables",
-                        help="Makes tables.",
-                        action='store_true')
-    parser.add_argument("--perform-qc",
-                        help="performs quality control analysis.",
-                        action='store_true')
-    parser.add_argument("--make-plots",
-                        help="Makes plots.",
-                        action='store_true')
-    parser.add_argument("--comparisons",
-                        help="Does comparisons to other experiments",
-                        action='store_true')
-    parser.add_argument("--all-tasks",
-                        help="Makes plots, tables, folding and comparisons",
-                        action='store_true')
     parser.add_argument("--threads",
                         help="Max number of processes to use",
                         type = int, default = 8)
@@ -392,24 +376,6 @@ def main():
     args = parse_args()
     settings = mod_settings.mod_settings(args.settings_file)
     all_datasets = mod_seq_run(settings, args.threads)
-    if args.perform_qc or args.all_tasks:
-        print 'QC'
-        settings.write_to_log('performing QC')
-        all_datasets.perform_qc()
-        settings.write_to_log('done performing QC')
-    if args.make_tables or args.all_tasks:
-        print 'tables'
-        settings.write_to_log('making tables')
-        all_datasets.make_tables()
-        settings.write_to_log('done making tables')
-    if args.make_plots or args.all_tasks:
-        print 'plots'
-        settings.write_to_log('making plots')
-        all_datasets.make_plots(exclude_constitutive=True)
-        settings.write_to_log('done making plots')
 
-    if args.comparisons or args.all_tasks:
-        settings.write_to_log('doing comparisons')
-        all_datasets.compare_all_other_experiments()
 
 main()
