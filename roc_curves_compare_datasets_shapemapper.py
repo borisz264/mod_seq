@@ -72,7 +72,7 @@ def call_positives(density_array, chromosome, genome_dict, nucs_to_count, cutoff
 
     return positives
 
-def plot_ROC_curves(roc_curves, out_prefix):
+def plot_ROC_curves(roc_curves, title, out_prefix):
     fig = plt.figure(figsize=(8,8))
     plot = fig.add_subplot(111)#first a pie chart of mutated nts
     colormap = plt.get_cmap('spectral')
@@ -85,6 +85,7 @@ def plot_ROC_curves(roc_curves, out_prefix):
     plot.plot(numpy.arange(0,100,0.1), numpy.arange(0,100,0.1), lw =1, ls = 'dashed', color = mod_utils.black, label = 'y=x')
     plot.set_xlabel('False positive rate (%) (100-specificity)')
     plot.set_ylabel('True positive rate (%) (sensitivity)')
+    plot.set_title(title)
     lg=plt.legend(loc=4,prop={'size':10}, labelspacing=0.2)
     lg.draw_frame(False)
     plt.savefig(out_prefix + '.pdf', transparent='True', format='pdf')
@@ -110,11 +111,11 @@ def pie_read_5p_ends(read_5p_ends, genome_dict, out_prefix):
 def main():
     tp_tn_annotations, genome_fasta, outprefix = sys.argv[1:4]
     density_files = sys.argv[4:]
-    sample_names = [os.path.basename(filename) for filename in density_files]
+    sample_names = [os.path.basename(filename).split('_back_')[0] for filename in density_files]
     mutation_densities = [mod_utils.unPickle(pickled_density) for pickled_density in density_files]
 
     genome_dict = mod_utils.convertFastaToDict(genome_fasta)
-    normed_density_arrays = [winsorize_norm_chromosome_data(mutation_density, 'S.c.18S_rRNA', genome_dict, 'AC') for mutation_density in mutation_densities]
+    normed_density_arrays = [winsorize_norm_chromosome_data(mutation_density, 'S.c.25S__rRNA', genome_dict, 'AC') for mutation_density in mutation_densities]
     real_tp, real_tn = get_tp_tn(tp_tn_annotations)
     roc_curves = {}
     for sample_name in sample_names:
@@ -123,13 +124,13 @@ def main():
     stepsize = 0.0001
     for cutoff in numpy.arange(0,1.+5*stepsize, stepsize):
         for i in range(len(sample_names)):
-            called_p = call_positives(normed_density_arrays[i], 'S.c.18S_rRNA', genome_dict, 'AC', cutoff)
+            called_p = call_positives(normed_density_arrays[i], 'S.c.25S__rRNA', genome_dict, 'AC', cutoff)
             num_tp_called = len(called_p.intersection(real_tp))#how many true positives called at this cutoff
             num_fp_called = len(called_p.intersection(real_tn))#how many fp positives called at this cutoff
             roc_curves[sample_names[i]][1].append(100.*num_tp_called/float(len(real_tp)))#TP rate on y axis
             roc_curves[sample_names[i]][0].append(100.*num_fp_called/float(len(real_tn)))#FP rate on x axis
 
-    plot_ROC_curves(roc_curves, outprefix)
+    plot_ROC_curves(roc_curves, 'S.c.25S__rRNA', outprefix)
     #pie_read_5p_ends(read_5p_ends, genome_dict, outprefix)
 if __name__ == '__main__':
     main()
