@@ -355,9 +355,11 @@ class mod_seq_run:
         return mod_utils.aopen(out_path, 'w')
 
     def perform_qc(self):
-        qc_engine = mod_qc.TPS_qc(self, self.settings, self.threads)
+        #not currently implemented
+        #qc_engine = mod_qc.TPS_qc(self, self.settings, self.threads)
         #qc_engine.identify_contaminating_sequences()
-        qc_engine.plot_count_distributions()
+        #qc_engine.plot_count_distributions()
+        pass
 
 def parse_args():
     parser = argparse.ArgumentParser()
@@ -403,7 +405,7 @@ def main():
     if args.make_plots or args.all_tasks:
         print 'plots'
         settings.write_to_log('making plots')
-        all_datasets.make_plots()
+        all_datasets.make_plots(exclude_constitutive=True)
         settings.write_to_log('done making plots')
 
     if args.comparisons or args.all_tasks:

@@ -249,7 +249,7 @@ class rRNA_mutations:
         counts = defaultdict(int)
         for nucleotide in self.nucleotides.values():
             if exclude_constitutive and nucleotide.exclude_constitutive:
-                counts[nucleotide.identity] += 0
+                pass
             else:
                 if subtract_background and subtract_control:
                     raise SyntaxError('Cannot subtract background and control simultaneously')
@@ -274,7 +274,7 @@ class rRNA_mutations:
         for nucleotide in self.nucleotides.values():
             if nucleotide.identity in nucleotides_to_count:
                 if exclude_constitutive and nucleotide.exclude_constitutive:
-                    rates.append(0)
+                    pass
                 else:
                     if subtract_background and subtract_control:
                         raise SyntaxError('Cannot subtract background and control simultaneously')
