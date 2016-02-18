@@ -109,8 +109,6 @@ class ModLib:
             for position in self.rRNA_mutation_data[rRNA_name].nucleotides:
                 nucleotide = self.rRNA_mutation_data[rRNA_name].nucleotides[position]
                 if exclude_constitutive and nucleotide.exclude_constitutive:
-                    pass
-                    """
                     if subtract_background:
                         f.write(self.rRNA_mutation_data[rRNA_name].rRNA_name+'\t'+str(nucleotide.position)+'\t'
                                 +'0'+'\t'+'0'+'\t'
@@ -122,7 +120,6 @@ class ModLib:
                     elif not subtract_background and not subtract_control:
                         f.write(self.rRNA_mutation_data[rRNA_name].rRNA_name+'\t'+str(nucleotide.position)+'\t'
                                 +'0'+'\t'+'0'+'\n')
-                    """
                 else:
                     if subtract_background:
                         f.write(self.rRNA_mutation_data[rRNA_name].rRNA_name+'\t'+str(nucleotide.position)+'\t'
@@ -150,7 +147,7 @@ class ModLib:
             for position in self.rRNA_mutation_data[rRNA].nucleotides:
                 nucleotide = self.rRNA_mutation_data[rRNA].nucleotides[position]
                 if exclude_constitutive and nucleotide.exclude_constitutive:
-                    pass
+                    output_dict[rRNA][position] = 0
                 else:
                     if subtract_background and subtract_control:
                         raise SyntaxError('Cannot subtract background and control simultaneously')
