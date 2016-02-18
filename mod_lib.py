@@ -101,9 +101,8 @@ class ModLib:
         if subtract_background:
                 f.write('CHROMOSOME\tPOSITION\tMUTATION_RATE\tBKGD_SUB_MUT_RATE\tBKGD_SUB_ERROR\n')
         elif subtract_control:
-                f.write('CHROMOSOME\tPOSITION\tEXP_MUTATION_RATE\tnorm_EXP_95%_min\tnorm_EXP_95%_max'
-                        '\twilson_EXP_95%_min\twilson_EXP_95%_max\tCTRL_MUT_RATE\tnorm_CTRL_95%_min\tnorm_CTRL_95%_max'
-                        '\twilson_CTRL_95%_min\twilson_CTRL_95%_max\tEXP-CTRL\tCTRL_POISSON_SUB_ERROR\n')
+                f.write('CHROMOSOME\tPOSITION\tNUC\tEXP_MUTATION_RATE\tEXP_99%_min\tEXP_99%_max\tCTRL_MUT_RATE'
+                        '\tCTRL_99%_min\tCTRL_99%_max\tEXP-CTRL\tCTRL_POISSON_SUB_ERROR\tFOLD_CHANGE\tPROTECTION_CALL\n')
         elif not subtract_background and not subtract_control:
                 f.write('CHROMOSOME\tPOSITION\tMUTATION_RATE\tERROR\n')
 
@@ -118,7 +117,7 @@ class ModLib:
                                 +'0'+'\n')
                     elif subtract_control:
                         f.write(self.rRNA_mutation_data[rRNA_name].rRNA_name+'\t'+str(nucleotide.position)+
-                                '\t\t\t\t\t\t\t\t\t\t\t\t\t\n')
+                               str(nucleotide.identity)+'\t\t\t\t\t\t\t\t\t\t\t\t\n')
                     elif not subtract_background and not subtract_control:
                         f.write(self.rRNA_mutation_data[rRNA_name].rRNA_name+'\t'+str(nucleotide.position)+'\t'
                                 +'0'+'\t'+'0'+'\n')
@@ -131,11 +130,12 @@ class ModLib:
                         ctrl_nuc = nucleotide.get_control_nucleotide()
                         exp_wil_bottom, exp_wil_top = nucleotide.get_wilson_approximate_score_interval()
                         ctrl_wil_bottom, ctrl_wil_top = ctrl_nuc.get_wilson_approximate_score_interval()
-                        f.write('%s\t%d\t%s\t%f\t%f\t\t%f\t%f\t%f\t%f\t%f\t%f\t%f\n' %
+                        f.write('%s\t%d\t%s\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%s\n' %
                                 (rRNA_name, nucleotide.position, nucleotide.identity, nucleotide.mutation_rate,
                                 exp_wil_bottom, exp_wil_top, ctrl_nuc.mutation_rate,
                                 ctrl_wil_bottom, ctrl_wil_top, nucleotide.get_control_sub_mutation_rate(),
-                                nucleotide.get_control_sub_error()))
+                                nucleotide.get_control_sub_error(), nucleotide.get_control_fold_change_in_mutation_rate(),
+                                nucleotide.determine_protection_status()))
                     elif not subtract_background and not subtract_control:
                         f.write(self.rRNA_mutation_data[rRNA_name].rRNA_name+'\t'+str(nucleotide.position)+'\t'
                                 +str(nucleotide.mutation_rate)+'\t'+str(nucleotide.get_error())+'\n')
@@ -335,6 +335,12 @@ class Nucleotide:
         return (self.mutation_rate - self.rRNA.lib.get_normalizing_lib_with_mod().\
             get_mutation_rate_at_position(self.rRNA.rRNA_name, self.position))
 
+    def get_control_fold_change_in_mutation_rate(self):
+        try:
+            return (self.mutation_rate/self.rRNA.lib.get_normalizing_lib_with_mod().\
+                get_mutation_rate_at_position(self.rRNA.rRNA_name, self.position))
+        except ZeroDivisionError:
+            return float('inf')
     def get_control_mutation_rate(self):
             return self.rRNA.lib.get_normalizing_lib_with_mod().\
                 get_mutation_rate_at_position(self.rRNA.rRNA_name, self.position)
@@ -342,7 +348,7 @@ class Nucleotide:
     def get_control_nucleotide(self):
         return self.rRNA.lib.get_normalizing_lib_with_mod().rRNA_mutation_data[self.rRNA.rRNA_name].nucleotides[self.position]
 
-    def get_wilson_approximate_score_interval(self, confidence_interval = 0.95):
+    def get_wilson_approximate_score_interval(self, confidence_interval = 0.99):
         """
         Computes the wilson score interval, which APPROXIMATES the confidence interval for the mean of the binomial
         distribution, given a sampling of the distribution.
@@ -360,6 +366,21 @@ class Nucleotide:
         interval_top = a*(b+c)
         return interval_bottom, interval_top
 
+    def determine_protection_status(self, confidence_interval = 0.99, fold_change_cutoff = 5):
+        self_min, self_max = self.get_wilson_approximate_score_interval(confidence_interval=confidence_interval)
+        control_min, control_max = self.get_control_nucleotide().\
+            get_wilson_approximate_score_interval(confidence_interval=confidence_interval)
+        if mod_utils.ranges_overlap(self_min, self_max, control_min, control_max) \
+                or (self.get_control_fold_change_in_mutation_rate()<fold_change_cutoff
+                    and self.get_control_fold_change_in_mutation_rate()>1.0/fold_change_cutoff) or self.identity not in \
+                self.lib_settings.experiment_settings.get_property('affected_nucleotides'):
+            return "no_change"
+        elif self.get_control_sub_mutation_rate()<0:
+            return "protected"
+        elif self.get_control_sub_mutation_rate()>0:
+            return "deprotected"
+        else:
+            return "something_is_wrong_change_zero"
 
     def get_error(self):
         try:
