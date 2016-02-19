@@ -83,6 +83,9 @@ class ModLib:
         else:
             return None
 
+    def get_nucleotide(self, rRNA_name, position):
+        return self.rRNA_mutation_data[rRNA_name].nucleotides[position]
+
     def get_mutation_count_at_position(self, rRNA_name, position):
         return self.rRNA_mutation_data[rRNA_name].nucleotides[position].total_mutation_counts
 

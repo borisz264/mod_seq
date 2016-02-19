@@ -186,8 +186,12 @@ class mod_seq_run:
         return normalizeable_libs
 
     def make_tables(self, exclude_constitutive=False):
-        mod_utils.make_dir(self.rdir_path('tables'))
-        mod_utils.make_dir(self.rdir_path('tables/exclude_constitutive'))
+        subfolders = ['raw', 'background_subtracted', 'control_subtracted']
+        for subfolder in subfolders:
+            mod_utils.make_dir(self.rdir_path('tables', subfolder))
+            mod_utils.make_dir(self.rdir_path('pickles', subfolder))
+            mod_utils.make_dir(self.rdir_path('tables', subfolder, 'exclude_constitutive'))
+            mod_utils.make_dir(self.rdir_path('pickles', subfolder, 'exclude_constitutive'))
         self.pickle_mutation_rates('mutation_rates.pkl', exclude_constitutive=exclude_constitutive)
         self.pickle_mutation_rates('back_subtracted_mutation_rates.pkl', subtract_background=True, exclude_constitutive=exclude_constitutive)
         self.pickle_mutation_rates('control_subtracted_mutation_rates.pkl', subtract_control=True, exclude_constitutive=exclude_constitutive)
@@ -197,6 +201,8 @@ class mod_seq_run:
         self.write_mutation_rates_tsv('mutation_rates.tsv', exclude_constitutive=exclude_constitutive)
         self.write_mutation_rates_tsv('back_subtracted_mutation_rates.tsv', subtract_background=True, exclude_constitutive=exclude_constitutive)
         self.write_mutation_rates_tsv('control_subtracted_mutation_rates.tsv', subtract_control=True, exclude_constitutive=exclude_constitutive)
+        self.write_combined_mutation_rates_tsv()
+        self.write_combined_mutation_rates_tsv(exclude_constitutive=True)
 
 
     def write_mutation_rates_tsv(self, suffix, subtract_background=False, subtract_control=False, exclude_constitutive=False):
@@ -204,16 +210,63 @@ class mod_seq_run:
             libs_to_write = self.get_normalizable_libs()
         else:
             libs_to_write = self.libs
+        if subtract_background == False and subtract_control == False:
+            prefix = 'raw'
+        elif subtract_background == True and subtract_control == False:
+            prefix = 'background_subtracted'
+        elif subtract_background == False and subtract_control == True:
+            prefix = 'control_subtracted'
 
         if exclude_constitutive:
             for lib in libs_to_write:
-                lib.write_tsv_tables(os.path.join(self.rdir_path('tables/exclude_constitutive'),
+                lib.write_tsv_tables(os.path.join(self.rdir_path('tables', prefix, 'exclude_constitutive'),
                                                   lib.lib_settings.sample_name+'_'+suffix[:-4]+'_exclude_constitutive'+suffix[-4:]),
                                      subtract_background=subtract_background, subtract_control=subtract_control, exclude_constitutive=exclude_constitutive)
         else:
             for lib in libs_to_write:
-                lib.write_tsv_tables(os.path.join(self.rdir_path('tables'), lib.lib_settings.sample_name+'_'+suffix),
+                lib.write_tsv_tables(os.path.join(self.rdir_path('tables', prefix), lib.lib_settings.sample_name+'_'+suffix),
                                      subtract_background=subtract_background, subtract_control=subtract_control, exclude_constitutive=exclude_constitutive)
+
+    def write_combined_mutation_rates_tsv(self, subtract_background=False, subtract_control=False, exclude_constitutive=False):
+        if subtract_background and subtract_control:
+            raise SyntaxError('Cannot subtract background and control simultaneously')
+
+        if subtract_background or subtract_control:
+            libs_to_write = list(self.get_normalizable_libs())
+        else:
+            libs_to_write = list(self.libs)
+
+        if subtract_background == False and subtract_control == False:
+            prefix = 'raw_'
+        elif subtract_background == True and subtract_control == False:
+            prefix = 'background_subtracted_'
+        elif subtract_background == False and subtract_control == True:
+            prefix = 'control_subtracted_'
+        if exclude_constitutive:
+            f = open(self.rdir_path('tables', prefix+'all_datasets_exclude_constitutive.tsv'), 'w')
+
+        else:
+            f = open(self.rdir_path('tables', prefix+'all_datasets.tsv'), 'w')
+        f.write('rRNA\tposition\tnucleotide\t%s\n' % ('\t'.join([lib.lib_settings.sample_name for lib in libs_to_write])))
+        for rRNA_name in sorted(self.settings.rRNA_seqs.keys()):
+            for position in range(len(self.settings.rRNA_seqs[rRNA_name])):
+                nuc_identity = self.settings.rRNA_seqs[rRNA_name][position]
+                nuc_values = []
+                for lib in libs_to_write:
+                    nucleotide = lib.get_nucleotide(rRNA_name, position+1)
+                    assert nucleotide.identity == nuc_identity
+                    if not subtract_background and not subtract_control:
+                        nuc_values.append(nucleotide.mutation_rate)
+                    elif subtract_background:
+                        nuc_values.append(nucleotide.get_back_sub_mutation_rate())
+                    elif subtract_control:
+                        nuc_values.append(nucleotide.get_control_sub_mutation_rate())
+                assert len(nuc_values) == len(libs_to_write)
+                if exclude_constitutive and nucleotide.exclude_constitutive:
+                    f.write('%s\t%d\t%s\t%s\n' % (rRNA_name, position+1, nuc_identity, '\t'.join(['' for nuc_value in nuc_values])))
+                else:
+                    f.write('%s\t%d\t%s\t%s\n' % (rRNA_name, position+1, nuc_identity, '\t'.join([str(nuc_value) for nuc_value in nuc_values])))
+        f.close()
 
     def write_wigs(self, suffix, subtract_background=False, subtract_control=False):
         mod_utils.make_dir(self.rdir_path('wigs'))
@@ -235,15 +288,23 @@ class mod_seq_run:
             libs_to_pickle = self.get_normalizable_libs()
         else:
             libs_to_pickle = self.libs
+
+        if subtract_background == False and subtract_control == False:
+            prefix = 'raw'
+        elif subtract_background == True and subtract_control == False:
+            prefix = 'background_subtracted'
+        elif subtract_background == False and subtract_control == True:
+            prefix = 'control_subtracted'
+
         if exclude_constitutive:
             for lib in libs_to_pickle:
-                lib.pickle_mutation_rates(os.path.join(self.rdir_path('tables/exclude_constitutive'),
+                lib.pickle_mutation_rates(os.path.join(self.rdir_path('pickles', prefix, 'exclude_constitutive'),
                                                        lib.lib_settings.sample_name+'_'+suffix[:-4]+'_exclude_constitutive'+suffix[-4:]),
                                                        subtract_background=subtract_background, subtract_control=subtract_control,
                                                        exclude_constitutive=exclude_constitutive)
         else:
             for lib in libs_to_pickle:
-                lib.pickle_mutation_rates(os.path.join(self.rdir_path('tables'), lib.lib_settings.sample_name+'_'+suffix),
+                lib.pickle_mutation_rates(os.path.join(self.rdir_path('pickles', prefix), lib.lib_settings.sample_name+'_'+suffix),
                                           subtract_background=subtract_background, subtract_control=subtract_control, exclude_constitutive=exclude_constitutive)
 
     def make_plots(self, exclude_constitutive=False):
