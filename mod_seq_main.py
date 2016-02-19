@@ -267,28 +267,6 @@ class mod_seq_run:
                                              nucleotides_to_count=self.settings.get_property('affected_nucleotides'),
                                              exclude_constitutive=exclude_constitutive)
 
-
-
-
-    def make_table_header(self, of):
-        """
-        takes a file handle and writes a good header for it such that
-        each lane is a column.
-        """
-        of.write('#')
-        for lib in self.libs:
-            of.write('\t' + lib.get_barcode())
-        of.write('\n[%s]' % self.settings.get_property('protein_name'))
-        for lib in self.libs:
-            of.write('\t%s' % lib.get_conc())
-        of.write('\nwashes')
-        for lib in self.libs:
-            of.write('\t%i' % lib.get_washes())
-        of.write('\nT (C)')
-        for lib in self.libs:
-            of.write('\t%s' % lib.get_temperature())
-        of.write('\n')
-
     def collapse_identical_reads(self):
         """
         collapses all identical reads using FASTX toolkit
