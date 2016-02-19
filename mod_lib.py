@@ -165,8 +165,7 @@ class ModLib:
                         output_dict[rRNA][position] = max((nucleotide.mutation_rate - self.get_normalizing_lib().
                                                     get_mutation_rate_at_position(rRNA, nucleotide.position)), 0.)
                     elif subtract_control:
-                        output_dict[rRNA][position] = max((nucleotide.mutation_rate - self.get_normalizing_lib_with_mod().
-                                                    get_mutation_rate_at_position(rRNA, nucleotide.position)), 0.)
+                        output_dict[rRNA][position] = nucleotide.mutation_rate - self.get_normalizing_lib_with_mod().get_mutation_rate_at_position(rRNA, nucleotide.position)
                     else:
                         output_dict[rRNA][position] = nucleotide.mutation_rate
         mod_utils.makePickle(output_dict, output_name)
@@ -264,8 +263,7 @@ class rRNA_mutations:
                     counts[nucleotide.identity] += max((nucleotide.mutation_rate - self.lib.get_normalizing_lib().
                                                     get_mutation_rate_at_position(self.rRNA_name, nucleotide.position)), 0.)
                 elif subtract_control:
-                    counts[nucleotide.identity] += max((nucleotide.mutation_rate - self.lib.get_normalizing_lib_with_mod().
-                                                    get_mutation_rate_at_position(self.rRNA_name, nucleotide.position)), 0.)
+                    counts[nucleotide.identity] += nucleotide.mutation_rate - self.lib.get_normalizing_lib_with_mod().get_mutation_rate_at_position(self.rRNA_name, nucleotide.position)
                 else:
                     counts[nucleotide.identity] += nucleotide.mutation_rate
         return counts
