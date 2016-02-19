@@ -28,8 +28,8 @@ class mod_seq_run:
         self.create_shapemapper_settings()
         self.run_shapemapper()
         self.initialize_libs()
-        #self.make_plots()
-        #self.make_plots(exclude_constitutive=True)
+        self.make_plots()
+        self.make_plots(exclude_constitutive=True)
         self.make_tables()
         self.make_tables(exclude_constitutive=True)
 
@@ -309,13 +309,19 @@ class mod_seq_run:
 
     def make_plots(self, exclude_constitutive=False):
         if exclude_constitutive:
-            mod_utils.make_dir(self.rdir_path('plots/exclude_constitutive'))
-            rdir = self.rdir_path('plots/exclude_constitutive')
+            mod_utils.make_dir(self.rdir_path('plots', 'exclude_constitutive'))
+            mod_utils.make_dir(self.rdir_path('plots', 'exclude_constitutive', 'interactive'))
+            rdir = self.rdir_path('plots','exclude_constitutive')
             file_tag = '_exclude_constitutive'
         else:
             mod_utils.make_dir(self.rdir_path('plots'))
+            mod_utils.make_dir(self.rdir_path('plots', 'interactive'))
             rdir = self.rdir_path('plots')
             file_tag = ''
+
+        mod_plotting.plot_changes_vs_control_interactive(self.get_normalizable_libs(), os.path.join(rdir, 'interactive', 'changes'+file_tag),
+                                                         nucleotides_to_count=self.settings.get_property('affected_nucleotides'),
+                                                         exclude_constitutive=False)
 
         mod_plotting.plot_mutated_nts_pie(self.libs, os.path.join(rdir, 'raw_mutation_fractions'+file_tag), exclude_constitutive=exclude_constitutive)
         mod_plotting.plot_mutated_nts_pie(self.libs,

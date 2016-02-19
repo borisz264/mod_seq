@@ -23,6 +23,15 @@ rainbow = [black, vermillion, orange, bluishGreen, blue, reddishPurple, 'violet'
 markers = ['.', 'o', 'v', 's', '^', 'p', 'x', '+']
 line_styles = ['solid', 'dashed', 'dotted']
 
+bokeh_black = (0,0,0)
+bokeh_orange = (230,159,0)
+bokeh_skyBlue = (86,180,233)
+bokeh_bluishGreen = (0,158,115)
+bokeh_yellow = (240,228,66)
+bokeh_blue = (0,114,178)
+bokeh_vermillion = (213,94,0)
+bokeh_reddishPurple = (204,121,167)
+
 #parralellization code from
 # http://stackoverflow.com/questions/3288595/multiprocessing-using-pool-map-on-a-function-defined-in-a-class
 def spawn(f):

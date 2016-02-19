@@ -46,7 +46,7 @@ class mod_settings:
         - stores result in self.settings as a dict()
         """
         int_keys = [ 'first_base_to_keep', 'last_base_to_keep', 'min_post_adaptor_length', 'min_base_quality', 'min_mapping_quality']
-        #float_keys = []
+        float_keys = ['confidence_interval_cutoff', 'fold_change_cutoff']
         str_keys = ['adaptor_sequence', 'rrna_fasta', 'experiment_name', 'shapemapper_ref_file', 'affected_nucleotides']
         boolean_keys = ['collapse_identical_reads', 'force_read_resplit', 'force_remapping', 'force_recollapse',
                         'force_recount', 'force_index_rebuild', 'force_retrim', 'trim_adaptor', 'discard_untrimmed', 'force_shapemapper']
@@ -63,8 +63,8 @@ class mod_settings:
             settings[k] = int(settings[k])
         for k in str_keys:
             settings[k] = settings[k]
-        #for k in float_keys:
-        #    settings[k] = float(settings[k])
+        for k in float_keys:
+            settings[k] = float(settings[k])
         for k in boolean_keys:
             if not settings[k].lower() in ['true', 'false']:
                 raise ValueError(

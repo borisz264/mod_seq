@@ -37,7 +37,7 @@ class ModLib:
             shapemapper_output_file = os.path.join(shapemapper_output_dir, sample_name+'_'+rRNA_name+'.csv')
             assert mod_utils.file_exists(shapemapper_output_file)
             self.rRNA_mutation_data[rRNA_name] = rRNA_mutations(self, self.lib_settings, self.experiment_settings,
-                                                                shapemapper_output_file, rRNA_name)
+                                                                shapemapper_output_file)
 
     def count_mutation_rates_by_nucleotide(self, subtract_background = False, subtract_control = False, exclude_constitutive=False):
         """
@@ -138,7 +138,8 @@ class ModLib:
                                 exp_wil_bottom, exp_wil_top, ctrl_nuc.mutation_rate,
                                 ctrl_wil_bottom, ctrl_wil_top, nucleotide.get_control_sub_mutation_rate(),
                                 nucleotide.get_control_sub_error(), nucleotide.get_control_fold_change_in_mutation_rate(),
-                                nucleotide.determine_protection_status()))
+                                nucleotide.determine_protection_status(confidence_interval=self.experiment_settings.get_property('confidence_interval_cutoff'),
+                                                                       fold_change_cutoff=self.experiment_settings.get_property('fold_change_cutoff'))))
                     elif not subtract_background and not subtract_control:
                         f.write(self.rRNA_mutation_data[rRNA_name].rRNA_name+'\t'+str(nucleotide.position)+'\t'
                                 +str(nucleotide.mutation_rate)+'\t'+str(nucleotide.get_error())+'\n')
@@ -222,7 +223,7 @@ class ModLib:
         wig.close()
 
 class rRNA_mutations:
-    def __init__(self, lib, lib_settings, experiment_settings, mutation_filename, rRNA_name):
+    def __init__(self, lib, lib_settings, experiment_settings, mutation_filename):
         self.lib = lib
         self.lib_settings = lib_settings
         self.experiment_settings = experiment_settings
@@ -304,6 +305,11 @@ class Nucleotide:
         self.lib_settings = lib_settings
         self.parse_mutation_data_line(headers, mutation_data_line)
         self.set_exclusion_flag()
+
+
+    def __str__(self):
+        return "%s%d in %s of %s" % (self.identity, self.position, self.rRNA.rRNA_name, self.lib_settings.sample_name)
+
 
     def parse_mutation_data_line(self, headers, mutation_data_line):
         ll = mutation_data_line.strip().split(',')
