@@ -7,8 +7,11 @@ Based on the Rouskin DMS-seq paper:
 
 """
 
-import sys, mod_utils
-from rna import rna
+import mod_utils
+import sys
+
+from unused_scripts.rna import rna
+
 
 class rRNA:
     def __init__(self, bpseq_filename):
