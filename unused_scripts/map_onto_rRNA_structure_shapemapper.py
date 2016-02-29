@@ -87,7 +87,12 @@ def split_by_n(line, n=6):
     return [line[i:i+n].strip() for i in range(0, len(line), 6)]
 
 #rRNA_assignments = {3:{'d':"S.c.18S_rRNA"}, 1:{'A':"S.c.18S_rRNA"}, 2:{'A':"S.c.25S__rRNA", 'B':"S.c.5S___rRNA", 'C':"S.c.5.8S_rRNA"} , 4:{'K':"S.c.25S__rRNA", 'L':"S.c.5S___rRNA", 'M':"S.c.5.8S_rRNA"}}
-rRNA_assignments = {3:{'d':"S.c.18S_rRNA"}, 1:{'A':"S.c.18S_rRNA"}, 2:{'A':"S.c.25S__rRNA", 'B':"S.c.5S___rRNA", 'C':"S.c.5.8S_rRNA"} , 4:{'K':"S.c.25S__rRNA", 'L':"S.c.5S___rRNA", 'M':"S.c.5.8S_rRNA"}}
+#for 4V88:
+rRNA_assignments = {3:{'d':"S.c.18S_rRNA"}, 1:{'A':"S.c.18S_rRNA"}, 2:{'A':"S.c.25S__rRNA", 'B':"S.c.5S___rRNA", 'C':"S.c.5.8S_rRNA"} , 4:{'I':"S.c.25S__rRNA", 'L':"S.c.5S___rRNA", 'M':"S.c.5.8S_rRNA"}}
+#for 4V6I:
+#rRNA_assignments = {2:{'S':"S.c.18S_rRNA"}, 3:{'A':"S.c.25S__rRNA", 'C':"S.c.5S___rRNA", 'B':"S.c.5.8S_rRNA"}}
+#for 4U3U:
+#rRNA_assignments = {1:{'A':"S.c.18S_rRNA"}, 2:{'A':"S.c.25S__rRNA", 'C':"S.c.5S___rRNA", 'B':"S.c.5.8S_rRNA"}}
 
 def main():
     outprefix, bundle1, bundle2, bundle3, bundle4, bundle5, datafile_name  = sys.argv[1:8]
@@ -116,7 +121,7 @@ def main():
                     new_line = '%s%6.4f%s' % (line[:60], 0.0, line[66:])
                     assert len(line) == len(new_line)
 
-            elif line.startswith("ANISOU"):
+            elif line.startswith("ANISOU") or line.startswith("HETATM"):
                 new_line = '' #remove the anisotropic b factors, I don't need them
             else:
                 new_line = line
