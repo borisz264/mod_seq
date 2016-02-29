@@ -12,25 +12,28 @@ inputs:
 
 """
 
-import sys, mod_utils, math
+import  mod_utils, math, os
 import numpy
-import scipy.stats as stats
 import matplotlib.pyplot as plt
 plt.rcParams['pdf.fonttype'] = 42 #leaves most text as actual text in PDFs, not outlines
 
 def gaussian(x, mean, variance, scale):
+    #removed division by math.sqrt(variance*2*math.pi) so that peak height equals mutation rate
+    return (float(scale) * math.exp(-1*((float(x)-float(mean))**2)/(2*variance)))
+def true_gaussian(x, mean, variance, scale):
     return (float(scale)/math.sqrt(variance*2*math.pi)) * math.exp(-1*((float(x)-float(mean))**2)/(2*variance))
 
 
-def generate_mutation_rates(chromosome, start, stop, mutations, coverage, dataset_names):
-    mutation_rates = {}
-    for dataset_name in dataset_names:
 
-        mutation_array = [float(mutations[chromosome][dataset_name][position]) if position in mutations[chromosome][dataset_name] else 0.0 for position in range(start, stop+1)]
-        coverage_array = [float(coverage[chromosome][dataset_name][position]) if position in coverage[chromosome][dataset_name] else 0.0 for position in range(start, stop+1)]
-        assert len(mutation_array) == len(coverage_array)
-        mutation_rates[dataset_name] = numpy.array(mutation_array)/numpy.array(coverage_array)
-    return mutation_rates
+def generate_single_mutation_rates_dict(chromosome, start, stop, folder, file_names, strip_suffix):
+    combined_mutation_rates = {}
+    for file_name in file_names:
+        dataset_label = file_name.rstrip(strip_suffix)
+        mutation_rates = mod_utils.unPickle(os.path.join(folder, file_name))
+
+        mutation_array = [float(mutation_rates[chromosome][position]) if position in mutation_rates[chromosome] else 0.0 for position in range(start, stop+1)]
+        combined_mutation_rates[dataset_label] = mutation_array
+    return combined_mutation_rates
 
 def generate_gaussian_densities(mutation_rates, band_spacing, band_variance):
     """
@@ -42,6 +45,7 @@ def generate_gaussian_densities(mutation_rates, band_spacing, band_variance):
     """
     band_densities = {}
     for dataset in mutation_rates:
+        print dataset
         #center of first band will be at band_spacing/2 (zero-indexed, so wiht a spacing of 20, it will be position 10,
         #  the 11th entry in the array)
         #center of each subsequent band will be band_spacing+1 units from the previous 1
@@ -82,18 +86,18 @@ def main():
     dataset_names = sys.argv[6:]
     '''
 
-    chromosome, start, stop, mutations, coverage = 'S.c.25S__rRNA', 2740, 2800, '/Users/boris/Desktop/20151129_combined_counts/20151129_mutations.pkl',\
-                                                   '/Users/boris/Desktop/20151129_combined_counts/20151129_depths.pkl'
+    chromosome, start, stop, mutation_rates_folder = 'S.c.25S__rRNA', 2740, 2800, '/Users/boris/Green_Lab/Book_2/2.47/analysis/pickles/raw'
 
-    dataset_names = ['80S_DMSO_DMSO', '80S_DMSO_20mMDMS', '80S_CHX_20mMDMS' ]
+    file_names = ['80S_no_DMS_mutation_rates.pkl', '80S_mutation_rates.pkl', '80S_10uM_CHX_mutation_rates.pkl', '80S_50uM_CHX_mutation_rates.pkl', '80S_1000uM_CHX_mutation_rates.pkl']
+    strip_suffix = '_mutation_rates.pkl'
+    dataset_labels = [file_name.rstrip(strip_suffix) for file_name in file_names]
 
-    mutations = mod_utils.unPickle(mutations)
-    coverage = mod_utils.unPickle(coverage)
-    mutation_rates = generate_mutation_rates(chromosome, start, stop, mutations, coverage, dataset_names)
+    mutation_rates_dict = generate_single_mutation_rates_dict(chromosome, start, stop, mutation_rates_folder, file_names, strip_suffix)
+    print mutation_rates_dict.keys()
     band_spacing = 200
     #band_variance = 50000.
     band_variance = 2000.
-    gaussian_densities = generate_gaussian_densities(mutation_rates, band_spacing, band_variance )
-    plot_density_lines(dataset_names, gaussian_densities, band_spacing, start, stop, chromosome)
+    gaussian_densities = generate_gaussian_densities(mutation_rates_dict, band_spacing, band_variance )
+    plot_density_lines(dataset_labels, gaussian_densities, band_spacing, start, stop, chromosome)
 main()
 
