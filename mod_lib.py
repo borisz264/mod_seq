@@ -70,6 +70,10 @@ class ModLib:
             lib_index = self.experiment_settings.get_property('experimentals').index(self.lib_settings.sample_name)
             normalizing_lib_name = self.experiment_settings.get_property('no_mod_controls')[lib_index]
             return self.experiment.get_lib_from_name(normalizing_lib_name)
+        elif self.lib_settings.sample_name in self.experiment_settings.get_property('with_mod_controls'):
+            lib_index = self.experiment_settings.get_property('with_mod_controls').index(self.lib_settings.sample_name)
+            normalizing_lib_name = self.experiment_settings.get_property('no_mod_controls')[lib_index]
+            return self.experiment.get_lib_from_name(normalizing_lib_name)
         else:
             return None
     def get_normalizing_lib_with_mod(self):
@@ -335,25 +339,50 @@ class Nucleotide:
 
 
     def get_back_sub_mutation_rate(self):
-        return (self.mutation_rate - self.rRNA.lib.get_normalizing_lib().\
-            get_mutation_rate_at_position(self.rRNA.rRNA_name, self.position))
+        return (self.mutation_rate - self.get_background_nucleotide().mutation_rate)
 
-    def get_control_sub_mutation_rate(self):
-        return (self.mutation_rate - self.rRNA.lib.get_normalizing_lib_with_mod().\
-            get_mutation_rate_at_position(self.rRNA.rRNA_name, self.position))
+    def get_control_sub_mutation_rate(self, subtract_background=False):
+        if subtract_background:
+            return (self.get_back_sub_mutation_rate() - self.get_control_nucleotide().get_back_sub_mutation_rate())
+        else:
+            return (self.mutation_rate - self.get_control_nucleotide().mutation_rate)
 
-    def get_control_fold_change_in_mutation_rate(self):
+    def get_control_fold_change_in_mutation_rate(self, subtract_background = False):
         try:
-            return (self.mutation_rate/self.rRNA.lib.get_normalizing_lib_with_mod().\
-                get_mutation_rate_at_position(self.rRNA.rRNA_name, self.position))
+            if subtract_background:
+                return (self.get_back_sub_mutation_rate()/self.get_control_nucleotide().get_back_sub_mutation_rate())
+            else:
+                return (self.mutation_rate/self.rRNA.lib.get_normalizing_lib_with_mod().\
+                    get_mutation_rate_at_position(self.rRNA.rRNA_name, self.position))
         except ZeroDivisionError:
             return float('inf')
+
+    def get_control_fold_change_error(self, subtract_background=False):
+        try:
+            ratio = self.get_control_fold_change_in_mutation_rate(subtract_background=subtract_background)
+            if subtract_background:
+                num = self.get_back_sub_mutation_rate()
+                num_error = self.get_back_sub_error()
+                denom = self.get_control_nucleotide().get_back_sub_mutation_rate()
+                denom_error = self.get_control_nucleotide().get_back_sub_error()
+            else:
+                num = self.mutation_rate
+                num_error = self.get_error()
+                denom = self.get_control_nucleotide().mutation_rate
+                denom_error = self.get_control_nucleotide().get_error()
+            return ratio*math.sqrt((num_error/num)**2+(denom_error/denom)**2)
+        except ZeroDivisionError:
+            return float('inf')
+
     def get_control_mutation_rate(self):
             return self.rRNA.lib.get_normalizing_lib_with_mod().\
                 get_mutation_rate_at_position(self.rRNA.rRNA_name, self.position)
 
     def get_control_nucleotide(self):
         return self.rRNA.lib.get_normalizing_lib_with_mod().rRNA_mutation_data[self.rRNA.rRNA_name].nucleotides[self.position]
+
+    def get_background_nucleotide(self):
+        return self.rRNA.lib.get_normalizing_lib().rRNA_mutation_data[self.rRNA.rRNA_name].nucleotides[self.position]
 
     def get_wilson_approximate_score_interval(self, confidence_interval = 0.99):
         """
@@ -373,18 +402,31 @@ class Nucleotide:
         interval_top = a*(b+c)
         return interval_bottom, interval_top
 
-    def determine_protection_status(self, confidence_interval = 0.99, fold_change_cutoff = 5):
-        self_min, self_max = self.get_wilson_approximate_score_interval(confidence_interval=confidence_interval)
-        control_min, control_max = self.get_control_nucleotide().\
-            get_wilson_approximate_score_interval(confidence_interval=confidence_interval)
-        if mod_utils.ranges_overlap(self_min, self_max, control_min, control_max) \
-                or (self.get_control_fold_change_in_mutation_rate()<fold_change_cutoff
-                    and self.get_control_fold_change_in_mutation_rate()>1.0/fold_change_cutoff) or self.identity not in \
-                self.lib_settings.experiment_settings.get_property('affected_nucleotides'):
+    def determine_protection_status(self, confidence_interval = 0.99, fold_change_cutoff = 5, subtract_background=False,
+                                    max_fold_reduction=0.001, max_fold_increase=100):
+        #self_min, self_max = self.get_wilson_approximate_score_interval(confidence_interval=confidence_interval)
+        #control_min, control_max = self.get_control_nucleotide().\
+        #    get_wilson_approximate_score_interval(confidence_interval=confidence_interval)
+        #if mod_utils.ranges_overlap(self_min, self_max, control_min, control_max) \
+        #        or (self.get_control_fold_change_in_mutation_rate()<fold_change_cutoff
+        #            and self.get_control_fold_change_in_mutation_rate()>1.0/fold_change_cutoff) or self.identity not in \
+        #        self.lib_settings.experiment_settings.get_property('affected_nucleotides'):
+        #    return "no_change"
+        fold_change = self.get_control_fold_change_in_mutation_rate(subtract_background=subtract_background)
+        if fold_change == float('inf') or fold_change == -1*float('inf'):
+            fold_change = max_fold_increase
+        elif fold_change<=0:
+            fold_change = max_fold_reduction
+        mean = math.log(fold_change) #natural log to make dist more gaussian
+        standard_deviation = self.get_control_fold_change_error(subtract_background=subtract_background)/fold_change #error propogation for natural log
+        p, z = mod_utils.computePfromMeanAndStDevZscore(mean, standard_deviation, 0) #what is the chance that no change could come from this dist?
+        if (p > 1.0-confidence_interval and p<confidence_interval)or (self.get_control_fold_change_in_mutation_rate(subtract_background=subtract_background)<fold_change_cutoff
+                                             and self.get_control_fold_change_in_mutation_rate(subtract_background=subtract_background)>1.0/fold_change_cutoff)\
+                or self.identity not in self.lib_settings.experiment_settings.get_property('affected_nucleotides'):
             return "no_change"
-        elif self.get_control_sub_mutation_rate()<0:
+        elif self.get_control_sub_mutation_rate(subtract_background=subtract_background)<0:
             return "protected"
-        elif self.get_control_sub_mutation_rate()>0:
+        elif self.get_control_sub_mutation_rate(subtract_background=subtract_background)>0:
             return "deprotected"
         else:
             return "something_is_wrong_change_zero"
@@ -393,7 +435,7 @@ class Nucleotide:
         try:
             return(np.sqrt(self.mutation_rate/self.sequencing_depth))
         except ZeroDivisionError:
-            return(0)
+            return float('inf')
 
     def get_back_sub_error(self):
         mutation_rate = self.get_back_sub_mutation_rate()
@@ -402,7 +444,7 @@ class Nucleotide:
         try:
             return(np.sqrt(mutation_rate/self.sequencing_depth))
         except ZeroDivisionError:
-            return(0)
+            return float('inf')
 
     def get_control_sub_error(self):
         mutation_rate = self.get_back_sub_mutation_rate()
@@ -411,5 +453,7 @@ class Nucleotide:
         try:
             return(np.sqrt(mutation_rate/self.sequencing_depth))
         except ZeroDivisionError:
-            return(0)
+            return float('inf')
+
+
 

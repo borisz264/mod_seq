@@ -113,6 +113,15 @@ def subtractWithError(num, stdDevNum, denom, stdDevDenom):
 def next_square_number(number):
     return int(math.ceil(math.sqrt(number)))**2
 
+def computePfromMeanAndStDevZscore(mean, standard_deviation, testValue):
+    #computes probability that test value came from a gaussian with the given mean and standard deviation
+    try:
+        z = (float(testValue)-mean)/standard_deviation
+        p = stats.norm.sf(z)
+        return p, z
+    except ZeroDivisionError:
+        return 0.5, 0
+
 def ranges_overlap(min1, max1, min2, max2):
     """
 
@@ -233,41 +242,12 @@ def hamming_N(str1, str2):
     return sum(itertools.imap(operator.ne, str1, str2))
 
 
-def pairwise(iterable):
-    """s -> (s0,s1), (s1,s2), (s2, s3), ..."""
-    a, b = itertools.tee(iterable)
-    next(b, None)
-    return itertools.izip(a, b)
-
-
 # from http://code.activestate.com/recipes/499304-hamming-distance/
 def hamming_distance(str1, str2):
     assert len(str1) == len(str2)
     ne = operator.ne
     return sum(itertools.imap(ne, str1, str2))
 
-
-def iterNlines(inFile, N):
-    assert N >= 1
-    with aopen(inFile) as f:
-        lines = [f.readline() for i in range(N)]
-        while True:
-            yield lines
-            lines = [f.readline() for i in range(N)]
-            if lines[0] == '':
-                break
-
-
-def save_fig(fig1, path, extensions=['png', 'pdf']):
-    for ext in extensions:
-        fig1.savefig(path + '.' + ext, transparent=True, dpi = 900)
-
-
-def simpleaxis(sp):
-    sp.spines['top'].set_visible(False)
-    sp.spines['right'].set_visible(False)
-    sp.get_xaxis().tick_bottom()
-    sp.get_yaxis().tick_left()
 
 def close_float_value(a, b, max_percent=1.0):
     if a == 0 and b == 0:
@@ -285,10 +265,6 @@ def significantly_enriched(xs, zthresh=2., scale='linear'):
         xs = np.log2(xs)
     xs = stats.zscore(xs)
     return [x > zthresh for x in xs]
-
-
-def iter4Lines(inFile):
-    return iterNlines(inFile, 4)
 
 def getAllMismatchedSeqs(kmer, mismatchPositions):
     nucs = ['A', 'C', 'G', 'T']
