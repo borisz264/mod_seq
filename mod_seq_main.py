@@ -329,6 +329,12 @@ class mod_seq_run:
         mod_plotting.plot_mutation_rate_cdfs(self.libs, os.path.join(rdir, 'mutation_rate_cdf'+file_tag),
                                              nucleotides_to_count=self.settings.get_property('affected_nucleotides'),
                                              exclude_constitutive=exclude_constitutive)
+        mod_plotting.plot_changes_vs_control_interactive(self.get_normalizable_libs(), os.path.join(rdir, 'changes'+file_tag),
+                                             nucleotides_to_count=self.settings.get_property('affected_nucleotides'),
+                                             exclude_constitutive=False)
+        mod_plotting.ma_plots_interactive(self.get_normalizable_libs(), os.path.join(rdir, 'MA'+file_tag),
+                                             nucleotides_to_count=self.settings.get_property('affected_nucleotides'),
+                                             exclude_constitutive=False)
         if self.settings.get_property('make_interactive_plots'):
                 mod_plotting.plot_changes_vs_control_interactive(self.get_normalizable_libs(), os.path.join(rdir, 'interactive', 'changes'+file_tag),
                                                          nucleotides_to_count=self.settings.get_property('affected_nucleotides'),

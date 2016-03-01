@@ -236,7 +236,7 @@ def ma_plots_interactive(libraries, out_prefix, nucleotides_to_count='ATCG', exc
     :param out_prefix:
     :param nucleotides_to_count:
     :param exclude_constitutive:
-    :return: for each library use bokeh to plot an interactive plot of magnitude of change (experimental-control)
+    :return: for each library use bokeh to plot an interactive plot of average magnitude of signal (experimental+control)/2
             vs log10 fold change (experimental/control).
             Protected and de-protected calls will be colored, based on a fold change cutoff and confidence interval.
             All nucleotides will be labelled on mouseover.
@@ -290,7 +290,7 @@ def ma_plots_interactive(libraries, out_prefix, nucleotides_to_count='ATCG', exc
         PlotFig.circle("x", "y", size = 5, source=source, color=mod_utils.bokeh_black)
         PlotFig.circle("x", "y", size = 5, source=prot_source, color=mod_utils.bokeh_vermillion)
         PlotFig.circle("x", "y", size = 5, source=deprot_source, color=mod_utils.bokeh_bluishGreen)
-        PlotFig.x_range = Range1d(start=-0.2, end=0.2)
+        PlotFig.x_range = Range1d(start=-0.4, end=0.4)
         PlotFig.y_range = Range1d(start=.01, end=100)
 
         #adjust what information you get when you hover over it
@@ -300,3 +300,126 @@ def ma_plots_interactive(libraries, out_prefix, nucleotides_to_count='ATCG', exc
     p = gridplot(plot_figs)
     show(p)
 
+def plot_changes_vs_control(libraries, out_prefix, nucleotides_to_count='ATCG', exclude_constitutive=False):
+    """
+
+    :param libraries:
+    :param out_prefix:
+    :param nucleotides_to_count:
+    :param exclude_constitutive:
+    :return: for each library make a plot of magnitude of change (experimental-control)
+            vs log10 fold change (experimental/control).
+            Protected and de-protected calls will be colored, based on a fold change cutoff and confidence interval.
+    """
+    output_file("%s.pdf" % (out_prefix))
+    plot_figs=[]
+
+    num_subplots = len(libraries)
+    num_plots_wide = math.ceil(math.sqrt(num_subplots))
+    num_plots_high = num_plots_wide
+    fig = plt.figure(figsize=(4*num_plots_wide, 4*num_plots_high))
+    fig.subplots_adjust(wspace=0.4, hspace=0.4)
+    plot_index =1
+    for library in libraries:
+        plot = fig.add_subplot(num_plots_high, num_plots_wide, plot_index)
+        mag_change, fold_change, annotation = [], [], []
+        prot_mag_change, prot_fold_change, prot_annotation = [], [], []
+        deprot_mag_change, deprot_fold_change, deprot_annotation = [], [], []
+        for rRNA_name in library.rRNA_mutation_data:
+            for position in library.rRNA_mutation_data[rRNA_name].nucleotides:
+                nucleotide = library.rRNA_mutation_data[rRNA_name].nucleotides[position]
+                if (exclude_constitutive and nucleotide.exclude_constitutive)or nucleotide.identity not in nucleotides_to_count:
+                    pass
+                elif nucleotide.get_control_fold_change_in_mutation_rate() != 0 and \
+                                nucleotide.get_control_fold_change_in_mutation_rate() != float('inf'):
+                        protection_call = nucleotide.determine_protection_status(confidence_interval=library.experiment_settings.get_property('confidence_interval_cutoff'),
+                                                                       fold_change_cutoff=library.experiment_settings.get_property('fold_change_cutoff'))
+                        if protection_call == 'no_change':
+                            mag_change.append(nucleotide.get_control_sub_mutation_rate())
+                            fold_change.append(nucleotide.get_control_fold_change_in_mutation_rate())
+                            annotation.append('%s_%s%d' %(rRNA_name,nucleotide.identity,position))
+                        elif protection_call == 'deprotected':
+                            print 'deprotected ', nucleotide
+                            deprot_mag_change.append(nucleotide.get_control_sub_mutation_rate())
+                            deprot_fold_change.append(nucleotide.get_control_fold_change_in_mutation_rate())
+                            deprot_annotation.append('%s_%s%d' %(rRNA_name,nucleotide.identity,position))
+                        elif protection_call == 'protected':
+                            print 'protected ', nucleotide
+                            prot_mag_change.append(nucleotide.get_control_sub_mutation_rate())
+                            prot_fold_change.append(nucleotide.get_control_fold_change_in_mutation_rate())
+                            prot_annotation.append('%s_%s%d' %(rRNA_name,nucleotide.identity,position))
+        plot.set_xlabel("mutation rate [%s] - [%s]" % (library.lib_settings.sample_name, library.get_normalizing_lib_with_mod().lib_settings.sample_name))
+        plot.set_ylabel("fold change [%s]/[%s]" % (library.lib_settings.sample_name, library.get_normalizing_lib_with_mod().lib_settings.sample_name))
+        plot.set_yscale('log')
+        plot.scatter(mag_change, fold_change, color=mod_utils.black)
+        plot.scatter(prot_mag_change, prot_fold_change, color=mod_utils.vermillion)
+        plot.scatter(deprot_mag_change, deprot_fold_change, color=mod_utils.bluishGreen)
+        plot.set_xrange(-0.2,0.2)
+        plot.set_yrange(.01,100)
+
+        plot_figs.append(plot)
+        plot_index+=1
+    plt.savefig(output_file, transparent='True', format='pdf')
+
+def ma_plots(libraries, out_prefix, nucleotides_to_count='ATCG', exclude_constitutive=False):
+    """
+
+    :param libraries:
+    :param out_prefix:
+    :param nucleotides_to_count:
+    :param exclude_constitutive:
+    :return: for each library use bokeh to plot an interactive plot of magnitude of signal (experimental+control)/2
+            vs log10 fold change (experimental/control).
+            Protected and de-protected calls will be colored, based on a fold change cutoff and confidence interval.
+            All nucleotides will be labelled on mouseover.
+    """
+    output_file("%s.pdf" % (out_prefix))
+    plot_figs=[]
+
+    num_subplots = len(libraries)
+    num_plots_wide = math.ceil(math.sqrt(num_subplots))
+    num_plots_high = num_plots_wide
+    fig = plt.figure(figsize=(4*num_plots_wide, 4*num_plots_high))
+    fig.subplots_adjust(wspace=0.4, hspace=0.4)
+    plot_index =1
+    for library in libraries:
+        plot = fig.add_subplot(num_plots_high, num_plots_wide, plot_index)
+        mag_change, fold_change, annotation = [], [], []
+        prot_mag_change, prot_fold_change, prot_annotation = [], [], []
+        deprot_mag_change, deprot_fold_change, deprot_annotation = [], [], []
+        for rRNA_name in library.rRNA_mutation_data:
+            for position in library.rRNA_mutation_data[rRNA_name].nucleotides:
+                nucleotide = library.rRNA_mutation_data[rRNA_name].nucleotides[position]
+                if (exclude_constitutive and nucleotide.exclude_constitutive)or nucleotide.identity not in nucleotides_to_count:
+                    pass
+                elif nucleotide.get_control_fold_change_in_mutation_rate() != 0 and \
+                                nucleotide.get_control_fold_change_in_mutation_rate() != float('inf'):
+                        protection_call = nucleotide.determine_protection_status(confidence_interval=library.experiment_settings.get_property('confidence_interval_cutoff'),
+                                                                       fold_change_cutoff=library.experiment_settings.get_property('fold_change_cutoff'))
+                        avg_mutation_rate = (nucleotide.mutation_rate+nucleotide.get_control_nucleotide().mutation_rate)/2.0
+                        if protection_call == 'no_change':
+                            mag.append(avg_mutation_rate)
+                            fold_change.append(nucleotide.get_control_fold_change_in_mutation_rate())
+                            annotation.append('%s_%s%d' %(rRNA_name,nucleotide.identity,position))
+                        elif protection_call == 'deprotected':
+                            print 'deprotected ', nucleotide
+                            deprot_mag.append(avg_mutation_rate)
+                            deprot_fold_change.append(nucleotide.get_control_fold_change_in_mutation_rate())
+                            deprot_annotation.append('%s_%s%d' %(rRNA_name,nucleotide.identity,position))
+                        elif protection_call == 'protected':
+                            print 'protected ', nucleotide
+                            prot_mag.append(avg_mutation_rate)
+                            prot_fold_change.append(nucleotide.get_control_fold_change_in_mutation_rate())
+                            prot_annotation.append('%s_%s%d' %(rRNA_name,nucleotide.identity,position))
+        plot.set_xlabel("avg signal ([%s] + [%s])/2" % (library.lib_settings.sample_name, library.get_normalizing_lib_with_mod().lib_settings.sample_name))
+        plot.set_ylabel("fold change [%s]/[%s]" % (library.lib_settings.sample_name, library.get_normalizing_lib_with_mod().lib_settings.sample_name))
+        plot.set_yscale('log')
+        plot.scatter(mag_change, fold_change, color=mod_utils.black)
+        plot.scatter(prot_mag_change, prot_fold_change, color=mod_utils.vermillion)
+        plot.scatter(deprot_mag_change, deprot_fold_change, color=mod_utils.bluishGreen)
+        plot.set_xrange(-0.4,0.4)
+        plot.set_yrange(.01,100)
+
+        plot_figs.append(plot)
+        plot_index+=1
+    plt.savefig(output_file, transparent='True', format='pdf')
