@@ -229,5 +229,74 @@ def plot_changes_vs_control_interactive(libraries, out_prefix, nucleotides_to_co
     p = gridplot(plot_figs)
     show(p)
 
+def ma_plots_interactive(libraries, out_prefix, nucleotides_to_count='ATCG', exclude_constitutive=False):
+    """
 
+    :param libraries:
+    :param out_prefix:
+    :param nucleotides_to_count:
+    :param exclude_constitutive:
+    :return: for each library use bokeh to plot an interactive plot of magnitude of change (experimental-control)
+            vs log10 fold change (experimental/control).
+            Protected and de-protected calls will be colored, based on a fold change cutoff and confidence interval.
+            All nucleotides will be labelled on mouseover.
+    """
+    from bokeh.plotting import figure, output_file, show, ColumnDataSource, gridplot
+    from bokeh.models import Range1d
+    from bokeh.models import HoverTool
+    from collections import OrderedDict
+
+    # output to static HTML file
+    output_file("%s.html" % (out_prefix))
+    plot_figs=[]
+
+    for library in libraries:
+        mag, fold_change, annotation = [], [], []
+        prot_mag, prot_fold_change, prot_annotation = [], [], []
+        deprot_mag, deprot_fold_change, deprot_annotation = [], [], []
+        for rRNA_name in library.rRNA_mutation_data:
+            for position in library.rRNA_mutation_data[rRNA_name].nucleotides:
+                nucleotide = library.rRNA_mutation_data[rRNA_name].nucleotides[position]
+                if (exclude_constitutive and nucleotide.exclude_constitutive)or nucleotide.identity not in nucleotides_to_count:
+                    pass
+                elif nucleotide.get_control_fold_change_in_mutation_rate() != 0 and \
+                                nucleotide.get_control_fold_change_in_mutation_rate() != float('inf'):
+                        protection_call = nucleotide.determine_protection_status(confidence_interval=library.experiment_settings.get_property('confidence_interval_cutoff'),
+                                                                       fold_change_cutoff=library.experiment_settings.get_property('fold_change_cutoff'))
+                        avg_mutation_rate = (nucleotide.mutation_rate+nucleotide.get_control_nucleotide().mutation_rate)/2.0
+
+                        if protection_call == 'no_change':
+                            mag.append(avg_mutation_rate)
+                            fold_change.append(nucleotide.get_control_fold_change_in_mutation_rate())
+                            annotation.append('%s_%s%d' %(rRNA_name,nucleotide.identity,position))
+                        elif protection_call == 'deprotected':
+                            print 'deprotected ', nucleotide
+                            deprot_mag.append(avg_mutation_rate)
+                            deprot_fold_change.append(nucleotide.get_control_fold_change_in_mutation_rate())
+                            deprot_annotation.append('%s_%s%d' %(rRNA_name,nucleotide.identity,position))
+                        elif protection_call == 'protected':
+                            print 'protected ', nucleotide
+                            prot_mag.append(avg_mutation_rate)
+                            prot_fold_change.append(nucleotide.get_control_fold_change_in_mutation_rate())
+                            prot_annotation.append('%s_%s%d' %(rRNA_name,nucleotide.identity,position))
+        source = ColumnDataSource(data=dict(x = mag, y = fold_change, label = annotation))
+        prot_source = ColumnDataSource(data=dict(x = prot_mag, y = prot_fold_change, label = prot_annotation))
+        deprot_source = ColumnDataSource(data=dict(x = deprot_mag, y = deprot_fold_change,
+                                                   label = deprot_annotation))
+        TOOLS = "pan,wheel_zoom,reset,save,hover"
+        PlotFig = figure(x_axis_label = "average mutation rate ([%s] + [%s])/2" % (library.lib_settings.sample_name, library.get_normalizing_lib_with_mod().lib_settings.sample_name),
+                         y_axis_label = "fold change [%s]/[%s]" % (library.lib_settings.sample_name, library.get_normalizing_lib_with_mod().lib_settings.sample_name),
+                         y_axis_type="log", tools=TOOLS, toolbar_location="right")
+        PlotFig.circle("x", "y", size = 5, source=source, color=mod_utils.bokeh_black)
+        PlotFig.circle("x", "y", size = 5, source=prot_source, color=mod_utils.bokeh_vermillion)
+        PlotFig.circle("x", "y", size = 5, source=deprot_source, color=mod_utils.bokeh_bluishGreen)
+        PlotFig.x_range = Range1d(start=-0.2, end=0.2)
+        PlotFig.y_range = Range1d(start=.01, end=100)
+
+        #adjust what information you get when you hover over it
+        Hover = PlotFig.select(dict(type=HoverTool))
+        Hover.tooltips = OrderedDict([("nuc", "@label")])
+        plot_figs.append([PlotFig])
+    p = gridplot(plot_figs)
+    show(p)
 

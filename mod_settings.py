@@ -49,7 +49,8 @@ class mod_settings:
         float_keys = ['confidence_interval_cutoff', 'fold_change_cutoff']
         str_keys = ['adaptor_sequence', 'rrna_fasta', 'experiment_name', 'shapemapper_ref_file', 'affected_nucleotides']
         boolean_keys = ['collapse_identical_reads', 'force_read_resplit', 'force_remapping', 'force_recollapse',
-                        'force_recount', 'force_index_rebuild', 'force_retrim', 'trim_adaptor', 'discard_untrimmed', 'force_shapemapper']
+                        'force_recount', 'force_index_rebuild', 'force_retrim', 'trim_adaptor', 'discard_untrimmed', 'force_shapemapper',
+                        'make_interactive_plots']
         list_str_keys = ['fastq_gz_files', 'sample_names', 'experimentals', 'no_mod_controls', 'with_mod_controls', 'exclude_constitutive']
         #list_float_keys = ['probe_concentrations']
         config = ConfigParser.ConfigParser()
