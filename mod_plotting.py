@@ -512,13 +512,13 @@ def highlight_structure(libraries, out_prefix, nucleotides_to_count='ATCG', excl
                             if len(protected_nucleotides[rRNA])>0:
                                 rRNA_selections.append('%s and resi %s' % (rRNA, '+'.join([str(nucleotide.position) for
                                                                                          nucleotide in protected_nucleotides[rRNA]])))
-                        outline = 'create protected_nucleotides, %s' % (' or '.join(rRNA_selections))
+                        outline = 'create protected_nucleotides, %s\n' % (' or '.join(rRNA_selections))
                         output_file.write(outline)
                     if num_deprotected>0:
                         rRNA_selections = []
                         for rRNA in protected_nucleotides:
                             if len(protected_nucleotides[rRNA])>0:
-                                rRNA_selections.append('%s and resi %s' % (rRNA, '+'.join([str(nucleotide.position) for
+                                rRNA_selections.append('%s and resi %s\n' % (rRNA, '+'.join([str(nucleotide.position) for
                                                                                          nucleotide in protected_nucleotides[rRNA]])))
                         outline = 'create deprotected_nucleotides, %s' % (' or '.join(rRNA_selections))
                         output_file.write(outline)
