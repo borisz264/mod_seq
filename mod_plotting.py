@@ -526,3 +526,97 @@ def highlight_structure(libraries, out_prefix, nucleotides_to_count='ATCG', excl
                     output_file.write(line)
             reference_pymol_script_file.close()
             output_file.close()
+
+def generate_roc_curves(tp_tn_annotations, genome_fasta, outprefix, libraries, rRNA, nucs_to_count):
+    def winsorize_norm_chromosome_data(mut_density, chromosome, genome_dict, nucs_to_count, to_winsorize = False, low = 0, high = 0.95):
+        """
+
+
+        :param read_5p_ends:
+        :param chromosome:
+        :param strand:
+        :param genome_dict:
+        :param nucs_to_count:
+        :param low:
+        :param high:
+        :return: an array (now zero-indexed from 1-indexed) of densities for the given chromosome on the given strand, winsorized, and only for the given nucleotides
+        """
+        max_position = max(mut_density[chromosome].nucleotides.keys())
+        density_array =numpy.array([0.0] * max_position)
+        for position in mut_density[chromosome].nucleotides.keys():
+            if genome_dict[chromosome][position-1] in nucs_to_count:
+                density_array[position-1] = mut_density[chromosome].nucleotides[position].mutation_rate
+        if to_winsorize:
+            winsorize(density_array, limits = (low, 1-high), inplace = True)
+        normed_array = density_array/float(max(density_array))
+        return  normed_array
+
+    def get_tp_tn(tp_tn_file):
+        TP = set()
+        TN = set()
+        f = open(tp_tn_file)
+        for line in f:
+            ll= line.strip('\n').split('\t')
+            if ll[2] == 'TP':
+                TP.add(int(ll[0]))
+            if ll[2] =='TN':
+                TN.add(int(ll[0]))
+        f.close()
+        return TP, TN
+
+    def call_positives(density_array, chromosome, genome_dict, nucs_to_count, cutoff):
+        """
+
+        :param density_array:
+        :return:a set of called positive positions
+                I've reverted these to 1-indexed to match the TP and TN calls from the structures
+        """
+        positives = set()
+
+        for i in range(len(density_array)):
+            if genome_dict[chromosome][i] in nucs_to_count:
+                if density_array[i] >= cutoff:
+                    positives.add(i+1)#adding 1 not necessary for RT stops, since the modified nucleotide is the one 1 upstream of the RT stop!!!
+
+        return positives
+
+    def plot_ROC_curves(roc_curves, title, out_prefix):
+        fig = plt.figure(figsize=(8,8))
+        plot = fig.add_subplot(111)#first a pie chart of mutated nts
+        colormap = plt.get_cmap('spectral')
+        color_index = 0
+        for name in sorted(roc_curves.keys()):
+            x, y = roc_curves[name]
+            area_under_curve = numpy.trapz(numpy.array(y[::-1])/100., x=numpy.array(x[::-1])/100.)
+            plot.plot(x, y, lw =2, label = '%s   %.3f' % (name, area_under_curve), color = colormap(color_index/float(len(roc_curves))))
+            color_index +=1
+        plot.plot(numpy.arange(0,100,0.1), numpy.arange(0,100,0.1), lw =1, ls = 'dashed', color = mod_utils.black, label = 'y=x')
+        plot.set_xlabel('False positive rate (%) (100-specificity)')
+        plot.set_ylabel('True positive rate (%) (sensitivity)')
+        plot.set_title(title)
+        lg=plt.legend(loc=4,prop={'size':10}, labelspacing=0.2)
+        lg.draw_frame(False)
+        plt.savefig(out_prefix + '.pdf', transparent='True', format='pdf')
+        plt.clf()
+
+    sample_names = [library for library in libraries]
+    mutation_densities = [library.rRNA_mutation_data for library in libraries]
+
+
+    genome_dict = genome_fasta
+    normed_density_arrays = [winsorize_norm_chromosome_data(mutation_density, rRNA, genome_dict, nucs_to_count) for mutation_density in mutation_densities]
+    real_tp, real_tn = get_tp_tn(tp_tn_annotations)
+    roc_curves = {}
+    for sample_name in sample_names:
+        roc_curves[sample_name] = [[],[]]#x and y value arrays for each
+
+    stepsize = 0.0001
+    for cutoff in numpy.arange(0,1.+5*stepsize, stepsize):
+        for i in range(len(sample_names)):
+            called_p = call_positives(normed_density_arrays[i], rRNA, genome_dict, nucs_to_count, cutoff)
+            num_tp_called = len(called_p.intersection(real_tp))#how many true positives called at this cutoff
+            num_fp_called = len(called_p.intersection(real_tn))#how many fp positives called at this cutoff
+            roc_curves[sample_names[i]][1].append(100.*num_tp_called/float(len(real_tp)))#TP rate on y axis
+            roc_curves[sample_names[i]][0].append(100.*num_fp_called/float(len(real_tn)))#FP rate on x axis
+
+    plot_ROC_curves(roc_curves, rRNA, outprefix)
