@@ -54,6 +54,38 @@ class ModLib:
                 total_counts[nucleotide_type] += rRNA_counts[nucleotide_type]
         return total_counts
 
+    def count_mutation_types_by_nucleotide(self, subtract_background = False, subtract_control = False, exclude_constitutive=False):
+        """
+        counts, over all RNAs, the total number of each type ofmutation rates at each of A, T, C, G
+        This is to get an idea of which nucleotides are being affected by a modification.
+        :return: a dict like {A: {A->G:1054}, T:{T->G:1054}, C: {C->G:1054}, G:{G->C:1054}}
+        """
+        total_counts = defaultdict((lambda : defaultdict(int)))
+
+        for rRNA_name in self.rRNA_mutation_data:
+            rRNA_counts = self.rRNA_mutation_data[rRNA_name].count_mutation_types_by_nucleotide(subtract_background=subtract_background,
+                                                                                                subtract_control=subtract_control, exclude_constitutive=exclude_constitutive)
+            for nucleotide_type in rRNA_counts:
+                for mutation_type in rRNA_counts[nucleotide_type]:
+                    total_counts[nucleotide_type][mutation_type] += rRNA_counts[nucleotide_type][mutation_type]
+        return total_counts
+
+
+    def count_mutation_rates_by_type(self, subtract_background = False, subtract_control = False, exclude_constitutive=False):
+        """
+        counts, over all RNAs, the total number of mutation rates at each of A, T, C, G
+        This is to get an idea of which nucleotides are being affected by a modification.
+        :return: a dict like {A: 1054, T:32, C: 604, G:99}
+        """
+        total_counts = defaultdict(int)
+
+        for rRNA_name in self.rRNA_mutation_data:
+            rRNA_counts = self.rRNA_mutation_data[rRNA_name].count_mutation_rates_by_nucleotide(subtract_background=subtract_background,
+                                                                                                subtract_control=subtract_control, exclude_constitutive=exclude_constitutive)
+            for nucleotide_type in rRNA_counts:
+                total_counts[nucleotide_type] += rRNA_counts[nucleotide_type]
+        return total_counts
+
     def list_mutation_rates(self, subtract_background = False, subtract_control = False, nucleotides_to_count = 'ATCG', exclude_constitutive=False):
         all_mutation_rates = []
         for rRNA_name in self.rRNA_mutation_data:
@@ -271,6 +303,22 @@ class rRNA_mutations:
                     counts[nucleotide.identity] += nucleotide.mutation_rate - self.lib.get_normalizing_lib_with_mod().get_mutation_rate_at_position(self.rRNA_name, nucleotide.position)
                 else:
                     counts[nucleotide.identity] += nucleotide.mutation_rate
+        return counts
+
+    def count_mutation_types_by_nucleotide(self, subtract_background=False, subtract_control=False, exclude_constitutive=False):
+        """
+        counts, over this RNA, the total number of mutation of each type at each of A, T, C, G
+        This is to get an idea of which nucleotides are being affected by a particular mutation
+
+        NOTE that this will set any background-subtracted rate of less than zero to zero
+        """
+        counts = defaultdict((lambda : defaultdict(int)))
+        for nucleotide in self.nucleotides.values():
+            if exclude_constitutive and nucleotide.exclude_constitutive:
+                pass
+            else:
+                for mutation_type in nucleotide.mutations_by_type:
+                    counts[nucleotide.identity][mutation_type] += nucleotide.mutations_by_type[mutation_type]
         return counts
 
     def list_mutation_rates(self, subtract_background=False, subtract_control = False, nucleotides_to_count='ATCG', exclude_constitutive=False):

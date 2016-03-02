@@ -42,6 +42,34 @@ def plot_mutated_nts_pie(libraries, out_prefix, subtract_background=False, subtr
     plt.savefig(out_prefix + '.pdf', transparent='True', format='pdf')
     plt.clf()
 
+def plot_mutation_breakdown_pie(libraries, out_prefix, subtract_background=False, subtract_control=False, exclude_constitutive=False):
+    #Makes an array of pie charts, 4 per library, with types of mutations for each nt
+    if subtract_background or subtract_control:
+        #if subtracting background, need to only look at those which have a defined control
+        libraries = [library for library in libraries if library.lib_settings.sample_name in
+                     library.experiment_settings.get_property('experimentals')]
+    num_subplots = len(libraries)*4
+    num_plots_wide = 4
+    num_plots_high = num_subplots
+    fig = plt.figure(figsize=(16, 4*num_plots_high))
+    fig.subplots_adjust(wspace=0.4, hspace=0.4)
+    plot_index =1
+    for library in libraries:
+        mutated_nts_count = library.count_mutation_types_by_nucleotide(exclude_constitutive=exclude_constitutive)
+        for nt in 'ATCG':
+            plot = fig.add_subplot(num_plots_high, num_plots_wide, plot_index)
+            labels = sorted(mutated_nts_count[nt].keys())
+            sizes = numpy.array([mutated_nts_count[nt] for nt in labels])
+            total = float(sum(sizes))
+            sizes = sizes/total
+            merged_labels = ['%s %.3f' % (labels[i], sizes[i]) for i in range(len(sizes))]
+            plot.pie(sizes, labels = merged_labels, colors = mod_utils.rainbow)
+            plot.set_title(library.lib_settings.sample_name)
+            plot_index += 1
+    plt.suptitle('mutation rate type fractions')
+    plt.savefig(out_prefix + '.pdf', transparent='True', format='pdf')
+    plt.clf()
+
 def plot_mutation_rate_cdfs(libraries, out_prefix, nucleotides_to_count='ATCG', exclude_constitutive=False):
     #Makes 2 CDF plots. One of all libraries, showing the coverage-normalized mutation rates
     # and one showing background-subtracted mutation rates
