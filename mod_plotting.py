@@ -160,7 +160,8 @@ def plot_mutation_rate_cdfs(libraries, out_prefix, nucleotides_to_count='ATCG', 
     plt.savefig(out_prefix + '.pdf', transparent='True', format='pdf')
     plt.clf()
 
-def plot_changes_vs_control_interactive(libraries, out_prefix, nucleotides_to_count='ATCG', exclude_constitutive=False, max_fold_reduction=0.001, max_fold_increase=100):
+def plot_changes_vs_control_interactive(libraries, out_prefix, nucleotides_to_count='ATCG', exclude_constitutive=False,
+                                        max_fold_reduction=0.001, max_fold_increase=100):
     """
 
     :param libraries:
@@ -233,7 +234,8 @@ def plot_changes_vs_control_interactive(libraries, out_prefix, nucleotides_to_co
     p = gridplot(plot_figs)
     show(p)
 
-def ma_plots_interactive(libraries, out_prefix, nucleotides_to_count='ATCG', exclude_constitutive=False):
+def ma_plots_interactive(libraries, out_prefix, nucleotides_to_count='ATCG', exclude_constitutive=False,
+                         max_fold_reduction=0.001, max_fold_increase=100):
     """
 
     :param libraries:
@@ -372,7 +374,8 @@ def plot_changes_vs_control(libraries, out_prefix, nucleotides_to_count='ATCG', 
         plot_index+=1
     plt.savefig(output_file, transparent='True', format='pdf')
 
-def ma_plots(libraries, out_prefix, nucleotides_to_count='ATCG', exclude_constitutive=False, subtract_background=False, max_fold_reduction=0.001, max_fold_increase=100):
+def ma_plots(libraries, out_prefix, nucleotides_to_count='ATCG', exclude_constitutive=False,
+             max_fold_reduction=0.001, max_fold_increase=100):
     """
 
     :param libraries:
@@ -435,7 +438,6 @@ def ma_plots(libraries, out_prefix, nucleotides_to_count='ATCG', exclude_constit
         plot.scatter(deprot_mag, deprot_fold_change, color=mod_utils.bluishGreen, s=2)
         plot.set_xlim(0.00001,1)
         plot.set_ylim(.001,100)
-
         plot_figs.append(plot)
         plot_index+=1
     plt.savefig(output_file, transparent='True', format='pdf')
