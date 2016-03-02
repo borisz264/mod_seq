@@ -1,0 +1,41 @@
+[ input ]
+fastq_dir = /Users/boris/Green_Lab/Book_2/2.47/E2.45_sequencing/FASTQ 
+fastq_gz_files = ["HJLLNBCXX_1_AGGTTT_1.fastq.gz","HJLLNBCXX_1_CCTGAG_1.fastq.gz","HJLLNBCXX_1_GAACCC_1.fastq.gz","HJLLNBCXX_1_TCCGGG_1.fastq.gz","HJLLNBCXX_1_AAGCTC_1.fastq.gz","HJLLNBCXX_1_CTTAAA_1.fastq.gz","HJLLNBCXX_1_CAAGTT_1.fastq.gz","HJLLNBCXX_1_GTCCAG_1.fastq.gz","HJLLNBCXX_1_GTAACA_1.fastq.gz","HJLLNBCXX_1_GGATCT_1.fastq.gz","HJLLNBCXX_1_TGCTGT_1.fastq.gz","HJLLNBCXX_1_TTCAGA_1.fastq.gz","HJLLNBCXX_1_ACGGTG_1.fastq.gz","HJLLNBCXX_1_CATCAC_1.fastq.gz"]
+sample_names = ["80S_no_DMS","80S","80S_DMSO","80S_0.5mM_AglA","80S_1.0mM_AglA","80S_10uM_CHX","80S_50uM_CHX","80S_1000uM_CHX","80S_320uM_Palau","80S_640uM_Palau","80S_dhh1_ADPNP","80S_Dom34_Hbs1_GDPNP","80S_upf1_A","80S_upf1_B"]
+experimentals = ["80S_DMSO","80S_0.5mM_AglA","80S_1.0mM_AglA","80S_10uM_CHX","80S_50uM_CHX","80S_1000uM_CHX","80S_320uM_Palau","80S_640uM_Palau","80S_dhh1_ADPNP","80S_Dom34_Hbs1_GDPNP","80S_upf1_A","80S_upf1_B"]
+no_mod_controls= ["80S_no_DMS","80S_no_DMS","80S_no_DMS","80S_no_DMS","80S_no_DMS","80S_no_DMS","80S_no_DMS","80S_no_DMS","80S_no_DMS","80S_no_DMS","80S_no_DMS","80S_no_DMS"]
+with_mod_controls  = ["80S","80S_DMSO","80S_DMSO","80S","80S","80S","80S_DMSO","80S_DMSO","80S","80S","80S","80S"]
+
+[ parameters ]
+experiment_name = E2.47
+rrna_fasta = /Users/boris/Green_Lab/Book_2/2.36/mod_seq/rRNA_Sequences_ucsc_20110829.txt
+shapemapper_ref_file = /Users/boris/Green_Lab/Book_2/2.36/mod_seq/shapemapper_BASE.cfg
+
+exclude_constitutive = {"S.c.18S_rRNA":[1191],"S.c.25S__rRNA":[645,2142,2634,2843]}
+confidence_interval_cutoff = 0.999999
+fold_change_cutoff = 3
+
+pymol_base_script = /Users/boris/Green_Lab/Book_2/2.36/mod_seq/structure_highlighting/ban_nomenclature_S_cerevisiae_80S_PyMOL_highlighting_base.txt
+
+make_interactive_plots = True
+adaptor_sequence = CACTCGGGCACCAAGGAC
+affected_nucleotides = AC
+trim_adaptor = True
+discard_untrimmed = True
+min_post_adaptor_length = 40
+first_base_to_keep = 4
+last_base_to_keep = 100
+min_base_quality = 20
+min_mapping_quality = 10
+collapse_identical_reads = False
+force_read_resplit = False
+force_recollapse = False
+force_retrim = False
+force_remapping = False
+force_index_rebuild = False
+force_shapemapper = False
+force_recount = True
+error_dir = /Users/boris/Green_Lab/Book_2/2.47/analysis/error/
+
+[ output ]
+results_dir = /Users/boris/Green_Lab/Book_2/2.47/analysis

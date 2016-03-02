@@ -257,6 +257,20 @@ class ModLib:
                                                 nucleotides[position].mutation_rate))
         wig.close()
 
+    def get_changed_nucleotides(self, change_type, nucleotides_to_count='ATCG', exclude_constitutive=False,
+                                  confidence_interval = 0.99, fold_change_cutoff = 3, subtract_background=False):
+        changed_nucleotides = {}
+        for rRNA_name in self.rRNA_mutation_data:
+            changed_nucleotides[rRNA_name] = self.rRNA_mutation_data[rRNA_name].\
+                get_changed_nucleotides(change_type, nucleotides_to_count=nucleotides_to_count,
+                                        exclude_constitutive=exclude_constitutive,
+                                        confidence_interval = confidence_interval,
+                                        fold_change_cutoff = fold_change_cutoff,
+                                        subtract_background=subtract_background)
+        return changed_nucleotides
+
+
+
 class rRNA_mutations:
     def __init__(self, lib, lib_settings, experiment_settings, mutation_filename):
         self.lib = lib
@@ -347,6 +361,23 @@ class rRNA_mutations:
                     else:
                         rates.append(nucleotide.mutation_rate)
         return rates
+
+    def get_changed_nucleotides(self, change_type, nucleotides_to_count='ATCG', exclude_constitutive=False,
+                                  confidence_interval = 0.99, fold_change_cutoff = 3, subtract_background=False):
+        nucleotides = []
+        for nucleotide in self.nucleotides.values():
+            if nucleotide.identity in nucleotides_to_count:
+                if exclude_constitutive and nucleotide.exclude_constitutive:
+                    pass
+                else:
+                    prot_call = nucleotide.determine_protection_status(confidence_interval=confidence_interval,
+                                                           fold_change_cutoff=fold_change_cutoff,
+                                                           subtract_background=subtract_background)
+                    if prot_call == change_type:
+                        nucleotides.append(nucleotide)
+        return nucleotides
+
+
 
 class Nucleotide:
     def __init__(self, rRNA, headers, mutation_data_line, lib_settings):
@@ -470,7 +501,7 @@ class Nucleotide:
             #fold_change = max_fold_increase
             return "no_change"
         elif fold_change<=0:
-            fold_change = max_fold_reduction
+            #fold_change = max_fold_reduction
             return "no_change"
 
         mean = math.log(fold_change) #natural log to make dist more gaussian

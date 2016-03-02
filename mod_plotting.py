@@ -7,6 +7,7 @@ import math
 import mod_lib
 import mod_utils
 import operator
+import os
 plt.rcParams['pdf.fonttype'] = 42 #leaves most text as actual text in PDFs, not outlines
 
 
@@ -473,3 +474,55 @@ def ma_plots(libraries, out_prefix, nucleotides_to_count='ATCG', exclude_constit
         plot_figs.append(plot)
         plot_index+=1
     plt.savefig(output_file, transparent='True', format='pdf')
+
+def highlight_structure(libraries, out_prefix, nucleotides_to_count='ATCG', exclude_constitutive=False):
+    """
+
+    :param libraries:
+    :param out_prefix:
+    :param nucleotides_to_count:
+    :param exclude_constitutive:
+    :return: for each library use bokeh to plot an interactive plot of magnitude of signal (experimental+control)/2
+            vs log10 fold change (experimental/control).
+            Protected and de-protected calls will be colored, based on a fold change cutoff and confidence interval.
+            All nucleotides will be labelled on mouseover.
+    """
+
+    for library in libraries:
+
+        protected_nucleotides = library.get_changed_nucleotides('protected', confidence_interval=library.experiment_settings.get_property('confidence_interval_cutoff'),
+                                                                   fold_change_cutoff=library.experiment_settings.get_property('fold_change_cutoff'))
+        num_protected = 0
+        for rRNA in protected_nucleotides:
+                num_protected += len(protected_nucleotides[rRNA])
+        deprotected_nucleotides = library.get_changed_nucleotides('deprotected', confidence_interval=library.experiment_settings.get_property('confidence_interval_cutoff'),
+                                                                   fold_change_cutoff=library.experiment_settings.get_property('fold_change_cutoff'))
+        num_deprotected = 0
+        for rRNA in deprotected_nucleotides:
+            num_deprotected += len(protected_nucleotides[rRNA])
+
+        if num_protected>0 or num_deprotected>0:
+            output_file = open(os.path.join(out_prefix, "%s.txt" % (library.lib_settings.sample_name)), 'w')
+            reference_pymol_script_file = open(library.experiment_settings.get_property('pymol_base_script'), 'rU')
+            for line in reference_pymol_script_file:
+                if line.startswith('#<insert nucleotide highlighting here>'):
+                    if num_protected>0:
+                        rRNA_selections = []
+                        for rRNA in protected_nucleotides:
+                            if len(protected_nucleotides[rRNA])>0:
+                                rRNA_selections.append('%s and resi %s' % (rRNA, '+'.join([str(nucleotide.position) for
+                                                                                         nucleotide in protected_nucleotides[rRNA]])))
+                        outline = 'create protected_nucleotides, %s' % (' or '.join(rRNA_selections))
+                        output_file.write(outline)
+                    if num_deprotected>0:
+                        rRNA_selections = []
+                        for rRNA in protected_nucleotides:
+                            if len(protected_nucleotides[rRNA])>0:
+                                rRNA_selections.append('%s and resi %s' % (rRNA, '+'.join([str(nucleotide.position) for
+                                                                                         nucleotide in protected_nucleotides[rRNA]])))
+                        outline = 'create deprotected_nucleotides, %s' % (' or '.join(rRNA_selections))
+                        output_file.write(outline)
+                else:
+                    output_file.write(line)
+            reference_pymol_script_file.close()
+            output_file.close()

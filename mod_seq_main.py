@@ -29,9 +29,10 @@ class mod_seq_run:
         self.run_shapemapper()
         self.initialize_libs()
         #self.make_plots()
-        self.make_plots(exclude_constitutive=True)
-        self.make_tables()
-        self.make_tables(exclude_constitutive=True)
+        #self.make_plots(exclude_constitutive=True)
+        #self.make_tables()
+        #self.make_tables(exclude_constitutive=True)
+        self.annotate_structures()
 
     def remove_adaptor(self):
         if not self.settings.get_property('force_retrim'):
@@ -343,6 +344,24 @@ class mod_seq_run:
                 mod_plotting.ma_plots_interactive(self.get_normalizable_libs(), os.path.join(rdir, 'interactive', 'MA'+file_tag),
                                                          nucleotides_to_count=self.settings.get_property('affected_nucleotides'),
                                                          exclude_constitutive=False)
+
+    def annotate_structures(self, exclude_constitutive=False):
+        if exclude_constitutive:
+            mod_utils.make_dir(self.rdir_path('structures', 'protections_highlighted', 'exclude_constitutive'))
+            mod_utils.make_dir(self.rdir_path('structures', 'colored_by_change', 'exclude_constitutive'))
+            file_tag = '_exclude_constitutive'
+        else:
+            mod_utils.make_dir(self.rdir_path('structures', 'protections_highlighted'))
+            mod_utils.make_dir(self.rdir_path('structures', 'colored_by_change'))
+            file_tag = ''
+        if exclude_constitutive:
+            mod_plotting.highlight_structure(self.get_normalizable_libs(), self.rdir_path('structures', 'protections_highlighted', 'exclude_constitutive'),
+                                             nucleotides_to_count=self.settings.get_property('affected_nucleotides'),
+                                             exclude_constitutive=exclude_constitutive)
+        else:
+            mod_plotting.highlight_structure(self.get_normalizable_libs(), self.rdir_path('structures', 'protections_highlighted'),
+                                 nucleotides_to_count=self.settings.get_property('affected_nucleotides'),
+                                 exclude_constitutive=exclude_constitutive)
 
     def collapse_identical_reads(self):
         """

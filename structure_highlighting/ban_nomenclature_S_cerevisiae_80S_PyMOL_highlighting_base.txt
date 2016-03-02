@@ -1,0 +1,274 @@
+##################################################################
+#  PyMOL script for display of the 80S ribosome of S. cerevisiae #
+##################################################################
+#
+#   Created by Marc Leibundgut, ETH Zurich.
+#   Based on scripts by Felix Voigts-Hoffmann and Basil Greber.
+#   For questions and comments please contact ban@mol.biol.ethz.ch or leibundgut@mol.biol.ethz.ch 
+#
+#   last modified: 09/09/2015
+#
+#   A full PyMOL session of this script in .pse format can be downloaded from 
+#   http://www.mol.biol.ethz.ch/groups/ban_group/nomenclature/
+#
+#   Reference:
+#   The structure of the eukaryotic ribosome at 3.0 Å resolution.
+#   Ben-Shem A, Garreau de Loubresse N, Melnikov S, Jenner L, Yusupova G, Yusupov M.
+#   Science. 334(6062):1524-9. (2011)
+#
+#   Nomenclature according to:                                                                                       
+#   A new system for naming ribosomal proteins.
+#   Ban N, Beckmann R, Cate JH, Dinman JD, Dragon F, Ellis SR, Lafontaine DL, Lindahl L, Liljas A, Lipton JM, McAlear MA, 
+#   Moore PB, Noller HF, Ortega J, Panse VG, Ramakrishnan V, Spahn CM, Steitz TA, Tchorzewski M, Tollervey D, Warren AJ, 
+#   Williamson JR, Wilson D, Yonath A, Yusupov M.
+#   Curr Opin Struct Biol. 24:165-9. (2014)
+#
+#   Abbreviations:
+#   H.s.         ribosomal subunit protein standard nomenclature as used for human and T. thermophila
+#   S.c.         Saccharomyces cerevisiae
+#   E.c.         Escherichia coli
+#   uS../uL..    universally conserved proteins (eukaryotes, archaea and bacteria)
+#   eS../eL..    archaeal- and eukaryotic-specific proteins
+#
+#   Color Scheme:
+#   blue:        proteins universally conserved
+#   orange:      proteins conserved in archaea and eukaryotes
+#   red:         proteins eukaryotic-specific
+#   green:       Stm1 stalling factor
+#   light grey:  rRNA
+#   purple:      magnesium ions
+#   forest/blue: hexacoordinated osmium ions (Os*6NH3)
+#   yellow:      Zn ions
+#
+#########################################
+# INSTRUCTIONS FOR RUNNING THIS SCRIPT  #
+#########################################
+#
+#   1) Start PyMOL
+#      The structure of the S. cerevisiae 80S ribosome has been deposited at 
+#      the PDB in mmCIF format. Only recent versions of PyMOL can properly retrieve and handle files 
+#      in mmCIF format. If you do not have a recent version of PyMOL installed (this script has been 
+#      tested with PyMOL v1.7 and may not work properly with older versions), please go to 
+#      http://www.pymol.org/ to download and install the application.
+#
+#   2) The following command will download the PDB coordinate file from the database and save it in your working 
+#      directory. To load the file, paste the command into the command line of the PyMOL GUI Window
+#      (titled "The Pymol Molecular Graphics System")
+#
+#      to activate distance-based display of bonds to properly show non-standard bases (to be set prior to loading mmCIF) 
+#
+         set connect_mode, 3
+#        
+         fetch 4v88, type=cif
+#
+#   3) Wait until the file is loaded and you can see the ribosome shown as lines.
+#
+#   4) Paste the rest of the script below "DISPLAY INSTRUCTIONS" into the command line of
+#      the PyMOL GUI Window (titled "The Pymol Molecular Graphics System")
+#      These commands will set up the display and nomenclature of RNAs, proteins, ions and cofactors       
+#
+########################
+# DISPLAY INSTRUCTIONS #
+########################
+
+# to activate differentiation between lowercase and uppercase chain IDs used for large molecules
+
+set ignore_case, 0
+
+# temporary subselections #
+create 4v88_molB, 4v88 and (chain C* or chain D* or chain A5 or chain A6 chain A7 or chain A8)
+create 4v88_molB_wo_cofactors, 4v88_molB and not (resn MG or resn OHX or resn ZN)
+create 4v88_molB_cofactors, 4v88_molB and (resn MG or resn OHX or resn ZN)
+
+delete 4v88
+delete 4v88_molB
+
+#################################
+# SELECTIONS OF PROTEIN and RNA #
+#################################
+
+# 60S proteins and rRNAs#
+create uL2__S.c.L2__H.s.L8___E.c.L2  , 4v88_molB_wo_cofactors and chain DA
+create uL3__S.c.L3__H.s.L3___E.c.L3  , 4v88_molB_wo_cofactors and chain DB
+create uL4__S.c.L4__H.s.L4___E.c.L4  , 4v88_molB_wo_cofactors and chain DC
+create uL5__S.c.L11_H.s.L11__E.c.L5  , 4v88_molB_wo_cofactors and chain DJ
+create uL6__S.c.L9__H.s.L9___E.c.L6  , 4v88_molB_wo_cofactors and chain DH
+create eL6__S.c.L6__H.s.L6           , 4v88_molB_wo_cofactors and chain DE
+create eL8__S.c.L8__H.s.L7A          , 4v88_molB_wo_cofactors and chain DG
+create uL10_S.c.P0__H.s.P0___E.c.L10 , 4v88_molB_wo_cofactors and chain Dq
+create uL11_S.c.L12_H.s.L12__E.c.L11 , 4v88_molB_wo_cofactors and chain DK
+create uL13_S.c.L16_H.s.L13A_E.c.L13 , 4v88_molB_wo_cofactors and chain DO
+create eL13_S.c.L13_H.s.L13          , 4v88_molB_wo_cofactors and chain DL
+create uL14_S.c.L23_H.s.L23__E.c.L14 , 4v88_molB_wo_cofactors and chain DV
+create eL14_S.c.L14_H.s.L14          , 4v88_molB_wo_cofactors and chain DM
+create uL15_S.c.L28_H.s.L27A_E.c.L15 , 4v88_molB_wo_cofactors and chain Da
+create eL15_S.c.L15_H.s.L15          , 4v88_molB_wo_cofactors and chain DN
+create uL16_S.c.L10_H.s.L10__E.c.L16 , 4v88_molB_wo_cofactors and chain DI
+create uL18_S.c.L5__H.s.L5___E.c.L18 , 4v88_molB_wo_cofactors and chain DD
+create eL18_S.c.L18_H.s.L18          , 4v88_molB_wo_cofactors and chain DQ
+create eL19_S.c.L19_H.s.L19          , 4v88_molB_wo_cofactors and chain DR
+create eL20_S.c.L20_H.s.L18A         , 4v88_molB_wo_cofactors and chain DS
+create eL21_S.c.L21_H.s.L21          , 4v88_molB_wo_cofactors and chain DT
+create uL22_S.c.L17_H.s.L17__E.c.L22 , 4v88_molB_wo_cofactors and chain DP
+create eL22_S.c.L22_H.s.L22          , 4v88_molB_wo_cofactors and chain DU
+create uL23_S.c.L25_H.s.L23A_E.c.L23 , 4v88_molB_wo_cofactors and chain DX
+create uL24_S.c.L26_H.s.L26__E.c.L24 , 4v88_molB_wo_cofactors and chain DY
+create eL24_S.c.L24_H.s.L24          , 4v88_molB_wo_cofactors and chain DW
+create eL27_S.c.L27_H.s.L27          , 4v88_molB_wo_cofactors and chain DZ
+create uL29_S.c.L35_H.s.L35__E.c.L29 , 4v88_molB_wo_cofactors and chain Dh
+create eL29_S.c.L29_H.s.L29          , 4v88_molB_wo_cofactors and chain Db
+create uL30_S.c.L7__H.s.L7___E.c.L30 , 4v88_molB_wo_cofactors and chain DF
+create eL30_S.c.L30_H.s.L30          , 4v88_molB_wo_cofactors and chain Dc
+create eL31_S.c.L31_H.s.L31          , 4v88_molB_wo_cofactors and chain Dd
+create eL32_S.c.L32_H.s.L32          , 4v88_molB_wo_cofactors and chain De
+create eL33_S.c.L33_H.s.L35A         , 4v88_molB_wo_cofactors and chain Df
+create eL34_S.c.L34_H.s.L34          , 4v88_molB_wo_cofactors and chain Dg
+create eL36_S.c.L36_H.s.L36          , 4v88_molB_wo_cofactors and chain Di
+create eL37_S.c.L37_H.s.L37          , 4v88_molB_wo_cofactors and chain Dj
+create eL38_S.c.L38_H.s.L38          , 4v88_molB_wo_cofactors and chain Dk
+create eL39_S.c.L39_H.s.L39          , 4v88_molB_wo_cofactors and chain Dl
+create eL40_S.c.L40_H.s.L40          , 4v88_molB_wo_cofactors and chain Dm
+create eL41_S.c.L41_H.s.L41          , 4v88_molB_wo_cofactors and chain Dn
+create eL42_S.c.L42_H.s.L36A         , 4v88_molB_wo_cofactors and chain Do
+create eL43_S.c.L43_H.s.L37A         , 4v88_molB_wo_cofactors and chain Dp
+create P1___S.c.P1__H.s.P1           , 4v88_molB_wo_cofactors and chain Dr
+create P2___S.c.P2__H.s.P2           , 4v88_molB_wo_cofactors and chain Ds
+create S.c.25S__rRNA                 , 4v88_molB_wo_cofactors and chain A5
+create S.c.5S___rRNA                 , 4v88_molB_wo_cofactors and chain A7
+create S.c.5.8S_rRNA                 , 4v88_molB_wo_cofactors and chain A8
+create S.c.60S_Zn                    , 4v88_molB_cofactors and chain D* and resn ZN
+
+
+# 40S proteins and rRNA #                         
+create eS1__S.c.S1__H.s.S3A          , 4v88_molB_wo_cofactors and chain CB
+create uS2__S.c.S0__H.s.SA___E.c.S2  , 4v88_molB_wo_cofactors and chain CA
+create uS3__S.c.S3__H.s.S3___E.c.S3  , 4v88_molB_wo_cofactors and chain CD
+create uS4__S.c.S9__H.s.S9___E.c.S4  , 4v88_molB_wo_cofactors and chain CJ
+create eS4__S.c.S4__H.s.S4           , 4v88_molB_wo_cofactors and chain CE
+create uS5__S.c.S2__H.s.S2___E.c.S5  , 4v88_molB_wo_cofactors and chain CC
+create eS6__S.c.S6__H.s.S6           , 4v88_molB_wo_cofactors and chain CG
+create uS7__S.c.S5__H.s.S5___E.c.S7  , 4v88_molB_wo_cofactors and chain CF
+create eS7__S.c.S7__H.s.S7           , 4v88_molB_wo_cofactors and chain CH
+create uS8__S.c.S22_H.s.S15A_E.c.S8  , 4v88_molB_wo_cofactors and chain CW
+create eS8__S.c.S8__H.s.S8           , 4v88_molB_wo_cofactors and chain CI
+create uS9__S.c.S16_H.s.S16__E.c.S9  , 4v88_molB_wo_cofactors and chain CQ
+create uS10_S.c.S20_H.s.S20__E.c.S10 , 4v88_molB_wo_cofactors and chain CU
+create eS10_S.c.S10_H.s.S10          , 4v88_molB_wo_cofactors and chain CK
+create uS11_S.c.S14_H.s.S14__E.c.S11 , 4v88_molB_wo_cofactors and chain CO
+create uS12_S.c.S23_H.s.S23__E.c.S12 , 4v88_molB_wo_cofactors and chain CX
+create eS12_S.c.S12_H.s.S12          , 4v88_molB_wo_cofactors and chain CM
+create uS13_S.c.S18_H.s.S18__E.c.S13 , 4v88_molB_wo_cofactors and chain CS
+create uS14_S.c.S29_H.s.S29__E.c.S14 , 4v88_molB_wo_cofactors and chain Cd
+create uS15_S.c.S13_H.s.S13__E.c.S15 , 4v88_molB_wo_cofactors and chain CN
+create uS17_S.c.S11_H.s.S11__E.c.S17 , 4v88_molB_wo_cofactors and chain CL
+create eS17_S.c.S17_H.s.S17          , 4v88_molB_wo_cofactors and chain CR
+create uS19_S.c.S15_H.s.S15__E.c.S19 , 4v88_molB_wo_cofactors and chain CP
+create eS19_S.c.S19_H.s.S19          , 4v88_molB_wo_cofactors and chain CT
+create eS21_S.c.S21_H.s.S21          , 4v88_molB_wo_cofactors and chain CV
+create eS24_S.c.S24_H.s.S24          , 4v88_molB_wo_cofactors and chain CY
+create eS25_S.c.S25_H.s.S25          , 4v88_molB_wo_cofactors and chain CZ
+create eS26_S.c.S26_H.s.S26          , 4v88_molB_wo_cofactors and chain Ca
+create eS27_S.c.S27_H.s.S27          , 4v88_molB_wo_cofactors and chain Cb
+create eS28_S.c.S28_H.s.S28          , 4v88_molB_wo_cofactors and chain Cc
+create eS30_S.c.S30_H.s.S30          , 4v88_molB_wo_cofactors and chain Ce
+create eS31_S.c.S31_H.s.S27A         , 4v88_molB_wo_cofactors and chain Cf
+create S.c.Asc1_H.s.RACK1            , 4v88_molB_wo_cofactors and chain Cg
+create S.c.Stm1                      , 4v88_molB_wo_cofactors and chain Ch 
+create S.c.18S_rRNA                  , 4v88_molB_wo_cofactors and chain A6
+create S.c.40S_Zn                    , 4v88_molB_cofactors and chain C* and resn ZN
+
+
+# additional cofactors #
+create S.c.80S_Os_6HN3               , 4v88_molB_cofactors and resn OHX
+create S.c.80S_Mg                    , 4v88_molB_cofactors and resn MG
+
+#HIGHLIGHT CHANGING NUCLEOTIDES
+#<insert nucleotide highlighting here>
+
+
+delete 4v88_molB_wo_cofactors
+delete 4v88_molB_cofactors
+
+# subselections for the 80S #
+select S.c.80S_proteins, P1_* or P2_* or eL* or uL* or eS* or uS* or S.c.Stm1 or S.c.Asc1_H.s.RACK1
+select S.c.80S_rRNAs, S.c.25S__rRNA or S.c.5S___rRNA or S.c.5.8S_rRNA or S.c.18S_rRNA
+select S.c.80S_bases, (S.c.80S_rRNAs and (name C4 or name N3 or name N9 or name C8 or name N7 or name C5 or name C6 or name N1 or name N6 or name C2 or name O2 or name O4 or name O6 or name N2 or name N4))
+
+
+##################
+# COLOR SETTINGS #
+##################
+
+#color grey60,     S.c.80S_rRNAs
+#color white,      S.c.80S_bases
+#color aquamarine, uL* or uS*
+#color oxygen,     eL6_* or eL22_* or eL27_* or eL29_* or eL36_*
+#color oxygen,     eS7_* or eS10_* or eS12_* or eS21_* or eS26_* or S.c.Asc1_H.s.RACK1
+#color orange,     eL* and not (eL6_* or eL22_* or eL27_* or eL28_* or eL29_* or eL36_*)
+#color orange,     P1_* or P2_*
+#color orange,     eS* and not (eS7_* or eS10_* or eS12_* or eS21_* or eS26_*)
+color purple,     resn MG
+color forest,     S.c.80S_Os_6HN3 and name OS
+color tv_blue,    S.c.80S_Os_6HN3 and name N
+color yellow,     S.c.40S_Zn or  S.c.60S_Zn
+
+#small subunit is blue
+color blue,      uS* or eS* or S.c.Stm1 or S.c.Asc1
+color lightblue, S.c.18S_rRNA
+
+#large subunit is red
+color red,      uL* or eL* or P1_* or P2_*
+color salmon,  S.c.25S__rRNA or S.c.5S___rRNA or S.c.5.8S_rRNA
+
+#color changing nucleotides
+set_color bluish_green= [0.0 , 0.62 , 0.45]
+set_color vermillion= [0.84 , 0.37 , 0.0]
+color vermillion, protected_nucleotides
+color bluish_green, deprotected_nucleotides
+
+hide everything
+
+####################
+# DISPLAY SETTINGS #
+####################
+
+show surface, S.c.80S_proteins or S.c.80S_rRNAs
+set transparency, 0.8, S.c.80S_proteins or S.c.80S_rRNAs
+show spheres, protected_nucleotides or protected_nucleotides
+
+#set cartoon_loop_radius,0.40000
+#set cartoon_tube_radius,0.8000
+#set cartoon_ladder_radius,0.4000
+#set cartoon_oval_length,1.200
+#set cartoon_oval_width,0.4000
+#show spheres, S.c.60S_Zn or S.c.40S_Zn
+#show spheres, S.c.80S_Mg
+#show spheres, S.c.80S_Os_6HN3
+#set sphere_scale=1.5, S.c.60S_Zn or S.c.40S_Zn
+#set sphere_scale=0.6, S.c.80S_Mg
+#set sphere_scale=0.5, S.c.80S_Os_6HN3 and name N*
+#set sphere_scale=2.2, S.c.80S_Os_6HN3 and name OS
+
+delete S.c.80S_proteins    
+delete S.c.80S_rRNAs     
+delete S.c.80S_bases
+
+bg_color white
+set ray_opaque_background, off
+set depth_cue=0
+set ray_trace_fog=0
+
+#################
+# VIEW SETTINGS #
+#################
+     
+# side view of the 80S #
+set_view (\
+    -0.987847030,    0.021754943,    0.153153449,\
+     0.034389943,   -0.934180319,    0.354742438,\
+     0.150809333,    0.355729073,    0.922201931,\
+     0.000000000,    0.000000000, -855.260559082,\
+   179.838546753,    3.613739014,  232.099822998,\
+   723.269958496,  987.251403809,  -20.000000000 )
+
+
