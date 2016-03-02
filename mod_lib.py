@@ -405,9 +405,13 @@ class Nucleotide:
         except ZeroDivisionError:
             return float('inf')
 
-    def get_control_fold_change_error(self, subtract_background=False):
+    def get_control_fold_change_error(self, subtract_background=False, max_fold_reduction=0.001, max_fold_increase=100):
         try:
             ratio = self.get_control_fold_change_in_mutation_rate(subtract_background=subtract_background)
+            if ratio == float('inf') or ratio == -1*float('inf'):
+                ratio = max_fold_increase
+            elif ratio<=0:
+                ratio = max_fold_reduction
             if subtract_background:
                 num = self.get_back_sub_mutation_rate()
                 num_error = self.get_back_sub_error()
@@ -461,10 +465,14 @@ class Nucleotide:
         #        self.lib_settings.experiment_settings.get_property('affected_nucleotides'):
         #    return "no_change"
         fold_change = self.get_control_fold_change_in_mutation_rate(subtract_background=subtract_background)
+        #these outliers are always on the edge of the rRNA, so they're probably crap
         if fold_change == float('inf') or fold_change == -1*float('inf'):
-            fold_change = max_fold_increase
+            #fold_change = max_fold_increase
+            return "no_change"
         elif fold_change<=0:
             fold_change = max_fold_reduction
+            return "no_change"
+
         mean = math.log(fold_change) #natural log to make dist more gaussian
         standard_deviation = self.get_control_fold_change_error(subtract_background=subtract_background)/fold_change #error propogation for natural log
         p, z = mod_utils.computePfromMeanAndStDevZscore(mean, standard_deviation, 0) #what is the chance that no change could come from this dist?

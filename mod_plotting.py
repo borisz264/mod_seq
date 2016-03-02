@@ -6,6 +6,7 @@ import numpy
 import math
 import mod_lib
 import mod_utils
+import operator
 plt.rcParams['pdf.fonttype'] = 42 #leaves most text as actual text in PDFs, not outlines
 
 
@@ -18,7 +19,7 @@ def plot_mutated_nts_pie(libraries, out_prefix, subtract_background=False, subtr
     num_subplots = len(libraries)
     num_plots_wide = math.ceil(math.sqrt(num_subplots))
     num_plots_high = num_plots_wide
-    fig = plt.figure(figsize=(4*num_plots_wide, 4*num_plots_high))
+    fig = plt.figure(figsize=(4*num_plots_wide, 2*num_plots_high))
     fig.subplots_adjust(wspace=0.4, hspace=0.4)
     plot_index =1
     for library in libraries:
@@ -42,15 +43,11 @@ def plot_mutated_nts_pie(libraries, out_prefix, subtract_background=False, subtr
     plt.savefig(out_prefix + '.pdf', transparent='True', format='pdf')
     plt.clf()
 
-def plot_mutation_breakdown_pie(libraries, out_prefix, subtract_background=False, subtract_control=False, exclude_constitutive=False):
-    #Makes an array of pie charts, 4 per library, with types of mutations for each nt
-    if subtract_background or subtract_control:
-        #if subtracting background, need to only look at those which have a defined control
-        libraries = [library for library in libraries if library.lib_settings.sample_name in
-                     library.experiment_settings.get_property('experimentals')]
+def plot_mutation_breakdown_pie(libraries, out_prefix, exclude_constitutive=False):
+    #Makes an array of pie charts, 4 pers library, with types of mutations for each nt
     num_subplots = len(libraries)*4
     num_plots_wide = 4
-    num_plots_high = num_subplots
+    num_plots_high = len(libraries)
     fig = plt.figure(figsize=(16, 4*num_plots_high))
     fig.subplots_adjust(wspace=0.4, hspace=0.4)
     plot_index =1
@@ -58,8 +55,14 @@ def plot_mutation_breakdown_pie(libraries, out_prefix, subtract_background=False
         mutated_nts_count = library.count_mutation_types_by_nucleotide(exclude_constitutive=exclude_constitutive)
         for nt in 'ATCG':
             plot = fig.add_subplot(num_plots_high, num_plots_wide, plot_index)
-            labels = sorted(mutated_nts_count[nt].keys())
-            sizes = numpy.array([mutated_nts_count[nt] for nt in labels])
+            sorted_muts = sorted(mutated_nts_count[nt].items(), key=operator.itemgetter(1), reverse=True)
+            labels = [pair[0] for pair in sorted_muts[:4]]
+            others = [pair[0] for pair in sorted_muts[4:]]
+            sizes = [mutated_nts_count[nt][mut_type] for mut_type in labels]
+            labels.append('other')
+            other_sum = sum([mutated_nts_count[nt][mut_type] for mut_type in others])
+            sizes.append(other_sum)
+            sizes = numpy.array(sizes)
             total = float(sum(sizes))
             sizes = sizes/total
             merged_labels = ['%s %.3f' % (labels[i], sizes[i]) for i in range(len(sizes))]
@@ -337,7 +340,8 @@ def ma_plots_interactive(libraries, out_prefix, nucleotides_to_count='ATCG', exc
     p = gridplot(plot_figs)
     show(p)
 
-def plot_changes_vs_control(libraries, out_prefix, nucleotides_to_count='ATCG', exclude_constitutive=False):
+def plot_changes_vs_control(libraries, out_prefix, nucleotides_to_count='ATCG', exclude_constitutive=False,
+                            max_fold_reduction=0.001, max_fold_increase=100):
     """
 
     :param libraries:
