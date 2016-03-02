@@ -20,7 +20,7 @@ def plot_mutated_nts_pie(libraries, out_prefix, subtract_background=False, subtr
     num_subplots = len(libraries)
     num_plots_wide = math.ceil(math.sqrt(num_subplots))
     num_plots_high = num_plots_wide
-    fig = plt.figure(figsize=(4*num_plots_wide, 2*num_plots_high))
+    fig = plt.figure(figsize=(4*num_plots_wide, 4*num_plots_high))
     fig.subplots_adjust(wspace=0.4, hspace=0.4)
     plot_index =1
     for library in libraries:
@@ -466,9 +466,9 @@ def ma_plots(libraries, out_prefix, nucleotides_to_count='ATCG', exclude_constit
         plot.set_ylabel("[%s]/[%s]" % (library.lib_settings.sample_name, library.get_normalizing_lib_with_mod().lib_settings.sample_name), fontsize = 8)
         plot.set_yscale('log')
         plot.set_xscale('log')
-        plot.scatter(mag, fold_change, color=mod_utils.black, s=2)
-        plot.scatter(prot_mag, prot_fold_change, color=mod_utils.vermillion, s=2)
-        plot.scatter(deprot_mag, deprot_fold_change, color=mod_utils.bluishGreen, s=2)
+        plot.scatter(mag, fold_change, color=mod_utils.black, s=3)
+        plot.scatter(prot_mag, prot_fold_change, color=mod_utils.vermillion, s=5)
+        plot.scatter(deprot_mag, deprot_fold_change, color=mod_utils.bluishGreen, s=5)
         plot.set_xlim(0.00001,1)
         plot.set_ylim(.001,100)
         plot_figs.append(plot)
@@ -599,7 +599,7 @@ def generate_roc_curves(tp_tn_annotations, genome_fasta, outprefix, libraries, r
         plt.savefig(out_prefix + '.pdf', transparent='True', format='pdf')
         plt.clf()
 
-    sample_names = [library for library in libraries]
+    sample_names = [library.lib_settings.sample_name for library in libraries]
     mutation_densities = [library.rRNA_mutation_data for library in libraries]
 
 

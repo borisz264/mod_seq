@@ -28,11 +28,11 @@ class mod_seq_run:
         self.create_shapemapper_settings()
         self.run_shapemapper()
         self.initialize_libs()
-        #self.make_plots()
+        self.make_plots()
         self.make_plots(exclude_constitutive=True)
-        #self.make_tables()
-        #self.make_tables(exclude_constitutive=True)
-        #self.annotate_structures()
+        self.make_tables()
+        self.make_tables(exclude_constitutive=True)
+        self.annotate_structures()
 
     def remove_adaptor(self):
         if not self.settings.get_property('force_retrim'):
