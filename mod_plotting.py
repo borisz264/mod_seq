@@ -160,7 +160,7 @@ def plot_mutation_rate_cdfs(libraries, out_prefix, nucleotides_to_count='ATCG', 
     plt.savefig(out_prefix + '.pdf', transparent='True', format='pdf')
     plt.clf()
 
-def plot_changes_vs_control_interactive(libraries, out_prefix, nucleotides_to_count='ATCG', exclude_constitutive=False):
+def plot_changes_vs_control_interactive(libraries, out_prefix, nucleotides_to_count='ATCG', exclude_constitutive=False, max_fold_reduction=0.001, max_fold_increase=100):
     """
 
     :param libraries:
@@ -190,24 +190,28 @@ def plot_changes_vs_control_interactive(libraries, out_prefix, nucleotides_to_co
                 nucleotide = library.rRNA_mutation_data[rRNA_name].nucleotides[position]
                 if (exclude_constitutive and nucleotide.exclude_constitutive)or nucleotide.identity not in nucleotides_to_count:
                     pass
-                elif nucleotide.get_control_fold_change_in_mutation_rate() != 0 and \
-                                nucleotide.get_control_fold_change_in_mutation_rate() != float('inf'):
-                        protection_call = nucleotide.determine_protection_status(confidence_interval=library.experiment_settings.get_property('confidence_interval_cutoff'),
-                                                                       fold_change_cutoff=library.experiment_settings.get_property('fold_change_cutoff'))
-                        if protection_call == 'no_change':
-                            mag_change.append(nucleotide.get_control_sub_mutation_rate())
-                            fold_change.append(nucleotide.get_control_fold_change_in_mutation_rate())
-                            annotation.append('%s_%s%d' %(rRNA_name,nucleotide.identity,position))
-                        elif protection_call == 'deprotected':
-                            print 'deprotected ', nucleotide
-                            deprot_mag_change.append(nucleotide.get_control_sub_mutation_rate())
-                            deprot_fold_change.append(nucleotide.get_control_fold_change_in_mutation_rate())
-                            deprot_annotation.append('%s_%s%d' %(rRNA_name,nucleotide.identity,position))
-                        elif protection_call == 'protected':
-                            print 'protected ', nucleotide
-                            prot_mag_change.append(nucleotide.get_control_sub_mutation_rate())
-                            prot_fold_change.append(nucleotide.get_control_fold_change_in_mutation_rate())
-                            prot_annotation.append('%s_%s%d' %(rRNA_name,nucleotide.identity,position))
+                else:
+                    protection_call = nucleotide.determine_protection_status(confidence_interval=library.experiment_settings.get_property('confidence_interval_cutoff'),
+                                                                   fold_change_cutoff=library.experiment_settings.get_property('fold_change_cutoff'))
+                    control_fold_change = nucleotide.get_control_fold_change_in_mutation_rate()
+                    if control_fold_change == 0:
+                        control_fold_change = max_fold_reduction
+                    elif control_fold_change == float('inf'):
+                        control_fold_change = max_fold_increase
+                    if protection_call == 'no_change':
+                        mag_change.append(nucleotide.get_control_sub_mutation_rate())
+                        fold_change.append(control_fold_change)
+                        annotation.append('%s_%s%d' %(rRNA_name,nucleotide.identity,position))
+                    elif protection_call == 'deprotected':
+                        print 'deprotected ', nucleotide
+                        deprot_mag_change.append(nucleotide.get_control_sub_mutation_rate())
+                        deprot_fold_change.append(control_fold_change)
+                        deprot_annotation.append('%s_%s%d' %(rRNA_name,nucleotide.identity,position))
+                    elif protection_call == 'protected':
+                        print 'protected ', nucleotide
+                        prot_mag_change.append(nucleotide.get_control_sub_mutation_rate())
+                        prot_fold_change.append(control_fold_change)
+                        prot_annotation.append('%s_%s%d' %(rRNA_name,nucleotide.identity,position))
         source = ColumnDataSource(data=dict(x = mag_change, y = fold_change, label = annotation))
         prot_source = ColumnDataSource(data=dict(x = prot_mag_change, y = prot_fold_change, label = prot_annotation))
         deprot_source = ColumnDataSource(data=dict(x = deprot_mag_change, y = deprot_fold_change,
@@ -259,26 +263,29 @@ def ma_plots_interactive(libraries, out_prefix, nucleotides_to_count='ATCG', exc
                 nucleotide = library.rRNA_mutation_data[rRNA_name].nucleotides[position]
                 if (exclude_constitutive and nucleotide.exclude_constitutive)or nucleotide.identity not in nucleotides_to_count:
                     pass
-                elif nucleotide.get_control_fold_change_in_mutation_rate() != 0 and \
-                                nucleotide.get_control_fold_change_in_mutation_rate() != float('inf'):
-                        protection_call = nucleotide.determine_protection_status(confidence_interval=library.experiment_settings.get_property('confidence_interval_cutoff'),
-                                                                       fold_change_cutoff=library.experiment_settings.get_property('fold_change_cutoff'))
-                        avg_mutation_rate = (nucleotide.mutation_rate+nucleotide.get_control_nucleotide().mutation_rate)/2.0
-
-                        if protection_call == 'no_change':
-                            mag.append(avg_mutation_rate)
-                            fold_change.append(nucleotide.get_control_fold_change_in_mutation_rate())
-                            annotation.append('%s_%s%d' %(rRNA_name,nucleotide.identity,position))
-                        elif protection_call == 'deprotected':
-                            print 'deprotected ', nucleotide
-                            deprot_mag.append(avg_mutation_rate)
-                            deprot_fold_change.append(nucleotide.get_control_fold_change_in_mutation_rate())
-                            deprot_annotation.append('%s_%s%d' %(rRNA_name,nucleotide.identity,position))
-                        elif protection_call == 'protected':
-                            print 'protected ', nucleotide
-                            prot_mag.append(avg_mutation_rate)
-                            prot_fold_change.append(nucleotide.get_control_fold_change_in_mutation_rate())
-                            prot_annotation.append('%s_%s%d' %(rRNA_name,nucleotide.identity,position))
+                else:
+                    protection_call = nucleotide.determine_protection_status(confidence_interval=library.experiment_settings.get_property('confidence_interval_cutoff'),
+                                                                   fold_change_cutoff=library.experiment_settings.get_property('fold_change_cutoff'))
+                    control_fold_change = nucleotide.get_control_fold_change_in_mutation_rate()
+                    avg_mutation_rate = (nucleotide.mutation_rate+nucleotide.get_control_nucleotide().mutation_rate)/2.0
+                    if control_fold_change == 0:
+                        control_fold_change = max_fold_reduction
+                    elif control_fold_change == float('inf'):
+                        control_fold_change = max_fold_increase
+                    if protection_call == 'no_change':
+                        mag.append(avg_mutation_rate)
+                        fold_change.append(control_fold_change)
+                        annotation.append('%s_%s%d' %(rRNA_name,nucleotide.identity,position))
+                    elif protection_call == 'deprotected':
+                        print 'deprotected ', nucleotide
+                        deprot_mag.append(avg_mutation_rate)
+                        deprot_fold_change.append(control_fold_change)
+                        deprot_annotation.append('%s_%s%d' %(rRNA_name,nucleotide.identity,position))
+                    elif protection_call == 'protected':
+                        print 'protected ', nucleotide
+                        prot_mag.append(avg_mutation_rate)
+                        prot_fold_change.append(control_fold_change)
+                        prot_annotation.append('%s_%s%d' %(rRNA_name,nucleotide.identity,position))
         source = ColumnDataSource(data=dict(x = mag, y = fold_change, label = annotation))
         prot_source = ColumnDataSource(data=dict(x = prot_mag, y = prot_fold_change, label = prot_annotation))
         deprot_source = ColumnDataSource(data=dict(x = deprot_mag, y = deprot_fold_change,
@@ -330,24 +337,28 @@ def plot_changes_vs_control(libraries, out_prefix, nucleotides_to_count='ATCG', 
                 nucleotide = library.rRNA_mutation_data[rRNA_name].nucleotides[position]
                 if (exclude_constitutive and nucleotide.exclude_constitutive)or nucleotide.identity not in nucleotides_to_count:
                     pass
-                elif nucleotide.get_control_fold_change_in_mutation_rate() != 0 and \
-                                nucleotide.get_control_fold_change_in_mutation_rate() != float('inf'):
-                        protection_call = nucleotide.determine_protection_status(confidence_interval=library.experiment_settings.get_property('confidence_interval_cutoff'),
-                                                                       fold_change_cutoff=library.experiment_settings.get_property('fold_change_cutoff'))
-                        if protection_call == 'no_change':
-                            mag_change.append(nucleotide.get_control_sub_mutation_rate())
-                            fold_change.append(nucleotide.get_control_fold_change_in_mutation_rate())
-                            annotation.append('%s_%s%d' %(rRNA_name,nucleotide.identity,position))
-                        elif protection_call == 'deprotected':
-                            print 'deprotected ', nucleotide
-                            deprot_mag_change.append(nucleotide.get_control_sub_mutation_rate())
-                            deprot_fold_change.append(nucleotide.get_control_fold_change_in_mutation_rate())
-                            deprot_annotation.append('%s_%s%d' %(rRNA_name,nucleotide.identity,position))
-                        elif protection_call == 'protected':
-                            print 'protected ', nucleotide
-                            prot_mag_change.append(nucleotide.get_control_sub_mutation_rate())
-                            prot_fold_change.append(nucleotide.get_control_fold_change_in_mutation_rate())
-                            prot_annotation.append('%s_%s%d' %(rRNA_name,nucleotide.identity,position))
+                else:
+                    protection_call = nucleotide.determine_protection_status(confidence_interval=library.experiment_settings.get_property('confidence_interval_cutoff'),
+                                                                   fold_change_cutoff=library.experiment_settings.get_property('fold_change_cutoff'))
+                    control_fold_change = nucleotide.get_control_fold_change_in_mutation_rate()
+                    if control_fold_change == 0:
+                        control_fold_change = max_fold_reduction
+                    elif control_fold_change == float('inf'):
+                        control_fold_change = max_fold_increase
+                    if protection_call == 'no_change':
+                        mag_change.append(nucleotide.get_control_sub_mutation_rate())
+                        fold_change.append(control_fold_change)
+                        annotation.append('%s_%s%d' %(rRNA_name,nucleotide.identity,position))
+                    elif protection_call == 'deprotected':
+                        print 'deprotected ', nucleotide
+                        deprot_mag_change.append(nucleotide.get_control_sub_mutation_rate())
+                        deprot_fold_change.append(control_fold_change)
+                        deprot_annotation.append('%s_%s%d' %(rRNA_name,nucleotide.identity,position))
+                    elif protection_call == 'protected':
+                        print 'protected ', nucleotide
+                        prot_mag_change.append(nucleotide.get_control_sub_mutation_rate())
+                        prot_fold_change.append(control_fold_change)
+                        prot_annotation.append('%s_%s%d' %(rRNA_name,nucleotide.identity,position))
         plot.set_xlabel("[%s] - [%s]" % (library.lib_settings.sample_name, library.get_normalizing_lib_with_mod().lib_settings.sample_name), fontsize = 8)
         plot.set_ylabel("[%s]/[%s]" % (library.lib_settings.sample_name, library.get_normalizing_lib_with_mod().lib_settings.sample_name),  fontsize = 8)
         plot.set_yscale('log')
@@ -392,30 +403,29 @@ def ma_plots(libraries, out_prefix, nucleotides_to_count='ATCG', exclude_constit
                 nucleotide = library.rRNA_mutation_data[rRNA_name].nucleotides[position]
                 if (exclude_constitutive and nucleotide.exclude_constitutive)or nucleotide.identity not in nucleotides_to_count:
                     pass
-                elif nucleotide.get_control_fold_change_in_mutation_rate(subtract_background=subtract_background) != 0 and \
-                                nucleotide.get_control_fold_change_in_mutation_rate(subtract_background=subtract_background) != float('inf'):
-                        protection_call = nucleotide.determine_protection_status(confidence_interval=library.experiment_settings.get_property('confidence_interval_cutoff'),
-                                                                       fold_change_cutoff=library.experiment_settings.get_property('fold_change_cutoff'), subtract_background=subtract_background,
-                                                                                 max_fold_reduction=max_fold_reduction, max_fold_increase=max_fold_increase)
-                        if subtract_background:
-                            avg_mutation_rate = (nucleotide.get_back_sub_mutation_rate()+nucleotide.get_control_nucleotide().get_back_sub_mutation_rate())/2.0
-                        else:
-                            avg_mutation_rate = (nucleotide.mutation_rate+nucleotide.get_control_nucleotide().mutation_rate)/2.0
-
-                        if protection_call == 'no_change':
-                            mag.append(avg_mutation_rate)
-                            fold_change.append(nucleotide.get_control_fold_change_in_mutation_rate(subtract_background=subtract_background))
-                            annotation.append('%s_%s%d' %(rRNA_name,nucleotide.identity,position))
-                        elif protection_call == 'deprotected':
-                            print 'deprotected ', nucleotide
-                            deprot_mag.append(avg_mutation_rate)
-                            deprot_fold_change.append(nucleotide.get_control_fold_change_in_mutation_rate(subtract_background=subtract_background))
-                            deprot_annotation.append('%s_%s%d' %(rRNA_name,nucleotide.identity,position))
-                        elif protection_call == 'protected':
-                            print 'protected ', nucleotide
-                            prot_mag.append(avg_mutation_rate)
-                            prot_fold_change.append(nucleotide.get_control_fold_change_in_mutation_rate(subtract_background=subtract_background))
-                            prot_annotation.append('%s_%s%d' %(rRNA_name,nucleotide.identity,position))
+                else:
+                    protection_call = nucleotide.determine_protection_status(confidence_interval=library.experiment_settings.get_property('confidence_interval_cutoff'),
+                                                                   fold_change_cutoff=library.experiment_settings.get_property('fold_change_cutoff'))
+                    control_fold_change = nucleotide.get_control_fold_change_in_mutation_rate()
+                    avg_mutation_rate = (nucleotide.mutation_rate+nucleotide.get_control_nucleotide().mutation_rate)/2.0
+                    if control_fold_change == 0:
+                        control_fold_change = max_fold_reduction
+                    elif control_fold_change == float('inf'):
+                        control_fold_change = max_fold_increase
+                    if protection_call == 'no_change':
+                        mag.append(avg_mutation_rate)
+                        fold_change.append(control_fold_change)
+                        annotation.append('%s_%s%d' %(rRNA_name,nucleotide.identity,position))
+                    elif protection_call == 'deprotected':
+                        print 'deprotected ', nucleotide
+                        deprot_mag.append(avg_mutation_rate)
+                        deprot_fold_change.append(control_fold_change)
+                        deprot_annotation.append('%s_%s%d' %(rRNA_name,nucleotide.identity,position))
+                    elif protection_call == 'protected':
+                        print 'protected ', nucleotide
+                        prot_mag.append(avg_mutation_rate)
+                        prot_fold_change.append(control_fold_change)
+                        prot_annotation.append('%s_%s%d' %(rRNA_name,nucleotide.identity,position))
         plot.set_xlabel("([%s] + [%s])/2" % (library.lib_settings.sample_name, library.get_normalizing_lib_with_mod().lib_settings.sample_name), fontsize = 8)
         plot.set_ylabel("[%s]/[%s]" % (library.lib_settings.sample_name, library.get_normalizing_lib_with_mod().lib_settings.sample_name), fontsize = 8)
         plot.set_yscale('log')
