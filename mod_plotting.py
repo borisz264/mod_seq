@@ -499,7 +499,7 @@ def highlight_structure(libraries, out_prefix, nucleotides_to_count='ATCG', excl
                                                                    fold_change_cutoff=library.experiment_settings.get_property('fold_change_cutoff'))
         num_deprotected = 0
         for rRNA in deprotected_nucleotides:
-            num_deprotected += len(protected_nucleotides[rRNA])
+            num_deprotected += len(deprotected_nucleotides[rRNA])
 
         if num_protected>0 or num_deprotected>0:
             output_file = open(os.path.join(out_prefix, "%s.txt" % (library.lib_settings.sample_name)), 'w')
@@ -516,11 +516,11 @@ def highlight_structure(libraries, out_prefix, nucleotides_to_count='ATCG', excl
                         output_file.write(outline)
                     if num_deprotected>0:
                         rRNA_selections = []
-                        for rRNA in protected_nucleotides:
-                            if len(protected_nucleotides[rRNA])>0:
-                                rRNA_selections.append('%s and resi %s\n' % (rRNA, '+'.join([str(nucleotide.position) for
-                                                                                         nucleotide in protected_nucleotides[rRNA]])))
-                        outline = 'create deprotected_nucleotides, %s' % (' or '.join(rRNA_selections))
+                        for rRNA in deprotected_nucleotides:
+                            if len(deprotected_nucleotides[rRNA])>0:
+                                rRNA_selections.append('%s and resi %s' % (rRNA, '+'.join([str(nucleotide.position) for
+                                                                                         nucleotide in deprotected_nucleotides[rRNA]])))
+                        outline = 'create deprotected_nucleotides, %s\n' % (' or '.join(rRNA_selections))
                         output_file.write(outline)
                 else:
                     output_file.write(line)
