@@ -223,8 +223,7 @@ color salmon,  S.c.25S__rRNA or S.c.5S___rRNA or S.c.5.8S_rRNA
 #color changing nucleotides
 set_color bluish_green= [0.0 , 0.62 , 0.45]
 set_color vermillion= [0.84 , 0.37 , 0.0]
-color vermillion, protected_nucleotides
-color bluish_green, deprotected_nucleotides
+#<color groups here>
 
 hide everything
 
@@ -233,7 +232,8 @@ hide everything
 ####################
 
 show surface, S.c.80S_proteins or S.c.80S_rRNAs
-show spheres, protected_nucleotides or deprotected_nucleotides
+#<show spheres for changing nucleotides here>
+#show spheres, protected_nucleotides or deprotected_nucleotides
 
 #set cartoon_loop_radius,0.40000
 #set cartoon_tube_radius,0.8000

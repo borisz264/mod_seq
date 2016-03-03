@@ -236,12 +236,12 @@ def plot_changes_vs_control_interactive(libraries, out_prefix, nucleotides_to_co
                         fold_change.append(control_fold_change)
                         annotation.append('%s_%s%d' %(rRNA_name,nucleotide.identity,position))
                     elif protection_call == 'deprotected':
-                        print 'deprotected ', nucleotide
+                        #print 'deprotected ', nucleotide
                         deprot_mag_change.append(nucleotide.get_control_sub_mutation_rate())
                         deprot_fold_change.append(control_fold_change)
                         deprot_annotation.append('%s_%s%d' %(rRNA_name,nucleotide.identity,position))
                     elif protection_call == 'protected':
-                        print 'protected ', nucleotide
+                        #print 'protected ', nucleotide
                         prot_mag_change.append(nucleotide.get_control_sub_mutation_rate())
                         prot_fold_change.append(control_fold_change)
                         prot_annotation.append('%s_%s%d' %(rRNA_name,nucleotide.identity,position))
@@ -522,6 +522,16 @@ def highlight_structure(libraries, out_prefix, nucleotides_to_count='ATCG', excl
                                                                                          nucleotide in deprotected_nucleotides[rRNA]])))
                         outline = 'create deprotected_nucleotides, %s\n' % (' or '.join(rRNA_selections))
                         output_file.write(outline)
+                elif line.startswith('#<color groups here>'):
+                    if num_protected>0:
+                        output_file.write('color vermillion, protected_nucleotides\n')
+                    if num_deprotected>0:
+                        output_file.write('color bluish_green, deprotected_nucleotides\n')
+                elif line.startswith('#<show spheres for changing nucleotides here>'):
+                    if num_protected>0:
+                        output_file.write('show spheres, protected_nucleotides\n')
+                    if num_deprotected>0:
+                        output_file.write('deprotected_nucleotides\n')
                 else:
                     output_file.write(line)
             reference_pymol_script_file.close()
