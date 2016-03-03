@@ -18,6 +18,7 @@ confidence_interval_cutoff = 0.999999
 fold_change_cutoff = 3
 
 pymol_base_script = /Users/boris/Green_Lab/Book_2/2.36/mod_seq/structure_highlighting/ban_nomenclature_S_cerevisiae_80S_PyMOL_highlighting_base.txt
+pymol_base_script_colorchange = /Users/boris/Green_Lab/Book_2/2.36/mod_seq/structure_highlighting/ban_nomenclature_S_cerevisiae_80S_PyMOL_colored_by_change_base.txt
 
 make_interactive_plots = True
 adaptor_sequence = CACTCGGGCACCAAGGAC

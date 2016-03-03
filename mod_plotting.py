@@ -527,6 +527,47 @@ def highlight_structure(libraries, out_prefix, nucleotides_to_count='ATCG', excl
             reference_pymol_script_file.close()
             output_file.close()
 
+def color_by_change(libraries, out_prefix, nucleotides_to_count='ATCG', exclude_constitutive=False, subtract_background=False):
+    for library in libraries:
+        log_fold_changes = {}
+        maxval = 0.0
+        minval = 0.0
+        for rRNA_name in library.rRNA_mutation_data:
+            log_fold_changes[rRNA_name] = {}
+            for nucleotide in library.rRNA_mutation_data[rRNA_name].nucleotides:
+                if library.rRNA_mutation_data[rRNA_name].nucleotides[nucleotide].identity in nucleotides_to_count and \
+                        library.rRNA_mutation_data[rRNA_name].nucleotides[nucleotide].\
+                                get_control_fold_change_in_mutation_rate(subtract_background=subtract_background) not in [0.0, float('inf'), float('-inf')]:
+                    if exclude_constitutive and library.rRNA_mutation_data[rRNA_name].nucleotides[nucleotide].exclude_constitutive:
+                        pass
+                    else:
+                        log_fold_changes[rRNA_name][nucleotide] = math.log(library.rRNA_mutation_data[rRNA_name].nucleotides[nucleotide].get_control_fold_change_in_mutation_rate(subtract_background=subtract_background), 10)
+                        maxval = max(maxval, log_fold_changes[rRNA_name][nucleotide])
+                        minval = min(minval, log_fold_changes[rRNA_name][nucleotide])
+                else:
+                    pass
+        absmax = max(abs(maxval), abs(minval))
+        output_file = open(os.path.join(out_prefix, "%s.txt" % (library.lib_settings.sample_name)), 'w')
+        reference_pymol_script_file = open(library.experiment_settings.get_property('pymol_base_script_colorchange'), 'rU')
+        for line in reference_pymol_script_file:
+            if line.startswith('#<insert b-factors>'):
+                output_file.write('python\n')
+                output_file.write('cmd.alter(\'all\', \'b=0.0\')\n')
+                for rRNA_name in log_fold_changes:
+                    for nucleotide in log_fold_changes[rRNA_name]:
+                        output_file.write('cmd.alter(\''+rRNA_name+' and resi '+str(nucleotide)+'\', \'b=float("'+str(log_fold_changes[rRNA_name][nucleotide])+'")\')\n')
+                output_file.write('python end\n')
+            elif line.startswith('#<insert spectrum>'):
+
+                output_file.write('spectrum b, bluish_green white vermillion, minimum='+str(-absmax)+', maximum='+str(absmax)+'\n')
+                output_file.write('ramp_new scale, S.c.25S__rRNA, ['+str(-absmax)+',0,'+str(absmax)+'], [bluish_green, white, vermillion]')
+            else:
+                output_file.write(line)
+        reference_pymol_script_file.close()
+        output_file.close()
+
+
+
 def generate_roc_curves(tp_tn_annotations, genome_fasta, outprefix, libraries, rRNA, nucs_to_count):
     def winsorize_norm_chromosome_data(mut_density, chromosome, genome_dict, nucs_to_count, to_winsorize = False, low = 0, high = 0.95):
         """
