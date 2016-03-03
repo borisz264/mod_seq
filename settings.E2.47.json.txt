@@ -10,12 +10,12 @@ with_mod_controls  = ["80S","80S_DMSO","80S_DMSO","80S","80S","80S","80S_DMSO","
 experiment_name = E2.47
 rrna_fasta = /Users/boris/Green_Lab/Book_2/2.36/mod_seq/rRNA_Sequences_ucsc_20110829.txt
 shapemapper_ref_file = /Users/boris/Green_Lab/Book_2/2.36/mod_seq/shapemapper_BASE.cfg
-tptn_file_18s = 
-tptn_file_25s = 
+tptn_file_18s = /Users/boris/Green_Lab/Book_2/2.36/mod_seq/structure_ROC_curves/18S_4V88_2.0_AC.txt
+tptn_file_25s = /Users/boris/Green_Lab/Book_2/2.36/mod_seq/structure_ROC_curves/25S_4V88_2.0_AC.txt
 
 exclude_constitutive = {"S.c.18S_rRNA":[1191],"S.c.25S__rRNA":[645,2142,2634,2843]}
 confidence_interval_cutoff = 0.999999
-fold_change_cutoff = 3
+fold_change_cutoff = 2
 
 pymol_base_script = /Users/boris/Green_Lab/Book_2/2.36/mod_seq/structure_highlighting/ban_nomenclature_S_cerevisiae_80S_PyMOL_highlighting_base.txt
 pymol_base_script_colorchange = /Users/boris/Green_Lab/Book_2/2.36/mod_seq/structure_highlighting/ban_nomenclature_S_cerevisiae_80S_PyMOL_colored_by_change_base.txt
