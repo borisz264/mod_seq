@@ -1,5 +1,6 @@
 __author__ = 'boris'
 from scipy.stats.mstats import winsorize
+import scipy.stats as stats
 import matplotlib.pyplot as plt
 from collections import defaultdict
 import numpy
@@ -673,17 +674,18 @@ def generate_roc_curves(tp_tn_annotations, genome_fasta, outprefix, libraries, r
 
 def parse_functional_groups(groups_file, delimiter='\t'):
     return_dict = defaultdict(list)
-    f = open(groups_file)
+    f = open(groups_file, 'rU')
     lines  = f.readlines()
     headers = lines[0].strip('\n').split(delimiter)
     for line in lines[1:]:
         ll= line.strip('\n').split(delimiter)
         for i in range(len(ll)):
-            return_dict[i].append(ll[i])
+            if not ll[i].strip() =='':
+                return_dict[headers[i]].append(ll[i])
     f.close()
     return return_dict
 
-def plot_functional_group_changes(libraries, out_prefix, nucleotides_to_count='ATCG', exclude_constitutive=False,
+def plot_functional_group_changes(libraries, out_prefix, groups_file, nucleotides_to_count='ATCG', exclude_constitutive=False,
                             max_fold_reduction=0.001, max_fold_increase=100):
     """
 
@@ -691,60 +693,43 @@ def plot_functional_group_changes(libraries, out_prefix, nucleotides_to_count='A
     :param out_prefix:
     :param nucleotides_to_count:
     :param exclude_constitutive:
-    :return: for each library make a plot of magnitude of change (experimental-control)
-            vs log10 fold change (experimental/control).
-            Protected and de-protected calls will be colored, based on a fold change cutoff and confidence interval.
+    :return: for each library make a plot of log10 fold change (experimental/control) between different functional groups.
+            both as a CDF and as a violin plot
     """
-    output_file = "%s.pdf" % (out_prefix)
-    plot_figs=[]
-
-    num_subplots = len(libraries)
-    num_plots_wide = math.ceil(math.sqrt(num_subplots))
-    num_plots_high = num_plots_wide
-    fig = plt.figure(figsize=(4*num_plots_wide, 4*num_plots_high))
-    fig.subplots_adjust(wspace=0.4, hspace=0.4)
-    plot_index =1
+    functional_groups = parse_functional_groups(groups_file)
+    group_names = sorted(functional_groups.keys())
     for library in libraries:
+        cdf_file = "%s_%s_CDF.pdf" % (out_prefix, library.lib_settings.sample_name)
+        num_plots_wide = 1
+        num_plots_high = 1
+        fig = plt.figure(figsize=(4*num_plots_wide, 4*num_plots_high))
+        plot_index =1
         plot = fig.add_subplot(num_plots_high, num_plots_wide, plot_index)
-        mag_change, fold_change, annotation = [], [], []
-        prot_mag_change, prot_fold_change, prot_annotation = [], [], []
-        deprot_mag_change, deprot_fold_change, deprot_annotation = [], [], []
-        for rRNA_name in library.rRNA_mutation_data:
-            for position in library.rRNA_mutation_data[rRNA_name].nucleotides:
-                nucleotide = library.rRNA_mutation_data[rRNA_name].nucleotides[position]
-                if (exclude_constitutive and nucleotide.exclude_constitutive)or nucleotide.identity not in nucleotides_to_count:
-                    pass
-                else:
-                    protection_call = nucleotide.determine_protection_status(confidence_interval=library.experiment_settings.get_property('confidence_interval_cutoff'),
-                                                                   fold_change_cutoff=library.experiment_settings.get_property('fold_change_cutoff'))
-                    control_fold_change = nucleotide.get_control_fold_change_in_mutation_rate()
-                    if control_fold_change == 0:
-                        control_fold_change = max_fold_reduction
-                    elif control_fold_change == float('inf'):
-                        control_fold_change = max_fold_increase
-                    if protection_call == 'no_change':
-                        mag_change.append(nucleotide.get_control_sub_mutation_rate())
-                        fold_change.append(control_fold_change)
-                        annotation.append('%s_%s%d' %(rRNA_name,nucleotide.identity,position))
-                    elif protection_call == 'deprotected':
-                        print 'deprotected ', nucleotide
-                        deprot_mag_change.append(nucleotide.get_control_sub_mutation_rate())
-                        deprot_fold_change.append(control_fold_change)
-                        deprot_annotation.append('%s_%s%d' %(rRNA_name,nucleotide.identity,position))
-                    elif protection_call == 'protected':
-                        print 'protected ', nucleotide
-                        prot_mag_change.append(nucleotide.get_control_sub_mutation_rate())
-                        prot_fold_change.append(control_fold_change)
-                        prot_annotation.append('%s_%s%d' %(rRNA_name,nucleotide.identity,position))
-        plot.set_xlabel("[%s] - [%s]" % (library.lib_settings.sample_name, library.get_normalizing_lib_with_mod().lib_settings.sample_name), fontsize = 8)
-        plot.set_ylabel("[%s]/[%s]" % (library.lib_settings.sample_name, library.get_normalizing_lib_with_mod().lib_settings.sample_name),  fontsize = 8)
-        plot.set_yscale('log')
-        plot.scatter(mag_change, fold_change, color=mod_utils.black, s=2)
-        plot.scatter(prot_mag_change, prot_fold_change, color=mod_utils.vermillion, s=2)
-        plot.scatter(deprot_mag_change, deprot_fold_change, color=mod_utils.bluishGreen, s=2)
-        plot.set_xlim(-0.2,0.2)
-        plot.set_ylim(.001,100)
+        colorindex = 0
+        all_fold_changes = library.list_fold_changes(nucleotides_to_count=nucleotides_to_count, exclude_constitutive=exclude_constitutive)
+        hist, bin_edges = numpy.histogram(all_fold_changes, bins=10000)
+        cum_hist = numpy.cumsum(hist)
+        cum_hist = cum_hist/float(max(cum_hist))
+        plot.plot(bin_edges[:-1], cum_hist, color=mod_utils.colors[0], label='all %d (K-S P)' % (len(all_fold_changes)), lw=2)
+        for group_name in group_names:
+            colorindex+=1
+            group_fold_changes = [nucleotide.get_control_fold_change_in_mutation_rate() for nucleotide in
+                                  library.get_nucleotides_from_list(functional_groups[group_name],
+                                                                   nucleotides_to_count=nucleotides_to_count,
+                                                                   exclude_constitutive=exclude_constitutive)]
+            d, p = stats.ks_2samp(all_fold_changes, group_fold_changes)
+            hist, bin_edges = numpy.histogram(group_fold_changes, bins=10000)
+            cum_hist = numpy.cumsum(hist)
+            cum_hist = cum_hist/float(max(cum_hist))
+            #print group_fold_changes
+            plot.plot(bin_edges[:-1], cum_hist, color=mod_utils.colors[colorindex],label='%s %d (%f)' % (group_name, len(group_fold_changes), p), lw=2)
 
-        plot_figs.append(plot)
-        plot_index+=1
-    plt.savefig(output_file, transparent='True', format='pdf')
+        lg=plt.legend(loc=2,prop={'size':6}, labelspacing=0.2)
+        lg.draw_frame(False)
+        plot.set_ylabel("cumulative nucleotide fraction", fontsize = 8)
+        plot.set_xlabel("[%s]/[%s]" % (library.lib_settings.sample_name, library.get_normalizing_lib_with_mod().lib_settings.sample_name),  fontsize = 8)
+        plot.set_xscale('log')
+        plot.set_xlim(.1,10)
+        plot.set_ylim(0, 1)
+
+        plt.savefig(cdf_file, transparent='True', format='pdf')

@@ -312,11 +312,17 @@ class mod_seq_run:
     def make_plots(self, exclude_constitutive=False):
         if exclude_constitutive:
             mod_utils.make_dir(self.rdir_path('plots', 'exclude_constitutive'))
+            mod_utils.make_dir(self.rdir_path('plots', 'exclude_constitutive', 'functional_groups'))
             mod_utils.make_dir(self.rdir_path('plots', 'exclude_constitutive', 'interactive'))
             rdir = self.rdir_path('plots','exclude_constitutive')
             file_tag = '_exclude_constitutive'
-            mod_plotting.generate_roc_curves(self.settings.get_property('tptn_file_25s'), self.settings.rRNA_seqs, os.path.join(rdir, '25S_ROC_curves'), self.get_normalizable_libs(), 'S.c.25S__rRNA', self.settings.get_property('affected_nucleotides'))
-            mod_plotting.generate_roc_curves(self.settings.get_property('tptn_file_18s'), self.settings.rRNA_seqs, os.path.join(rdir, '18S_ROC_curves'), self.get_normalizable_libs(), 'S.c.18S_rRNA', self.settings.get_property('affected_nucleotides'))
+            #mod_plotting.generate_roc_curves(self.settings.get_property('tptn_file_25s'), self.settings.rRNA_seqs, os.path.join(rdir, '25S_ROC_curves'), self.get_normalizable_libs(), 'S.c.25S__rRNA', self.settings.get_property('affected_nucleotides'))
+            #mod_plotting.generate_roc_curves(self.settings.get_property('tptn_file_18s'), self.settings.rRNA_seqs, os.path.join(rdir, '18S_ROC_curves'), self.get_normalizable_libs(), 'S.c.18S_rRNA', self.settings.get_property('affected_nucleotides'))
+            mod_plotting.plot_functional_group_changes(self.get_normalizable_libs(), os.path.join(rdir, 'functional_groups', 'group_changes'),
+                                                       self.settings.get_property('functional_groupings'),
+                                                       nucleotides_to_count=self.settings.get_property('affected_nucleotides'),
+                                                       exclude_constitutive=exclude_constitutive,
+                                                       max_fold_reduction=0.001, max_fold_increase=100)
         else:
             mod_utils.make_dir(self.rdir_path('plots'))
             mod_utils.make_dir(self.rdir_path('plots', 'interactive'))
@@ -339,11 +345,11 @@ class mod_seq_run:
                                              nucleotides_to_count=self.settings.get_property('affected_nucleotides'),
                                              exclude_constitutive=exclude_constitutive)
         if self.settings.get_property('make_interactive_plots'):
-                '''
+
                 mod_plotting.plot_changes_vs_control_interactive(self.get_normalizable_libs(), os.path.join(rdir, 'interactive', 'changes'+file_tag),
                                                          nucleotides_to_count=self.settings.get_property('affected_nucleotides'),
                                                          exclude_constitutive=False)
-                '''
+
                 mod_plotting.ma_plots_interactive(self.get_normalizable_libs(), os.path.join(rdir, 'interactive', 'MA'+file_tag),
                                                          nucleotides_to_count=self.settings.get_property('affected_nucleotides'),
                                                          exclude_constitutive=False)

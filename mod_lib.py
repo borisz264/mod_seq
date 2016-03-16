@@ -94,6 +94,13 @@ class ModLib:
                                                           nucleotides_to_count = nucleotides_to_count, exclude_constitutive=exclude_constitutive))
         return all_mutation_rates
 
+    def list_fold_changes(self, nucleotides_to_count = 'ATCG', exclude_constitutive=False):
+        all_mutation_rates = []
+        for rRNA_name in self.rRNA_mutation_data:
+            all_mutation_rates.extend(self.rRNA_mutation_data[rRNA_name].
+                                      list_fold_changes(nucleotides_to_count = nucleotides_to_count, exclude_constitutive=exclude_constitutive))
+        return all_mutation_rates
+
     def get_normalizing_lib(self):
         """
         #returns the library that is the normalization for this one (no-modification control)
@@ -269,7 +276,23 @@ class ModLib:
                                         subtract_background=subtract_background)
         return changed_nucleotides
 
+    def get_nucleotides_from_list(self, nucleotide_list, nucleotides_to_count = 'ATCG', exclude_constitutive=False):
+        """
 
+        :param nucleotide_list: a list of nucleotide-identifying strings like: 'S.c.18S_rRNA 2125 A'
+        :return: a list of the nucleotide objects matching those strings
+        """
+        nucleotides = []
+        for nucleotide_string in nucleotide_list:
+            rRNA_name, position, identity = nucleotide_string.strip().split(' ')
+            position = int(position)
+            identity = identity.upper().replace('U', 'T')
+            if identity in nucleotides_to_count:
+                nucleotide_match = self.get_nucleotide(rRNA_name, position)
+                assert nucleotide_match.identity == identity
+                if not (exclude_constitutive and nucleotide_match.exclude_constitutive):
+                    nucleotides.append(nucleotide_match)
+        return nucleotides
 
 class rRNA_mutations:
     def __init__(self, lib, lib_settings, experiment_settings, mutation_filename):
@@ -360,6 +383,24 @@ class rRNA_mutations:
                                                         get_mutation_rate_at_position(self.rRNA_name, nucleotide.position)))
                     else:
                         rates.append(nucleotide.mutation_rate)
+        return rates
+
+    def list_fold_changes(self, nucleotides_to_count='ATCG', exclude_constitutive=False):
+        """
+        #note that these values may be less than zero when background is subtracted
+        :param subtract_background:
+        :return:
+        """
+        rates = []
+        for nucleotide in self.nucleotides.values():
+            if nucleotide.identity in nucleotides_to_count:
+                if exclude_constitutive and nucleotide.exclude_constitutive:
+                    pass
+                elif nucleotide.get_control_fold_change_in_mutation_rate() == 0.0 or \
+                                nucleotide.get_control_fold_change_in_mutation_rate() == float('inf'):
+                    pass
+                else:
+                    rates.append(nucleotide.get_control_fold_change_in_mutation_rate())
         return rates
 
     def get_changed_nucleotides(self, change_type, nucleotides_to_count='ATCG', exclude_constitutive=False,
