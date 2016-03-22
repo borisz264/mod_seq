@@ -1,4 +1,16 @@
 # mod_seq
+
+to run the pipeline:
+1)compress all of your fastq files with gzip and place them in one folder
+2)fill out a settings file, pay attention to the output location, or you risk overwriting previous runs
+3)from the mod_seq folder run:
+    python mod_seq_main.py my_experiment.settings.json
+
+optional parameters (add after settings file):
+    --threads : max number of parrallel processes to use. Default is 8.
+
+
+
 This package requires installation of the ShapeMapper package from Kevin Weeks' lab.
 Download ShapeMapper from http://www.chem.unc.edu/rna/software.html compile it, and add it to your PATH.
 
