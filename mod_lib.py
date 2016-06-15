@@ -214,6 +214,26 @@ class ModLib:
                         output_dict[rRNA][position] = nucleotide.mutation_rate
         mod_utils.makePickle(output_dict, output_name)
 
+    def pickle_mutation_fold_change(self, output_name, exclude_constitutive=False):
+        """
+        stores mutation rates as a simple pickle, of {rRNA_name:{position:mutation rate}}
+        :param subtract_background:
+        :return:
+        """
+        output_dict = {}
+        for rRNA in self.rRNA_mutation_data:
+            output_dict[rRNA] = {}
+            for position in self.rRNA_mutation_data[rRNA].nucleotides:
+                nucleotide = self.rRNA_mutation_data[rRNA].nucleotides[position]
+                if exclude_constitutive and nucleotide.exclude_constitutive:
+                    output_dict[rRNA][position] = 1.0
+                else:
+                    try:
+                        output_dict[rRNA][position] = nucleotide.mutation_rate/self.get_normalizing_lib_with_mod().get_mutation_rate_at_position(rRNA, nucleotide.position)
+                    except:
+                        output_dict[rRNA][position] = float('inf')*nucleotide.mutation_rate
+        mod_utils.makePickle(output_dict, output_name)
+
     def write_mutation_rates_to_wig(self, output_prefix, subtract_background = False, subtract_control = False):
         """
         write out mutation rates to a wig file that can be opened with a program like IGV or mochiview,
@@ -287,6 +307,8 @@ class ModLib:
             rRNA_name, position, identity = nucleotide_string.strip().split(' ')
             position = int(position)
             identity = identity.upper().replace('U', 'T')
+            #print nucleotide_string, identity
+            assert identity in 'ATCGU'
             if identity in nucleotides_to_count:
                 nucleotide_match = self.get_nucleotide(rRNA_name, position)
                 assert nucleotide_match.identity == identity

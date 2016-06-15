@@ -28,7 +28,7 @@ class mod_seq_run:
         self.create_shapemapper_settings()
         self.run_shapemapper()
         self.initialize_libs()
-        self.make_plots()
+        #self.make_plots()
         self.make_plots(exclude_constitutive=True)
         self.make_tables()
         self.make_tables(exclude_constitutive=True)
@@ -187,8 +187,16 @@ class mod_seq_run:
                 normalizeable_libs.append(lib)
         return normalizeable_libs
 
+    def get_modified_libs(self):
+        modified_libs = []
+        for lib in self.libs:
+            if (lib.lib_settings.sample_name in
+                    self.settings.get_property('experimentals')) or (lib.lib_settings.sample_name in self.settings.get_property('with_mod_controls')):
+                modified_libs.append(lib)
+        return modified_libs
+
     def make_tables(self, exclude_constitutive=False):
-        subfolders = ['raw', 'background_subtracted', 'control_subtracted']
+        subfolders = ['raw', 'background_subtracted', 'control_subtracted', 'fold_change']
         for subfolder in subfolders:
             mod_utils.make_dir(self.rdir_path('tables', subfolder))
             mod_utils.make_dir(self.rdir_path('pickles', subfolder))
@@ -197,6 +205,7 @@ class mod_seq_run:
         self.pickle_mutation_rates('mutation_rates.pkl', exclude_constitutive=exclude_constitutive)
         self.pickle_mutation_rates('back_subtracted_mutation_rates.pkl', subtract_background=True, exclude_constitutive=exclude_constitutive)
         self.pickle_mutation_rates('control_subtracted_mutation_rates.pkl', subtract_control=True, exclude_constitutive=exclude_constitutive)
+        self.pickle_fold_changes('mutation_rate_fold_changes.pkl', exclude_constitutive=True)
         self.write_wigs('')
         self.write_wigs('back_subtract', subtract_background=True)
         self.write_wigs('control_subtract', subtract_control=True)
@@ -286,7 +295,9 @@ class mod_seq_run:
         f.close()
 
     def pickle_mutation_rates(self, suffix, subtract_background=False, subtract_control=False, exclude_constitutive=False):
-        if subtract_background or subtract_control:
+        if subtract_background:
+            libs_to_pickle = self.get_modified_libs()
+        elif subtract_control:
             libs_to_pickle = self.get_normalizable_libs()
         else:
             libs_to_pickle = self.libs
@@ -309,6 +320,21 @@ class mod_seq_run:
                 lib.pickle_mutation_rates(os.path.join(self.rdir_path('pickles', prefix), lib.lib_settings.sample_name+'_'+suffix),
                                           subtract_background=subtract_background, subtract_control=subtract_control, exclude_constitutive=exclude_constitutive)
 
+    def pickle_fold_changes(self, suffix, exclude_constitutive=False):
+        libs_to_pickle = self.get_normalizable_libs()
+
+        if exclude_constitutive:
+            for lib in libs_to_pickle:
+                lib.pickle_mutation_fold_change(os.path.join(self.rdir_path('pickles', 'fold_change', 'exclude_constitutive'),
+                                                       lib.lib_settings.sample_name + '_' + suffix[
+                                                                                            :-4] + '_exclude_constitutive' + suffix[
+                                                                                                                             -4:]), exclude_constitutive=exclude_constitutive)
+        else:
+            for lib in libs_to_pickle:
+                lib.pickle_mutation_fold_change(
+                    os.path.join(self.rdir_path('pickles', 'fold_change'), lib.lib_settings.sample_name + '_' + suffix), exclude_constitutive=exclude_constitutive)
+
+
     def make_plots(self, exclude_constitutive=False):
         if exclude_constitutive:
             mod_utils.make_dir(self.rdir_path('plots', 'exclude_constitutive'))
@@ -316,13 +342,14 @@ class mod_seq_run:
             mod_utils.make_dir(self.rdir_path('plots', 'exclude_constitutive', 'interactive'))
             rdir = self.rdir_path('plots','exclude_constitutive')
             file_tag = '_exclude_constitutive'
-            #mod_plotting.generate_roc_curves(self.settings.get_property('tptn_file_25s'), self.settings.rRNA_seqs, os.path.join(rdir, '25S_ROC_curves'), self.get_normalizable_libs(), 'S.c.25S__rRNA', self.settings.get_property('affected_nucleotides'))
-            #mod_plotting.generate_roc_curves(self.settings.get_property('tptn_file_18s'), self.settings.rRNA_seqs, os.path.join(rdir, '18S_ROC_curves'), self.get_normalizable_libs(), 'S.c.18S_rRNA', self.settings.get_property('affected_nucleotides'))
+            #mod_plotting.generate_roc_curves(self.settings.get_property('tptn_file_25s'), self.settings.rRNA_seqs, os.path.join(rdir, '25S_ROC_curves'), self.get_modified_libs(), 'S.c.25S__rRNA', self.settings.get_property('affected_nucleotides'))
+            #mod_plotting.generate_roc_curves(self.settings.get_property('tptn_file_18s'), self.settings.rRNA_seqs, os.path.join(rdir, '18S_ROC_curves'), self.get_modified_libs(), 'S.c.18S_rRNA', self.settings.get_property('affected_nucleotides'))
             mod_plotting.plot_functional_group_changes(self.get_normalizable_libs(), os.path.join(rdir, 'functional_groups', 'group_changes'),
                                                        self.settings.get_property('functional_groupings'),
                                                        nucleotides_to_count=self.settings.get_property('affected_nucleotides'),
                                                        exclude_constitutive=exclude_constitutive,
                                                        max_fold_reduction=0.001, max_fold_increase=100)
+
         else:
             mod_utils.make_dir(self.rdir_path('plots'))
             mod_utils.make_dir(self.rdir_path('plots', 'interactive'))
@@ -338,6 +365,11 @@ class mod_seq_run:
         mod_plotting.plot_mutation_rate_cdfs(self.libs, os.path.join(rdir, 'mutation_rate_cdf'+file_tag),
                                              nucleotides_to_count=self.settings.get_property('affected_nucleotides'),
                                              exclude_constitutive=exclude_constitutive)
+
+        mod_plotting.plot_mutation_rate_violins(self.libs, os.path.join(rdir, 'mutation_rate_cdf'+file_tag),
+                                             nucleotides_to_count=self.settings.get_property('affected_nucleotides'),
+                                             exclude_constitutive=exclude_constitutive)
+
         mod_plotting.plot_changes_vs_control(self.get_normalizable_libs(), os.path.join(rdir, 'changes'+file_tag),
                                              nucleotides_to_count=self.settings.get_property('affected_nucleotides'),
                                              exclude_constitutive=exclude_constitutive)
@@ -346,13 +378,15 @@ class mod_seq_run:
                                              exclude_constitutive=exclude_constitutive)
         if self.settings.get_property('make_interactive_plots'):
 
-                mod_plotting.plot_changes_vs_control_interactive(self.get_normalizable_libs(), os.path.join(rdir, 'interactive', 'changes'+file_tag),
-                                                         nucleotides_to_count=self.settings.get_property('affected_nucleotides'),
-                                                         exclude_constitutive=False)
+                # mod_plotting.plot_changes_vs_control_interactive(self.get_normalizable_libs(), os.path.join(rdir, 'interactive', 'changes'+file_tag),
+                #                                          nucleotides_to_count=self.settings.get_property('affected_nucleotides'),
+                #                                          exclude_constitutive=False)
+
 
                 mod_plotting.ma_plots_interactive(self.get_normalizable_libs(), os.path.join(rdir, 'interactive', 'MA'+file_tag),
                                                          nucleotides_to_count=self.settings.get_property('affected_nucleotides'),
                                                          exclude_constitutive=False)
+
 
     def annotate_structures(self, exclude_constitutive=False):
         if exclude_constitutive:

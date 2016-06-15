@@ -9,12 +9,18 @@ import mod_lib
 import mod_utils
 import operator
 import os
+import uniform_colormaps
 plt.rcParams['pdf.fonttype'] = 42 #leaves most text as actual text in PDFs, not outlines
 
 
 def plot_mutated_nts_pie(libraries, out_prefix, subtract_background=False, subtract_control=False, exclude_constitutive=False):
     #Makes an array of pie charts, 1 per library
-    if subtract_background or subtract_control:
+    if subtract_background:
+        #if subtracting background, need to only look at those which have a defined control
+        libraries = [library for library in libraries if (library.lib_settings.sample_name in
+                     library.experiment_settings.get_property('experimentals')) or (library.lib_settings.sample_name in
+                     library.experiment_settings.get_property('with_mod_controls'))]
+    elif subtract_control:
         #if subtracting background, need to only look at those which have a defined control
         libraries = [library for library in libraries if library.lib_settings.sample_name in
                      library.experiment_settings.get_property('experimentals')]
@@ -193,6 +199,67 @@ def plot_mutation_rate_cdfs(libraries, out_prefix, nucleotides_to_count='ATCG', 
     plt.savefig(out_prefix + '.pdf', transparent='True', format='pdf')
     plt.clf()
 
+def plot_mutation_rate_violins(libraries, out_prefix, nucleotides_to_count='ATCG', exclude_constitutive=False):
+    #Makes violin plots of raw mutation rates
+    data = []
+    labels = []
+    for library in libraries:
+        labels.append(library.lib_settings.sample_name)
+        data.append([math.log10(val) for val in library.list_mutation_rates(subtract_background=False, subtract_control=False,
+                                                        nucleotides_to_count=nucleotides_to_count,
+                                                        exclude_constitutive=exclude_constitutive) if val>0])
+
+    colormap = uniform_colormaps.viridis
+    fig = plt.figure(figsize=(5,8))
+    ax1 = fig.add_subplot(111)
+
+    # Hide the grid behind plot objects
+    ax1.yaxis.grid(True, linestyle='-', which='major', color='lightgrey', alpha=0.5)
+    ax1.set_axisbelow(True)
+
+    #ax1.set_xlabel(ylabel)
+    plt.subplots_adjust(left=0.1, right=0.95, top=0.9, bottom=0.25)
+
+    pos = range(1,len(libraries)+1)  # starts at 1 to play nice with boxplot
+    dist = max(pos)-min(pos)
+    w = min(0.15*max(dist,1.0),0.5)
+    for library,p in zip(libraries,pos):
+        d = [math.log10(val) for val in library.list_mutation_rates(subtract_background=False, subtract_control=False,
+                                                        nucleotides_to_count=nucleotides_to_count,
+                                                        exclude_constitutive=exclude_constitutive) if val>0]
+        k = stats.gaussian_kde(d) #calculates the kernel density
+        m = k.dataset.min() #lower bound of violin
+        M = k.dataset.max() #upper bound of violin
+        x = numpy.arange(m,M,(M-m)/100.) # support for violin
+        v = k.evaluate(x) #violin profile (density curve)
+        v = v/v.max()*w #scaling the violin to the available space
+        plt.fill_betweenx(x,p,v+p,facecolor=colormap((p-1)/float(len(libraries))),alpha=0.3)
+        plt.fill_betweenx(x,p,-v+p,facecolor=colormap((p-1)/float(len(libraries))),alpha=0.3)
+    if True:
+        bplot = plt.boxplot(data,notch=1)
+        plt.setp(bplot['boxes'], color='black')
+        plt.setp(bplot['whiskers'], color='black')
+        plt.setp(bplot['fliers'], color='red', marker='.')
+
+    per50s = []
+    i = 1
+    for datum in data:
+        #per50s.append(stats.scoreatpercentile(datum, 50))
+        t = stats.scoreatpercentile(datum, 50)
+
+        per50s.append(t)
+        #ax1.annotate(str(round(t,3)), xy=(i+0.1, t), xycoords='data', arrowprops=None, fontsize='small', color='black')
+        i+= 1
+    #ax1.set_xticks([0.0, 0.5, 1.0, 1.5])
+    #ax1.set_yscale('log')
+    ax1.set_ylabel('log10 mutation rate')
+    ax1.set_ylim(-5, 0)
+    xtickNames = plt.setp(ax1, xticklabels=labels)
+    plt.setp(xtickNames, rotation=90, fontsize=6)
+    plt.savefig(out_prefix+'_logviolin.pdf', transparent='True', format='pdf')
+    plt.clf()
+
+
 def plot_changes_vs_control_interactive(libraries, out_prefix, nucleotides_to_count='ATCG', exclude_constitutive=False,
                                         max_fold_reduction=0.001, max_fold_increase=100):
     """
@@ -206,7 +273,7 @@ def plot_changes_vs_control_interactive(libraries, out_prefix, nucleotides_to_co
             Protected and de-protected calls will be colored, based on a fold change cutoff and confidence interval.
             All nucleotides will be labelled on mouseover.
     """
-    from bokeh.plotting import figure, output_file, show, ColumnDataSource, gridplot
+    from bokeh.plotting import figure, output_file, show, ColumnDataSource, gridplot, save
     from bokeh.models import Range1d
     from bokeh.models import HoverTool
     from collections import OrderedDict
@@ -237,12 +304,10 @@ def plot_changes_vs_control_interactive(libraries, out_prefix, nucleotides_to_co
                         fold_change.append(control_fold_change)
                         annotation.append('%s_%s%d' %(rRNA_name,nucleotide.identity,position))
                     elif protection_call == 'deprotected':
-                        #print 'deprotected ', nucleotide
                         deprot_mag_change.append(nucleotide.get_control_sub_mutation_rate())
                         deprot_fold_change.append(control_fold_change)
                         deprot_annotation.append('%s_%s%d' %(rRNA_name,nucleotide.identity,position))
                     elif protection_call == 'protected':
-                        #print 'protected ', nucleotide
                         prot_mag_change.append(nucleotide.get_control_sub_mutation_rate())
                         prot_fold_change.append(control_fold_change)
                         prot_annotation.append('%s_%s%d' %(rRNA_name,nucleotide.identity,position))
@@ -265,7 +330,7 @@ def plot_changes_vs_control_interactive(libraries, out_prefix, nucleotides_to_co
         Hover.tooltips = OrderedDict([("nuc", "@label")])
         plot_figs.append([PlotFig])
     p = gridplot(plot_figs)
-    show(p)
+    save(p)
 
 def ma_plots_interactive(libraries, out_prefix, nucleotides_to_count='ATCG', exclude_constitutive=False,
                          max_fold_reduction=0.001, max_fold_increase=100):
@@ -280,7 +345,7 @@ def ma_plots_interactive(libraries, out_prefix, nucleotides_to_count='ATCG', exc
             Protected and de-protected calls will be colored, based on a fold change cutoff and confidence interval.
             All nucleotides will be labelled on mouseover.
     """
-    from bokeh.plotting import figure, output_file, show, ColumnDataSource, gridplot
+    from bokeh.plotting import figure, output_file, show, save, ColumnDataSource, gridplot
     from bokeh.models import Range1d
     from bokeh.models import HoverTool
     from collections import OrderedDict
@@ -312,12 +377,10 @@ def ma_plots_interactive(libraries, out_prefix, nucleotides_to_count='ATCG', exc
                         fold_change.append(control_fold_change)
                         annotation.append('%s_%s%d' %(rRNA_name,nucleotide.identity,position))
                     elif protection_call == 'deprotected':
-                        print 'deprotected ', nucleotide
                         deprot_mag.append(avg_mutation_rate)
                         deprot_fold_change.append(control_fold_change)
                         deprot_annotation.append('%s_%s%d' %(rRNA_name,nucleotide.identity,position))
                     elif protection_call == 'protected':
-                        print 'protected ', nucleotide
                         prot_mag.append(avg_mutation_rate)
                         prot_fold_change.append(control_fold_change)
                         prot_annotation.append('%s_%s%d' %(rRNA_name,nucleotide.identity,position))
@@ -340,7 +403,7 @@ def ma_plots_interactive(libraries, out_prefix, nucleotides_to_count='ATCG', exc
         Hover.tooltips = OrderedDict([("nuc", "@label")])
         plot_figs.append([PlotFig])
     p = gridplot(plot_figs)
-    show(p)
+    save(p)
 
 def plot_changes_vs_control(libraries, out_prefix, nucleotides_to_count='ATCG', exclude_constitutive=False,
                             max_fold_reduction=0.001, max_fold_increase=100):
@@ -386,12 +449,10 @@ def plot_changes_vs_control(libraries, out_prefix, nucleotides_to_count='ATCG', 
                         fold_change.append(control_fold_change)
                         annotation.append('%s_%s%d' %(rRNA_name,nucleotide.identity,position))
                     elif protection_call == 'deprotected':
-                        print 'deprotected ', nucleotide
                         deprot_mag_change.append(nucleotide.get_control_sub_mutation_rate())
                         deprot_fold_change.append(control_fold_change)
                         deprot_annotation.append('%s_%s%d' %(rRNA_name,nucleotide.identity,position))
                     elif protection_call == 'protected':
-                        print 'protected ', nucleotide
                         prot_mag_change.append(nucleotide.get_control_sub_mutation_rate())
                         prot_fold_change.append(control_fold_change)
                         prot_annotation.append('%s_%s%d' %(rRNA_name,nucleotide.identity,position))
@@ -454,12 +515,10 @@ def ma_plots(libraries, out_prefix, nucleotides_to_count='ATCG', exclude_constit
                         fold_change.append(control_fold_change)
                         annotation.append('%s_%s%d' %(rRNA_name,nucleotide.identity,position))
                     elif protection_call == 'deprotected':
-                        print 'deprotected ', nucleotide
                         deprot_mag.append(avg_mutation_rate)
                         deprot_fold_change.append(control_fold_change)
                         deprot_annotation.append('%s_%s%d' %(rRNA_name,nucleotide.identity,position))
                     elif protection_call == 'protected':
-                        print 'protected ', nucleotide
                         prot_mag.append(avg_mutation_rate)
                         prot_fold_change.append(control_fold_change)
                         prot_annotation.append('%s_%s%d' %(rRNA_name,nucleotide.identity,position))
@@ -716,12 +775,12 @@ def plot_functional_group_changes(libraries, out_prefix, groups_file, nucleotide
             group_fold_changes = [nucleotide.get_control_fold_change_in_mutation_rate() for nucleotide in
                                   library.get_nucleotides_from_list(functional_groups[group_name],
                                                                    nucleotides_to_count=nucleotides_to_count,
-                                                                   exclude_constitutive=exclude_constitutive)]
+                                                                   exclude_constitutive=exclude_constitutive) if
+                                  nucleotide.get_control_fold_change_in_mutation_rate() not in [float('inf'), 0]]
             d, p = stats.ks_2samp(all_fold_changes, group_fold_changes)
             hist, bin_edges = numpy.histogram(group_fold_changes, bins=10000)
             cum_hist = numpy.cumsum(hist)
             cum_hist = cum_hist/float(max(cum_hist))
-            #print group_fold_changes
             plot.plot(bin_edges[:-1], cum_hist, color=mod_utils.colors[colorindex],label='%s %d (%f)' % (group_name, len(group_fold_changes), p), lw=2)
 
         lg=plt.legend(loc=2,prop={'size':6}, labelspacing=0.2)
