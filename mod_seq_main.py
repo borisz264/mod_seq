@@ -15,7 +15,6 @@ import subprocess
 import mod_settings
 import mod_utils
 import mod_lib
-import mod_qc
 import mod_plotting
 
 
@@ -28,7 +27,7 @@ class mod_seq_run:
         self.create_shapemapper_settings()
         self.run_shapemapper()
         self.initialize_libs()
-        #self.make_plots()
+        self.make_plots()
         self.make_plots(exclude_constitutive=True)
         self.make_tables()
         self.make_tables(exclude_constitutive=True)
@@ -342,8 +341,8 @@ class mod_seq_run:
             mod_utils.make_dir(self.rdir_path('plots', 'exclude_constitutive', 'interactive'))
             rdir = self.rdir_path('plots','exclude_constitutive')
             file_tag = '_exclude_constitutive'
-            #mod_plotting.generate_roc_curves(self.settings.get_property('tptn_file_25s'), self.settings.rRNA_seqs, os.path.join(rdir, '25S_ROC_curves'), self.get_modified_libs(), 'S.c.25S__rRNA', self.settings.get_property('affected_nucleotides'))
-            #mod_plotting.generate_roc_curves(self.settings.get_property('tptn_file_18s'), self.settings.rRNA_seqs, os.path.join(rdir, '18S_ROC_curves'), self.get_modified_libs(), 'S.c.18S_rRNA', self.settings.get_property('affected_nucleotides'))
+            mod_plotting.generate_roc_curves(self.settings.get_property('tptn_file_25s'), self.settings.rRNA_seqs, os.path.join(rdir, '25S_ROC_curves'), self.get_modified_libs(), 'S.c.25S__rRNA', self.settings.get_property('affected_nucleotides'))
+            mod_plotting.generate_roc_curves(self.settings.get_property('tptn_file_18s'), self.settings.rRNA_seqs, os.path.join(rdir, '18S_ROC_curves'), self.get_modified_libs(), 'S.c.18S_rRNA', self.settings.get_property('affected_nucleotides'))
             mod_plotting.plot_functional_group_changes(self.get_normalizable_libs(), os.path.join(rdir, 'functional_groups', 'group_changes'),
                                                        self.settings.get_property('functional_groupings'),
                                                        nucleotides_to_count=self.settings.get_property('affected_nucleotides'),
@@ -474,13 +473,6 @@ class mod_seq_run:
         if not os.path.exists(out_dir):
             os.makedirs(out_dir)
         return mod_utils.aopen(out_path, 'w')
-
-    def perform_qc(self):
-        #not currently implemented
-        #qc_engine = mod_qc.TPS_qc(self, self.settings, self.threads)
-        #qc_engine.identify_contaminating_sequences()
-        #qc_engine.plot_count_distributions()
-        pass
 
 def parse_args():
     parser = argparse.ArgumentParser()
