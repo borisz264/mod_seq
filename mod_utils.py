@@ -197,7 +197,7 @@ def convertFastaToDict(fastaFile):
             else:
                 currentSequence += line.strip()
     f.close()
-    seqDict[currentName] = currentSequence.upper()
+    seqDict[currentName] = rna_to_dna(currentSequence.upper())
     return seqDict
 
 def get_kmer_from_index(kmax, index):
@@ -350,5 +350,9 @@ def revComp(seq, isRNA = False):
         return revComp.replace('T', 'U')
     return revComp
 
+def rna_to_dna(dna_seq):
+    return dna_seq.replace('U','T').replace('u', 't')
 
+def dna_to_rna(dna_seq):
+    return dna_seq.replace('T','U').replace('t', 'u')
 
