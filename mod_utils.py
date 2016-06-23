@@ -191,13 +191,14 @@ def convertFastaToDict(fastaFile):
         if not line.strip() == '' and not line.startswith('#'):#ignore empty lines and commented out lines
             if line.startswith('>'):#> marks the start of a new sequence
                 if not currentName == None: #after we've reached the firtst > line, we know what the sequence corresponds to
-                    seqDict[currentName] = currentSequence.upper()
+                    seqDict[currentName] = rna_to_dna(currentSequence.upper())
                 currentName = line.strip()[1:]
                 currentSequence = ''
             else:
                 currentSequence += line.strip()
     f.close()
     seqDict[currentName] = rna_to_dna(currentSequence.upper())
+
     return seqDict
 
 def get_kmer_from_index(kmax, index):
