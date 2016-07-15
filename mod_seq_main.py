@@ -3,7 +3,7 @@ import operator
 __author__ = 'Boris Zinshteyn'
 """
 Intended for processing of DMS or other chemical probing data on rRNA
-Based on Alex Robertson's original RBNS pipeline, available on github
+Based on Alex Robertson's original RNA Bind n Seq pipeline, available on github
 """
 import sys
 import matplotlib.pyplot as plt

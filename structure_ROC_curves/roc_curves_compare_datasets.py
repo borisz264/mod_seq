@@ -1,5 +1,7 @@
 __author__ = 'boris'
 """
+THIS IS AN OLD SCRIPT, use the _shapemapper.py version instead
+
 
 5'e end data is a pickled dict of form srt_dict[strand][chrom][position] = counts at position
 take the 5' end data from count_reads_and_mismatches.py, as well as any number of files output by

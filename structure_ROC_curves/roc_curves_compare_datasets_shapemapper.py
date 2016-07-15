@@ -124,6 +124,8 @@ def main():
     stepsize = 0.0001
     for cutoff in numpy.arange(0,1.+5*stepsize, stepsize):
         for i in range(len(sample_names)):
+            #the fasta file should be the EXACT one used for the pipeline, and the chromosome name below should match
+            # the one in the FASTA file exactly
             called_p = call_positives(normed_density_arrays[i], 'S.c.25S__rRNA', genome_dict, 'AC', cutoff)
             num_tp_called = len(called_p.intersection(real_tp))#how many true positives called at this cutoff
             num_fp_called = len(called_p.intersection(real_tn))#how many fp positives called at this cutoff
