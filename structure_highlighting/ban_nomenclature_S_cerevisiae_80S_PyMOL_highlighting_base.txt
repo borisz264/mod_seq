@@ -212,13 +212,13 @@ color forest,     S.c.80S_Os_6HN3 and name OS
 color tv_blue,    S.c.80S_Os_6HN3 and name N
 color yellow,     S.c.40S_Zn or  S.c.60S_Zn
 
-#small subunit is blue
-color blue,      uS* or eS* or S.c.Stm1 or S.c.Asc1
-color lightblue, S.c.18S_rRNA
+#small subunit is gold
+color gray90,      uS* or eS* or S.c.Stm1 or S.c.Asc1
+color yelloworange, S.c.18S_rRNA
 
-#large subunit is red
-color red,      uL* or eL* or P1_* or P2_*
-color salmon,  S.c.25S__rRNA or S.c.5S___rRNA or S.c.5.8S_rRNA
+#large subunit is blue
+color gray90,      uL* or eL* or P1_* or P2_*
+color skyblue,  S.c.25S__rRNA or S.c.5S___rRNA or S.c.5.8S_rRNA
 
 #color changing nucleotides
 set_color bluish_green= [0.0 , 0.62 , 0.45]
