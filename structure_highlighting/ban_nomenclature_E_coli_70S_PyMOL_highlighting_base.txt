@@ -1,0 +1,239 @@
+#
+#########################################################
+#  PyMOL script for display of the E. coli 70S ribosome #
+#########################################################
+#
+#   Created by Marc Leibundgut, ETH Zurich.
+#   Based on scripts by Felix Voigts-Hoffmann and Basil Greber.
+#   For questions, comments or error reports please contact ban@mol.biol.ethz.ch or leibundgut@mol.biol.ethz.ch 
+#
+#   last modified: 09/09/2015
+#
+#   A full PyMOL session of this script in .pse format can be downloaded from 
+#   http://www.mol.biol.ethz.ch/groups/ban_group/nomenclature/
+#
+#   Reference:
+#   High-resolution structure of the Escherichia coli ribosome.
+#   Noeske J, Wasserman MR, Terry DS, Altman RB, Blanchard SC, Cate JH.
+#   Nat Struct Mol Biol. 22(4):336-41. (2015)
+#   
+#   Nomenclature according to:
+#   A new system for naming ribosomal proteins.
+#   Ban N, Beckmann R, Cate JH, Dinman JD, Dragon F, Ellis SR, Lafontaine DL, Lindahl L, Liljas A, Lipton JM, McAlear MA, 
+#   Moore PB, Noller HF, Ortega J, Panse VG, Ramakrishnan V, Spahn CM, Steitz TA, Tchorzewski M, Tollervey D, Warren AJ, 
+#   Williamson JR, Wilson D, Yonath A, Yusupov M.
+#   Curr Opin Struct Biol. 24:165-9 (2014)
+#
+#   Abbreviations:
+#   H.s.        ribosomal subunit protein standard nomenclature as used for human and T. thermophila
+#   S.c.        Saccharomyces cerevisiae
+#   E.c.        Escherichia coli
+#   uS../uL..   universally conserved proteins (eukaryotes, archaea and bacteria)
+#   bS../bL..   bacterial-specific proteins
+#
+#   Color Scheme:
+#   blue:       proteins universally conserved
+#   magenta:    proteins bacterial-specific
+#   light grey: rRNAs
+#   purple:     magnesium ions
+#   red:        waters
+#   yellow:     Zn ions
+#   green:      other cofactors
+#
+#########################################
+# INSTRUCTIONS FOR RUNNING THIS SCRIPT  #
+#########################################
+#
+#   1) Start PyMOL
+#      The structure of the 70S E. coli ribosome has been deposited at the PDB in mmCIF format. Only recent versions
+#      of PyMOL can properly retrieve and handle files in mmCIF format. If you do not have a recent version of PyMOL 
+#      installed (this script has been tested with PyMOL v1.7 and may not work properly with older versions), 
+#      please go to http://www.pymol.org/ to download and install the application.
+#
+#   2) The following commands will download the PDB coordinate file from the database and save it in your working 
+#      directory. To load the file, paste the commands into the command line of the PyMOL GUI Window
+#      (titled "The Pymol Molecular Graphics System")
+#
+         set connect_mode, 3
+         
+#       to activate distance-based display of bonds needed to properly show non-standard bases (to be set prior to loading mmCIF) 
+
+         fetch 4ybb, type=cif
+#
+#   3) Wait until the file is loaded and you can see the ribosome shown as lines.
+#
+#   4) Paste the rest of the script below "DISPLAY INSTRUCTIONS" into the command line of
+#      the PyMOL GUI Window (titled "The Pymol Molecular Graphics System")
+#      These commands will set up the display and nomenclature of RNAs, proteins, ions and cofactors       
+#
+########################
+# DISPLAY INSTRUCTIONS #
+########################
+
+# to activate the differentiation of lowercase and uppercase chain IDs used in large molecules
+
+set ignore_case, 0
+
+# the following matrix superimposes the 70S bacterial ribosome from E. coli (4ybb)
+# onto the large subunit of the yeast 80S ribosome (PDB ID 4v88)
+
+cmd.transform_selection("4ybb", [-0.038011737167835236, 0.9714407920837402, -0.23421764373779297, 199.98798171097008, 0.6521817445755005, -0.15346747636795044, -0.7423655986785889, 52.4952423891134, -0.7571090459823608, -0.18097107112407684, -0.6277223825454712, 166.73911404074198, 0.0, 0.0, 0.0, 1.0],homogenous=1)
+
+#################################
+# SELECTIONS OF PROTEIN AND RNA #
+#################################
+
+# temporary subselections #
+create moleculeAD_wo_cofactors, 4ybb and (chain A* and not (resn 1PE or resn ACY or resn EDO or resn GUN or resn MG  or resn MPD or resn PEG or resn PG4 or resn PGE or resn PUT or resn SPD or resn TRS or resn ZN or resn HOH) or chain D* and not (resn 1PE or resn ACY or resn EDO or resn GUN or resn MG  or resn MPD or resn PEG or resn PG4 or resn PGE or resn PUT or resn SPD or resn TRS or resn ZN or resn HOH))
+
+create moleculeAD_cofactors, 4ybb and (chain A* and (resn 1PE or resn ACY or resn EDO or resn GUN or resn MG  or resn MPD or resn PEG or resn PG4 or resn PGE or resn PUT or resn SPD or resn TRS or resn ZN or resn HOH) or chain D* and (resn 1PE or resn ACY or resn EDO or resn GUN or resn MG  or resn MPD or resn PEG or resn PG4 or resn PGE or resn PUT or resn SPD or resn TRS or resn ZN or resn HOH))
+
+delete 4ybb
+
+# 50S #
+create uL2__E.c.L2__H.s.L8___S.c.L2  , moleculeAD_wo_cofactors and chain DC
+create uL3__E.c.L3__H.s.L3___S.c.L3  , moleculeAD_wo_cofactors and chain DD
+create uL4__E.c.L4__H.s.L4___S.c.L4  , moleculeAD_wo_cofactors and chain DE
+create uL5__E.c.L5__H.s.L11__S.c.L11 , moleculeAD_wo_cofactors and chain DF
+create uL6__E.c.L6__H.s.L9___S.c.L9  , moleculeAD_wo_cofactors and chain DG
+create bL9__E.c.L9                   , moleculeAD_wo_cofactors and chain DH
+create uL10_E.c.L10_H.s.P0___S.c.P0  , moleculeAD_wo_cofactors and chain DI
+create uL11_E.c.L11_H.s.L12__S.c.L12 , moleculeAD_wo_cofactors and chain DJ
+create uL13_E.c.L13_H.s.L13A_S.c.L16 , moleculeAD_wo_cofactors and chain DK
+create uL14_E.c.L14_H.s.L23__S.c.L23 , moleculeAD_wo_cofactors and chain DL
+create uL15_E.c.L15_H.s.L27A_S.c.L28 , moleculeAD_wo_cofactors and chain DM
+create uL16_E.c.L16_H.s.L10__S.c.L10 , moleculeAD_wo_cofactors and chain DN
+create bL17_E.c.L17                  , moleculeAD_wo_cofactors and chain DO
+create uL18_E.c.L18_H.s.L5___S.c.L5  , moleculeAD_wo_cofactors and chain DP
+create bL19_E.c.L19                  , moleculeAD_wo_cofactors and chain DQ
+create bL20_E.c.L20                  , moleculeAD_wo_cofactors and chain DR
+create bL21_E.c.L21                  , moleculeAD_wo_cofactors and chain DS
+create uL22_E.c.L22_H.s.L17__S.c.L17 , moleculeAD_wo_cofactors and chain DT
+create uL23_E.c.L23_H.s.L23A_S.c.L25 , moleculeAD_wo_cofactors and chain DU
+create uL24_E.c.L24_H.s.L26__S.c.L26 , moleculeAD_wo_cofactors and chain DV
+create bL25_E.c.L25                  , moleculeAD_wo_cofactors and chain DW
+create bL27_E.c.L27                  , moleculeAD_wo_cofactors and chain DX
+create bL28_E.c.L28                  , moleculeAD_wo_cofactors and chain DY
+create uL29_E.c.L29_H.s.L35__S.c.L35 , moleculeAD_wo_cofactors and chain DZ
+create uL30_E.c.L30_H.s.L7___S.c.L7  , moleculeAD_wo_cofactors and chain D0
+create bL32_E.c.L32                  , moleculeAD_wo_cofactors and chain D1
+create bL33_E.c.L33                  , moleculeAD_wo_cofactors and chain D2
+create bL34_E.c.L34                  , moleculeAD_wo_cofactors and chain D3
+create bL35_E.c.L35                  , moleculeAD_wo_cofactors and chain D4
+create bL36_E.c.L36                  , moleculeAD_wo_cofactors and chain D5
+create E.c.23S_rRNA                  , moleculeAD_wo_cofactors and chain DA
+create E.c.5S__rRNA                  , moleculeAD_wo_cofactors and chain DB
+
+
+# 30S #
+create uS2__E.c.S2__H.s.SA___S.c.S0  , moleculeAD_wo_cofactors and chain AB
+create uS3__E.c.S3__H.s.S3___S.c.S3  , moleculeAD_wo_cofactors and chain AC
+create uS4__E.c.S4__H.s.S9___S.c.S9  , moleculeAD_wo_cofactors and chain AD
+create uS5__E.c.S5__H.s.S2___S.c.S2  , moleculeAD_wo_cofactors and chain AE
+create bS6__E.c.S6                   , moleculeAD_wo_cofactors and chain AF
+create uS7__E.c.S7__H.s.S5___S.c.S5  , moleculeAD_wo_cofactors and chain AG
+create uS8__E.c.S8__H.s.S15A_S.c.S22 , moleculeAD_wo_cofactors and chain AH
+create uS9__E.c.S9__H.s.S16__S.c.S16 , moleculeAD_wo_cofactors and chain AI
+create uS10_E.c.S10_H.s.S20__S.c.S20 , moleculeAD_wo_cofactors and chain AJ
+create uS11_E.c.S11_H.s.S14__S.c.S14 , moleculeAD_wo_cofactors and chain AK
+create uS12_E.c.S12_H.s.S23__S.c.S23 , moleculeAD_wo_cofactors and chain AL
+create uS13_E.c.S13_H.s.S18__S.c.S18 , moleculeAD_wo_cofactors and chain AM
+create uS14_E.c.S14_H.s.S29__S.c.S29 , moleculeAD_wo_cofactors and chain AN
+create uS15_E.c.S15_H.s.S13__S.c.S13 , moleculeAD_wo_cofactors and chain AO
+create bS16_E.c.S16                  , moleculeAD_wo_cofactors and chain AP
+create uS17_E.c.S17_H.s.S11__S.c.S11 , moleculeAD_wo_cofactors and chain AQ
+create bS18_E.c.S18                  , moleculeAD_wo_cofactors and chain AR
+create uS19_E.c.S19_H.s.S15__S.c.S15 , moleculeAD_wo_cofactors and chain AS
+create bS20_E.c.S20                  , moleculeAD_wo_cofactors and chain AT
+create bS21_E.c.S21                  , moleculeAD_wo_cofactors and chain AU
+create E.c.16S_rRNA                  , moleculeAD_wo_cofactors and chain AA
+
+# 70S cofactors #
+
+create E.c.70S_Mg, moleculeAD_cofactors and resn MG
+create E.c.70S_HOH, moleculeAD_cofactors and resn HOH
+create E.c.30S_Zn, moleculeAD_cofactors and chain A* and resn ZN
+create E.c.50S_Zn, moleculeAD_cofactors and chain D* and resn ZN
+create other_E.c.70S_cofactors, moleculeAD_cofactors and not (resn MG or resn HOH or resn ZN)
+
+#HIGHLIGHT CHANGING NUCLEOTIDES
+#<insert nucleotide highlighting here>
+
+delete moleculeAD_wo_cofactors
+delete moleculeAD_cofactors
+
+# subselections for coloring and display #
+select E.c.70S_proteins, bL* or uL* or bS* or uS*
+select E.c.70S_rRNAs, E.c.23S_rRNA or E.c.5S__rRNA or E.c.16S_rRNA
+select E.c.70S_bases, (E.c.70S_rRNA and (name C4 or name N3 or name N9 or name C8 or name N7 or name C5 or name C6 or name N1 or name N6 or name C2 or name O2 or name O4 or name O6 or name N2 or name N4))
+
+##################
+# COLOR SETTINGS #
+##################
+
+#color grey60,      E.c.70S_rRNAs
+#color white,       E.c.70S_bases
+#color aquamarine,  uL* or uS*
+#color violet,      bL* or bS*
+#color purple,      E.c.70S_Mg
+#color tv_red,      E.c.70S_HOH
+#color yellow,      E.c.30S_Zn or E.c.50S_Zn
+#color green,       other_E.c.70S_cofactors
+#small subunit is gold
+color gray90,      uS* or bS*
+color yelloworange, E.c.16S_rRNA
+
+#large subunit is blue
+color gray90,      uL* or bL*
+color skyblue,  E.c.23S_rRNA or E.c.5S__rRNA
+
+#color changing nucleotides
+set_color bluish_green= [0.0 , 0.62 , 0.45]
+set_color vermillion= [0.84 , 0.37 , 0.0]
+#<color groups here>
+
+
+hide everything
+
+####################
+# DISPLAY SETTINGS #
+####################
+show surface, E.c.70S_proteins or E.c.70S_rRNAs
+#<show spheres for changing nucleotides here>
+#show spheres, protected_nucleotides or deprotected_nucleotides
+#set cartoon_loop_radius,0.40000
+#set cartoon_tube_radius,0.8000
+#set cartoon_ladder_radius,0.4000
+#set cartoon_oval_length,1.200
+#set cartoon_oval_width,0.4000
+#show spheres, E.c.30S_Zn or E.c.50S_Zn
+#show spheres, E.c.70S_Mg
+#show spheres, E.c.70S_HOH
+#show sticks,  other_E.c.70S_cofactors
+set sphere_scale=1.5, E.c.30S_Zn or E.c.50S_Zn
+set sphere_scale=0.5, E.c.70S_HOH
+set sphere_scale=0.6, E.c.70S_Mg
+
+delete E.c.70S_proteins
+delete E.c.70S_rRNAs
+delete E.c.70S_bases
+
+bg_color white
+set ray_opaque_background, off
+set depth_cue=0
+set ray_trace_fog=0
+set transparency, 0.8
+
+#################
+# VIEW SETTINGS #
+#################
+
+# side view of the 70S #
+set_view (\
+    -0.987847030,    0.021754943,    0.153153449,\
+     0.034389943,   -0.934180319,    0.354742438,\
+     0.150809333,    0.355729073,    0.922201931,\
+     0.000000000,    0.000000000, -855.260559082,\
+   179.838546753,    3.613739014,  232.099822998,\
+   723.269958496,  987.251403809,  -20.000000000 )
+
