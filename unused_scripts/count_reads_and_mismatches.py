@@ -507,6 +507,7 @@ def count_reads(lib_settings):
                              lib_settings.get_counting_prefix()+'.genome_mutations')
     pie_read_5p_ends(mod_utils.unPickle(lib_settings.get_read_5p_counts()), mod_utils.convertFastaToDict(lib_settings.experiment_settings.get_rRNA_fasta()), lib_settings.get_counting_prefix())
     normed_mutation_rate_histogram(mod_utils.unPickle(lib_settings.get_normalized_mutation_counts()), lib_settings.sample_name, lib_settings.get_counting_prefix())
+
 def test():
     """
 

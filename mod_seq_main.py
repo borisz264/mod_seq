@@ -341,13 +341,14 @@ class mod_seq_run:
             mod_utils.make_dir(self.rdir_path('plots', 'exclude_constitutive', 'interactive'))
             rdir = self.rdir_path('plots','exclude_constitutive')
             file_tag = '_exclude_constitutive'
-            mod_plotting.generate_roc_curves(self.settings.get_property('tptn_file_25s'), self.settings.rRNA_seqs, os.path.join(rdir, '25S_ROC_curves'), self.get_modified_libs(), 'S.c.25S__rRNA', self.settings.get_property('affected_nucleotides'))
-            mod_plotting.generate_roc_curves(self.settings.get_property('tptn_file_18s'), self.settings.rRNA_seqs, os.path.join(rdir, '18S_ROC_curves'), self.get_modified_libs(), 'S.c.18S_rRNA', self.settings.get_property('affected_nucleotides'))
-            mod_plotting.plot_functional_group_changes(self.get_normalizable_libs(), os.path.join(rdir, 'functional_groups', 'group_changes'),
-                                                       self.settings.get_property('functional_groupings'),
-                                                       nucleotides_to_count=self.settings.get_property('affected_nucleotides'),
-                                                       exclude_constitutive=exclude_constitutive,
-                                                       max_fold_reduction=0.001, max_fold_increase=100)
+            #TODO: the names for the ROC curve chromosomes are hard coded and need to be changed between samples
+            mod_plotting.generate_roc_curves(self.settings.get_property('tptn_file_25s'), self.settings.rRNA_seqs, os.path.join(rdir, '23S_ROC_curves'), self.get_modified_libs(), 'E.c.23S_rRNA', self.settings.get_property('affected_nucleotides'))
+            mod_plotting.generate_roc_curves(self.settings.get_property('tptn_file_18s'), self.settings.rRNA_seqs, os.path.join(rdir, '16S_ROC_curves'), self.get_modified_libs(), 'E.c.16S_rRNA', self.settings.get_property('affected_nucleotides'))
+            # mod_plotting.plot_functional_group_changes(self.get_normalizable_libs(), os.path.join(rdir, 'functional_groups', 'group_changes'),
+            #                                            self.settings.get_property('functional_groupings'),
+            #                                            nucleotides_to_count=self.settings.get_property('affected_nucleotides'),
+            #                                            exclude_constitutive=exclude_constitutive,
+            #                                            max_fold_reduction=0.001, max_fold_increase=100)
 
         else:
             mod_utils.make_dir(self.rdir_path('plots'))
@@ -369,9 +370,9 @@ class mod_seq_run:
                                              nucleotides_to_count=self.settings.get_property('affected_nucleotides'),
                                              exclude_constitutive=exclude_constitutive)
 
-        mod_plotting.plot_changes_vs_control(self.get_normalizable_libs(), os.path.join(rdir, 'changes'+file_tag),
-                                             nucleotides_to_count=self.settings.get_property('affected_nucleotides'),
-                                             exclude_constitutive=exclude_constitutive)
+        # mod_plotting.plot_changes_vs_control(self.get_normalizable_libs(), os.path.join(rdir, 'changes'+file_tag),
+        #                                      nucleotides_to_count=self.settings.get_property('affected_nucleotides'),
+        #                                      exclude_constitutive=exclude_constitutive)
         mod_plotting.ma_plots(self.get_normalizable_libs(), os.path.join(rdir, 'MA'+file_tag),
                                              nucleotides_to_count=self.settings.get_property('affected_nucleotides'),
                                              exclude_constitutive=exclude_constitutive)
@@ -400,16 +401,16 @@ class mod_seq_run:
             mod_plotting.highlight_structure(self.get_normalizable_libs(), self.rdir_path('structures', 'protections_highlighted', 'exclude_constitutive'),
                                              nucleotides_to_count=self.settings.get_property('affected_nucleotides'),
                                              exclude_constitutive=exclude_constitutive)
-            mod_plotting.color_by_change(self.get_normalizable_libs(), self.rdir_path('structures', 'colored_by_change', 'exclude_constitutive'),
-                                         nucleotides_to_count=self.settings.get_property('affected_nucleotides'),
-                                         exclude_constitutive=exclude_constitutive)
+            # mod_plotting.color_by_change(self.get_normalizable_libs(), self.rdir_path('structures', 'colored_by_change', 'exclude_constitutive'),
+            #                              nucleotides_to_count=self.settings.get_property('affected_nucleotides'),
+            #                              exclude_constitutive=exclude_constitutive)
         else:
             mod_plotting.highlight_structure(self.get_normalizable_libs(), self.rdir_path('structures', 'protections_highlighted'),
                                  nucleotides_to_count=self.settings.get_property('affected_nucleotides'),
                                  exclude_constitutive=exclude_constitutive)
-            mod_plotting.color_by_change(self.get_normalizable_libs(), self.rdir_path('structures', 'colored_by_change'),
-                                         nucleotides_to_count=self.settings.get_property('affected_nucleotides'),
-                                         exclude_constitutive=exclude_constitutive)
+            # mod_plotting.color_by_change(self.get_normalizable_libs(), self.rdir_path('structures', 'colored_by_change'),
+            #                              nucleotides_to_count=self.settings.get_property('affected_nucleotides'),
+            #                              exclude_constitutive=exclude_constitutive)
 
     def collapse_identical_reads(self):
         """
