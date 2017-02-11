@@ -560,7 +560,7 @@ class Nucleotide:
         #    return "no_change"
         fold_change = self.get_control_fold_change_in_mutation_rate(subtract_background=subtract_background)
         #these outliers are always on the edge of the rRNA, so they're probably crap
-        if not self.get_control_nucleotide().signal_above_background():
+        if not (self.get_control_nucleotide().signal_above_background()):
             return "no_change"
         elif fold_change == float('inf') or fold_change == -1*float('inf'):
             #fold_change = max_fold_increase
@@ -584,6 +584,7 @@ class Nucleotide:
             return "something_is_wrong_change_zero"
 
     def signal_above_background(self):
+        #TODO: this needs statistical help
         return self.get_back_sub_mutation_rate() > 0
 
     def get_error(self):
