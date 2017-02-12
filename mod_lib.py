@@ -499,6 +499,12 @@ class Nucleotide:
         except ZeroDivisionError:
             return float('inf')
 
+    def get_fold_signal_over_background(self):
+        try:
+            return (self.mutation_rate/self.get_background_nucleotide().mutation_rate)
+        except ZeroDivisionError:
+            return float('inf')
+
     def get_control_fold_change_error(self, subtract_background=False, max_fold_reduction=0.001, max_fold_increase=100):
         try:
             ratio = self.get_control_fold_change_in_mutation_rate(subtract_background=subtract_background)
@@ -516,6 +522,21 @@ class Nucleotide:
                 num_error = self.get_error()
                 denom = self.get_control_nucleotide().mutation_rate
                 denom_error = self.get_control_nucleotide().get_error()
+            return ratio*math.sqrt((num_error/num)**2+(denom_error/denom)**2)
+        except ZeroDivisionError:
+            return float('inf')
+
+    def get_control_signal_error(self, max_fold_reduction=0.0001, max_fold_increase=10000):
+        try:
+            ratio = self.get_fold_signal_over_background()
+            if ratio == float('inf') or ratio == -1*float('inf'):
+                ratio = max_fold_increase
+            elif ratio<=0:
+                ratio = max_fold_reduction
+            num = self.mutation_rate
+            num_error = self.get_control_nucleotide().get_error()
+            denom = self.get_background_nucleotide().mutation_rate
+            denom_error = self.get_background_nucleotide().get_error()
             return ratio*math.sqrt((num_error/num)**2+(denom_error/denom)**2)
         except ZeroDivisionError:
             return float('inf')
@@ -560,7 +581,7 @@ class Nucleotide:
         #    return "no_change"
         fold_change = self.get_control_fold_change_in_mutation_rate(subtract_background=subtract_background)
         #these outliers are always on the edge of the rRNA, so they're probably crap
-        if not (self.get_control_nucleotide().signal_above_background()):
+        if not (self.control_signal_above_background(confidence_interval=confidence_interval)):
             return "no_change"
         elif fold_change == float('inf') or fold_change == -1*float('inf'):
             #fold_change = max_fold_increase
@@ -568,6 +589,7 @@ class Nucleotide:
         elif fold_change<=0:
             #fold_change = max_fold_reduction
             return "no_change"
+
 
         mean = math.log(fold_change) #natural log to make dist more gaussian
         standard_deviation = self.get_control_fold_change_error(subtract_background=subtract_background)/fold_change #error propogation for natural log
@@ -583,9 +605,23 @@ class Nucleotide:
         else:
             return "something_is_wrong_change_zero"
 
-    def signal_above_background(self):
-        #TODO: this needs statistical help
-        return self.get_back_sub_mutation_rate() > 0
+    def control_signal_above_background(self, confidence_interval = 0.99):
+        '''
+        return True if signal in control dataset is statistically significantly above the  background dataset
+        '''
+        fold_change = self.get_fold_signal_over_background()
+        mean = math.log(fold_change) #natural log to make dist more gaussian
+        standard_deviation = self.get_control_signal_error()/fold_change #error propogation for natural log
+        p, z = mod_utils.computePfromMeanAndStDevZscore(mean, standard_deviation, 0) #what is the chance that no change could come from this dist?
+        if (p > 1.0-confidence_interval and p<confidence_interval):
+            return False
+        elif self.get_control_nucleotide().get_back_sub_mutation_rate<0:
+            return False
+        elif self.get_control_nucleotide().get_back_sub_mutation_rate>0:
+            return True
+        else:
+            return False
+
 
     def get_error(self):
         try:
