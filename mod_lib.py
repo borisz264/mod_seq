@@ -11,8 +11,6 @@ import numpy as np
 from collections import Counter
 import math
 
-#TODO: consider adding options for ignoring nucleotides that are modified in vivo
-#TODO: add methods to take in shapemapper processed data with errors, and use them for comparing libraries.
 class ModLib:
     def __init__(self, experiment, experiment_settings, lib_settings):
         """

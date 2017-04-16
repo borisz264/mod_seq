@@ -342,8 +342,8 @@ class mod_seq_run:
             rdir = self.rdir_path('plots','exclude_constitutive')
             file_tag = '_exclude_constitutive'
             #TODO: the names for the ROC curve chromosomes are hard coded and need to be changed between samples
-            mod_plotting.generate_roc_curves(self.settings.get_property('tptn_file_25s'), self.settings.rRNA_seqs, os.path.join(rdir, '23S_ROC_curves'), self.get_modified_libs(), 'E.c.23S_rRNA', self.settings.get_property('affected_nucleotides'))
-            mod_plotting.generate_roc_curves(self.settings.get_property('tptn_file_18s'), self.settings.rRNA_seqs, os.path.join(rdir, '16S_ROC_curves'), self.get_modified_libs(), 'E.c.16S_rRNA', self.settings.get_property('affected_nucleotides'))
+            #mod_plotting.generate_roc_curves(self.settings.get_property('tptn_file_25s'), self.settings.rRNA_seqs, os.path.join(rdir, '23S_ROC_curves'), self.get_modified_libs(), 'E.c.23S_rRNA', self.settings.get_property('affected_nucleotides'))
+            #mod_plotting.generate_roc_curves(self.settings.get_property('tptn_file_18s'), self.settings.rRNA_seqs, os.path.join(rdir, '16S_ROC_curves'), self.get_modified_libs(), 'E.c.16S_rRNA', self.settings.get_property('affected_nucleotides'))
             # mod_plotting.plot_functional_group_changes(self.get_normalizable_libs(), os.path.join(rdir, 'functional_groups', 'group_changes'),
             #                                            self.settings.get_property('functional_groupings'),
             #                                            nucleotides_to_count=self.settings.get_property('affected_nucleotides'),
