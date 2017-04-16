@@ -355,7 +355,7 @@ class mod_seq_run:
             mod_utils.make_dir(self.rdir_path('plots', 'interactive'))
             rdir = self.rdir_path('plots')
             file_tag = ''
-
+        '''
         mod_plotting.plot_mutated_nts_pie(self.libs, os.path.join(rdir, 'raw_mutation_fractions'+file_tag), exclude_constitutive=exclude_constitutive)
         mod_plotting.plot_mutation_breakdown_pie(self.libs, os.path.join(rdir, 'raw_mutation_types'+file_tag), exclude_constitutive=exclude_constitutive)
 
@@ -369,11 +369,14 @@ class mod_seq_run:
         mod_plotting.plot_mutation_rate_violins(self.libs, os.path.join(rdir, 'mutation_rate_cdf'+file_tag),
                                              nucleotides_to_count=self.settings.get_property('affected_nucleotides'),
                                              exclude_constitutive=exclude_constitutive)
-
+        '''
         # mod_plotting.plot_changes_vs_control(self.get_normalizable_libs(), os.path.join(rdir, 'changes'+file_tag),
         #                                      nucleotides_to_count=self.settings.get_property('affected_nucleotides'),
         #                                      exclude_constitutive=exclude_constitutive)
         mod_plotting.ma_plots(self.get_normalizable_libs(), os.path.join(rdir, 'MA'+file_tag),
+                                             nucleotides_to_count=self.settings.get_property('affected_nucleotides'),
+                                             exclude_constitutive=exclude_constitutive)
+        mod_plotting.ma_plots_by_count(self.get_normalizable_libs(), os.path.join(rdir, 'MA_raw_counts'+file_tag),
                                              nucleotides_to_count=self.settings.get_property('affected_nucleotides'),
                                              exclude_constitutive=exclude_constitutive)
         if self.settings.get_property('make_interactive_plots'):
@@ -386,7 +389,17 @@ class mod_seq_run:
                 mod_plotting.ma_plots_interactive(self.get_normalizable_libs(), os.path.join(rdir, 'interactive', 'MA'+file_tag),
                                                          nucleotides_to_count=self.settings.get_property('affected_nucleotides'),
                                                          exclude_constitutive=False)
+                mod_plotting.ma_plots_interactive_by_count(self.get_normalizable_libs(),
+                                                  os.path.join(rdir, 'interactive', 'MA_counts' + file_tag),
+                                                  nucleotides_to_count=self.settings.get_property(
+                                                      'affected_nucleotides'),
+                                                  exclude_constitutive=False)
 
+                mod_plotting.ma_plots_interactive_complex(self.get_normalizable_libs(),
+                                                  os.path.join(rdir, 'interactive', 'MA_complex' + file_tag),
+                                                  nucleotides_to_count=self.settings.get_property(
+                                                      'affected_nucleotides'),
+                                                  exclude_constitutive=False)
 
     def annotate_structures(self, exclude_constitutive=False):
         if exclude_constitutive:

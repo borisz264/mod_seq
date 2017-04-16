@@ -9,7 +9,13 @@ to run the pipeline:
 optional parameters (add after settings file):
     --threads : max number of parrallel processes to use. Default is 8.
 
-
+Python dependencies (install with pip):
+    simplejson
+    bokeh (optional, but very helpful)
+    statsmodels
+    matplotlib
+    numpy
+    scipy
 
 This package requires installation of the ShapeMapper package from Kevin Weeks' lab.
 Download ShapeMapper from http://www.chem.unc.edu/rna/software.html compile it, and add it to your PATH.

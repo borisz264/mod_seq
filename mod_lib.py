@@ -10,6 +10,7 @@ import gzip
 import numpy as np
 from collections import Counter
 import math
+from statsmodels.nonparametric.smoothers_lowess import lowess
 
 class ModLib:
     def __init__(self, experiment, experiment_settings, lib_settings):
@@ -136,7 +137,10 @@ class ModLib:
     def get_mutation_rate_at_position(self, rRNA_name, position):
         return self.rRNA_mutation_data[rRNA_name].nucleotides[position].mutation_rate
 
-    def write_tsv_tables(self, tsv_filename, subtract_background=False, subtract_control=False, exclude_constitutive=False):
+    def write_tsv_tables(self, tsv_filename, subtract_background=False, subtract_control=False, exclude_constitutive=False,
+                         lowess_correct = False):
+        if lowess_correct:
+            self.lowess_correct_fold_changes(nucleotides_to_count=self.settings.get_property('affected_nucleotides'), exclude_constitutive=exclude_constitutive)
         if subtract_background and subtract_control:
             raise SyntaxError('Cannot subtract background and control simultaneously')
 
@@ -166,12 +170,19 @@ class ModLib:
                         f.write(self.rRNA_mutation_data[rRNA_name].rRNA_name+'\t'+str(nucleotide.position)+'\t'
                                 +'0'+'\t'+'0'+'\n')
                 else:
+
                     if subtract_background:
                         f.write(self.rRNA_mutation_data[rRNA_name].rRNA_name+'\t'+str(nucleotide.position)+'\t'
                                 +str(nucleotide.mutation_rate)+'\t'+str(nucleotide.get_back_sub_mutation_rate())+'\t'
                                 +str(nucleotide.get_back_sub_error())+'\n')
                     elif subtract_control:
+
+
                         ctrl_nuc = nucleotide.get_control_nucleotide()
+                        if lowess_correct:
+                            fold_change = nucleotide.lowess_fc
+                        else:
+                            fold_change = nucleotide.get_control_fold_change_in_mutation_rate()
                         exp_wil_bottom, exp_wil_top = nucleotide.get_wilson_approximate_score_interval()
                         ctrl_wil_bottom, ctrl_wil_top = ctrl_nuc.get_wilson_approximate_score_interval()
                         f.write('%s\t%d\t%s\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%s\n' %
@@ -180,7 +191,7 @@ class ModLib:
                                 ctrl_wil_bottom, ctrl_wil_top, nucleotide.get_control_sub_mutation_rate(),
                                 nucleotide.get_control_sub_error(), nucleotide.get_control_fold_change_in_mutation_rate(),
                                 nucleotide.determine_protection_status(confidence_interval=self.experiment_settings.get_property('confidence_interval_cutoff'),
-                                                                       fold_change_cutoff=self.experiment_settings.get_property('fold_change_cutoff'))))
+                                                                       fold_change_cutoff=self.experiment_settings.get_property('fold_change_cutoff'), lowess_correct = lowess_correct)))
                     elif not subtract_background and not subtract_control:
                         f.write(self.rRNA_mutation_data[rRNA_name].rRNA_name+'\t'+str(nucleotide.position)+'\t'
                                 +str(nucleotide.mutation_rate)+'\t'+str(nucleotide.get_error())+'\n')
@@ -314,6 +325,40 @@ class ModLib:
                     nucleotides.append(nucleotide_match)
         return nucleotides
 
+    def get_all_nucleotides(self, nucleotides_to_count = 'ATCG', exclude_constitutive=False):
+        """
+        return a list of all nucleotides subject to the optional parameters
+        :param nucleotides_to_count:
+        :param exclude_constitutive:
+        :return:
+        """
+        nucleotides = []
+        for rRNA in self.rRNA_mutation_data.values():
+            nucleotides += rRNA.get_all_nucleotides(self, nucleotides_to_count = nucleotides_to_count,
+                                                    exclude_constitutive=exclude_constitutive)
+        return nucleotides
+
+    def lowess_correct_fold_changes(self, nucleotides_to_count = 'ATCG', exclude_constitutive=False):
+        """
+        Add a lowess regression corrected fold change, by regressing on the
+        :param nucleotides_to_count:
+        :param exclude_constitutive:
+        :return:
+        """
+        nucs = self.get_all_nucleotides(self, nucleotides_to_count = nucleotides_to_count,
+                                   exclude_constitutive=exclude_constitutive)
+        nuc_fold_changes = [nuc.get_control_fold_change_in_mutation_rate() for nuc in nucs]
+        nuc_avg_counts = [(nuc.total_mutation_counts+nuc.get_control_nucleotide().total_mutation_counts)/2.0
+                          for nuc in nucs]
+        fc_log = [math.log(fc, 10) for fc in nuc_fold_changes]
+        mag_log = [math.log(m, 10) if m > 0 else -1. for m in nuc_avg_counts]
+        lowess_fc_log = lowess(fc_log, mag_log, return_sorted=False)
+        lowess_fc = 10 ** lowess_fc_log
+
+
+        for i in range(len(nucs)):
+            nucs[i].lowess_fc = nuc.get_control_fold_change_in_mutation_rate()/lowess_fc[i]
+
 class rRNA_mutations:
     def __init__(self, lib, lib_settings, experiment_settings, mutation_filename):
         self.lib = lib
@@ -439,6 +484,22 @@ class rRNA_mutations:
         return nucleotides
 
 
+    def get_all_nucleotides(self, nucleotides_to_count='ATCG', exclude_constitutive=False):
+        """
+        return a list of all nucleotides subject to the optional parameters
+        :param nucleotides_to_count:
+        :param exclude_constitutive:
+        :return:
+        """
+        nucleotides = []
+        for nucleotide in self.nucleotides.values():
+            if nucleotide.identity in nucleotides_to_count:
+                if exclude_constitutive and nucleotide.exclude_constitutive:
+                    pass
+                else:
+                    nucleotides.append(nucleotide)
+        return nucleotides
+
 
 class Nucleotide:
     def __init__(self, rRNA, headers, mutation_data_line, lib_settings):
@@ -503,9 +564,13 @@ class Nucleotide:
         except ZeroDivisionError:
             return float('inf')
 
-    def get_control_fold_change_error(self, subtract_background=False, max_fold_reduction=0.001, max_fold_increase=100):
+    def get_control_fold_change_error(self, subtract_background=False, max_fold_reduction=0.001, max_fold_increase=100,
+                                      lowess_correct=False):
         try:
-            ratio = self.get_control_fold_change_in_mutation_rate(subtract_background=subtract_background)
+            if lowess_correct:
+                ratio = self.lowess_fc
+            else:
+                ratio = self.get_control_fold_change_in_mutation_rate(subtract_background=subtract_background)
             if ratio == float('inf') or ratio == -1*float('inf'):
                 ratio = max_fold_increase
             elif ratio<=0:
@@ -572,7 +637,7 @@ class Nucleotide:
         return interval_bottom, interval_top
 
     def determine_protection_status(self, confidence_interval = 0.99, fold_change_cutoff = 5, subtract_background=False,
-                                    max_fold_reduction=0.001, max_fold_increase=100):
+                                    max_fold_reduction=0.001, max_fold_increase=100, lowess_correct=False):
         #self_min, self_max = self.get_wilson_approximate_score_interval(confidence_interval=confidence_interval)
         #control_min, control_max = self.get_control_nucleotide().\
         #    get_wilson_approximate_score_interval(confidence_interval=confidence_interval)
@@ -581,8 +646,13 @@ class Nucleotide:
         #            and self.get_control_fold_change_in_mutation_rate()>1.0/fold_change_cutoff) or self.identity not in \
         #        self.lib_settings.experiment_settings.get_property('affected_nucleotides'):
         #    return "no_change"
-        fold_change = self.get_control_fold_change_in_mutation_rate(subtract_background=subtract_background)
-        #these outliers are always on the edge of the rRNA, so they're probably crap
+        if lowess_correct:
+            fold_change = self.lowess_fc
+            if subtract_background:
+                print "WARNING: lowess correction overrides background subtraction"
+        else:
+            fold_change = self.get_control_fold_change_in_mutation_rate(subtract_background=subtract_background)
+        #these outliers are always on the edge of the rRNA, so they're probably spurious low-coverage events
         if not (self.signal_above_background(self.get_control_nucleotide(), self.get_background_nucleotide(), confidence_interval=0.9) or
                 self.signal_above_background(self, self.get_background_nucleotide(), confidence_interval=0.9)):
             return "no_change"
@@ -594,7 +664,8 @@ class Nucleotide:
             return "no_change"
 
         mean = math.log(fold_change) #natural log to make dist more gaussian
-        standard_deviation = self.get_control_fold_change_error(subtract_background=subtract_background)/fold_change #error propogation for natural log
+        standard_deviation = self.get_control_fold_change_error(subtract_background=subtract_background,
+                                                                lowess_correct=lowess_correct)/fold_change #error propogation for natural log
         p, z = mod_utils.computePfromMeanAndStDevZscore(mean, standard_deviation, 0) #what is the chance that no change could come from this dist?
         if (p > 1.0-confidence_interval and p<confidence_interval)or (self.get_control_fold_change_in_mutation_rate(subtract_background=subtract_background)<fold_change_cutoff
                                              and self.get_control_fold_change_in_mutation_rate(subtract_background=subtract_background)>1.0/fold_change_cutoff)\
