@@ -211,13 +211,13 @@ class mod_seq_run:
         self.write_mutation_rates_tsv('mutation_rates.tsv', exclude_constitutive=exclude_constitutive)
         self.write_mutation_rates_tsv('back_subtracted_mutation_rates.tsv', subtract_background=True, exclude_constitutive=exclude_constitutive)
         self.write_mutation_rates_tsv('control_subtracted_mutation_rates.tsv', subtract_control=True, exclude_constitutive=exclude_constitutive)
-        self.write_mutation_rates_tsv('control_subtracted_mutation_rates.tsv', subtract_control=True,
+        self.write_mutation_rates_tsv('lowess_control_subtracted_mutation_rates.tsv', subtract_control=True,
                                       exclude_constitutive=exclude_constitutive, lowess_correct=True)
         self.write_combined_mutation_rates_tsv()
         self.write_combined_mutation_rates_tsv(exclude_constitutive=True)
 
 
-    def write_mutation_rates_tsv(self, suffix, subtract_background=False, subtract_control=False, exclude_constitutive=False):
+    def write_mutation_rates_tsv(self, suffix, subtract_background=False, subtract_control=False, exclude_constitutive=False, lowess_correct=False):
         if subtract_background or subtract_control:
             libs_to_write = self.get_normalizable_libs()
         else:
@@ -233,11 +233,11 @@ class mod_seq_run:
             for lib in libs_to_write:
                 lib.write_tsv_tables(os.path.join(self.rdir_path('tables', prefix, 'exclude_constitutive'),
                                                   lib.lib_settings.sample_name+'_'+suffix[:-4]+'_exclude_constitutive'+suffix[-4:]),
-                                     subtract_background=subtract_background, subtract_control=subtract_control, exclude_constitutive=exclude_constitutive)
+                                     subtract_background=subtract_background, subtract_control=subtract_control, exclude_constitutive=exclude_constitutive, lowess_correct=lowess_correct)
         else:
             for lib in libs_to_write:
                 lib.write_tsv_tables(os.path.join(self.rdir_path('tables', prefix), lib.lib_settings.sample_name+'_'+suffix),
-                                     subtract_background=subtract_background, subtract_control=subtract_control, exclude_constitutive=exclude_constitutive)
+                                     subtract_background=subtract_background, subtract_control=subtract_control, exclude_constitutive=exclude_constitutive, lowess_correct=lowess_correct)
 
     def write_combined_mutation_rates_tsv(self, subtract_background=False, subtract_control=False, exclude_constitutive=False):
         if subtract_background and subtract_control:
@@ -388,7 +388,7 @@ class mod_seq_run:
                                                       'affected_nucleotides'),
                                                   exclude_constitutive=False)
                 mod_plotting.ma_plots_interactive_by_count(self.get_normalizable_libs(),
-                                                  os.path.join(rdir, 'interactive', 'MA_counts' + file_tag),
+                                                  os.path.join(rdir, 'interactive', 'MA_counts_lowess' + file_tag),
                                                   nucleotides_to_count=self.settings.get_property('affected_nucleotides'),
                                                            exclude_constitutive=False, lowess_correct=True)
 

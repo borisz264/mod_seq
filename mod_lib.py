@@ -138,20 +138,22 @@ class ModLib:
         return self.rRNA_mutation_data[rRNA_name].nucleotides[position].mutation_rate
 
     def write_tsv_tables(self, tsv_filename, subtract_background=False, subtract_control=False, exclude_constitutive=False,
-                         lowess_correct = False,):
-        if lowess_correct:
-            nucleotides_to_count=self.settings.get_property('affected_nucleotides')
-            self.lowess_correct_fold_changes(nucleotides_to_count=nucleotides_to_count, exclude_constitutive=exclude_constitutive)
+                         lowess_correct = False):
+
         if subtract_background and subtract_control:
             raise SyntaxError('Cannot subtract background and control simultaneously')
 
         f = open(tsv_filename, 'w')
-
         if subtract_background:
                 f.write('CHROMOSOME\tPOSITION\tMUTATION_RATE\tBKGD_SUB_MUT_RATE\tBKGD_SUB_ERROR\n')
         elif subtract_control:
+            if lowess_correct:
+                nucleotides_to_count = self.experiment_settings.get_property('affected_nucleotides')
+                self.lowess_correct_fold_changes(nucleotides_to_count=nucleotides_to_count,
+                                                 exclude_constitutive=exclude_constitutive)
                 f.write('CHROMOSOME\tPOSITION\tNUC\tEXP_MUTATION_RATE\tEXP_99%_min\tEXP_99%_max\tCTRL_MUT_RATE'
                         '\tCTRL_99%_min\tCTRL_99%_max\tEXP-CTRL\tCTRL_POISSON_SUB_ERROR\tFOLD_CHANGE\tPROTECTION_CALL\n')
+
         elif not subtract_background and not subtract_control:
                 f.write('CHROMOSOME\tPOSITION\tMUTATION_RATE\tERROR\n')
 
@@ -337,20 +339,25 @@ class ModLib:
         """
         nucleotides = []
         for rRNA in self.rRNA_mutation_data.values():
-            nucleotides += rRNA.get_all_nucleotides(self, nucleotides_to_count = nucleotides_to_count,
+            nucleotides += rRNA.get_all_nucleotides(nucleotides_to_count = nucleotides_to_count,
                                                     exclude_constitutive=exclude_constitutive)
         return nucleotides
 
-    def lowess_correct_fold_changes(self, nucleotides_to_count = 'ATCG', exclude_constitutive=False):
+    def lowess_correct_fold_changes(self, nucleotides_to_count = 'ATCG', exclude_constitutive=False, max_fold_reduction=0.001, max_fold_increase=100):
         """
         Add a lowess regression corrected fold change, by regressing on the
         :param nucleotides_to_count:
         :param exclude_constitutive:
         :return:
         """
-        nucs = self.get_all_nucleotides(self, nucleotides_to_count = nucleotides_to_count,
+        nucs = self.get_all_nucleotides(nucleotides_to_count = nucleotides_to_count,
                                    exclude_constitutive=exclude_constitutive)
         nuc_fold_changes = [nuc.get_control_fold_change_in_mutation_rate() for nuc in nucs]
+        for i in range(len(nuc_fold_changes)):
+            if nuc_fold_changes[i] == 0:
+                nuc_fold_changes[i] = max_fold_reduction
+            elif nuc_fold_changes[i] == float('inf'):
+                nuc_fold_changes[i] = max_fold_increase
         nuc_avg_counts = [(nuc.total_mutation_counts+nuc.get_control_nucleotide().total_mutation_counts)/2.0
                           for nuc in nucs]
         fc_log = [math.log(fc, 10) for fc in nuc_fold_changes]
@@ -360,7 +367,7 @@ class ModLib:
 
 
         for i in range(len(nucs)):
-            nucs[i].lowess_fc = nuc.get_control_fold_change_in_mutation_rate()/lowess_fc[i]
+            nucs[i].lowess_fc = nucs[i].get_control_fold_change_in_mutation_rate()/lowess_fc[i]
 
 class rRNA_mutations:
     def __init__(self, lib, lib_settings, experiment_settings, mutation_filename):
@@ -554,10 +561,9 @@ class Nucleotide:
     def get_control_fold_change_in_mutation_rate(self, subtract_background = False):
         try:
             if subtract_background:
-                return (self.get_back_sub_mutation_rate()/self.get_control_nucleotide().get_back_sub_mutation_rate())
+                return self.get_back_sub_mutation_rate()/self.get_control_nucleotide().get_back_sub_mutation_rate()
             else:
-                return (self.mutation_rate/self.rRNA.lib.get_normalizing_lib_with_mod().\
-                    get_mutation_rate_at_position(self.rRNA.rRNA_name, self.position))
+                return self.mutation_rate/self.get_control_nucleotide().mutation_rate
         except ZeroDivisionError:
             return float('inf')
 
