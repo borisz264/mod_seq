@@ -66,6 +66,7 @@ def call_positives(density_array, chromosome, genome_dict, nucs_to_count, cutoff
     positives = set()
 
     for i in range(len(density_array)):
+
         if genome_dict[chromosome][i] in nucs_to_count:
             if density_array[i] >= cutoff:
                 positives.add(i+1)#adding 1 not necessary for RT stops, since the modified nucleotide is the one 1 upstream of the RT stop!!!
@@ -122,7 +123,7 @@ def main():
         roc_curves[sample_name] = [[],[]]#x and y value arrays for each
 
     stepsize = 0.0001
-    for cutoff in numpy.arange(0,1.+5*stepsize, stepsize):
+    for cutoff in numpy.arange(0.0,1.+5*stepsize, stepsize):
         for i in range(len(sample_names)):
             #the fasta file should be the EXACT one used for the pipeline, and the chromosome name below should match
             # the one in the FASTA file exactly
