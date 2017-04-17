@@ -260,79 +260,6 @@ def plot_mutation_rate_violins(libraries, out_prefix, nucleotides_to_count='ATCG
     plt.savefig(out_prefix+'_logviolin.pdf', transparent='True', format='pdf')
     plt.clf()
 
-
-def plot_changes_vs_control_interactive(libraries, out_prefix, nucleotides_to_count='ATCG', exclude_constitutive=False,
-                                        max_fold_reduction=0.001, max_fold_increase=100):
-    """
-
-    :param libraries:
-    :param out_prefix:
-    :param nucleotides_to_count:
-    :param exclude_constitutive:
-    :return: for each library use bokeh to plot an interactive plot of magnitude of change (experimental-control)
-            vs log10 fold change (experimental/control).
-            Protected and de-protected calls will be colored, based on a fold change cutoff and confidence interval.
-            All nucleotides will be labelled on mouseover.
-    """
-    from bokeh.plotting import figure, output_file, show, ColumnDataSource, gridplot, save
-    from bokeh.models import Range1d
-    from bokeh.models import HoverTool
-    from collections import OrderedDict
-
-    # output to static HTML file
-    output_file("%s.html" % (out_prefix))
-    plot_figs=[]
-
-    for library in libraries:
-        mag_change, fold_change, annotation = [], [], []
-        prot_mag_change, prot_fold_change, prot_annotation = [], [], []
-        deprot_mag_change, deprot_fold_change, deprot_annotation = [], [], []
-        for rRNA_name in library.rRNA_mutation_data:
-            for position in library.rRNA_mutation_data[rRNA_name].nucleotides:
-                nucleotide = library.rRNA_mutation_data[rRNA_name].nucleotides[position]
-                if (exclude_constitutive and nucleotide.exclude_constitutive)or nucleotide.identity not in nucleotides_to_count:
-                    pass
-                else:
-                    protection_call = nucleotide.determine_protection_status(confidence_interval=library.experiment_settings.get_property('confidence_interval_cutoff'),
-                                                                   fold_change_cutoff=library.experiment_settings.get_property('fold_change_cutoff'))
-                    control_fold_change = nucleotide.get_control_fold_change_in_mutation_rate()
-                    if control_fold_change == 0:
-                        control_fold_change = max_fold_reduction
-                    elif control_fold_change == float('inf'):
-                        control_fold_change = max_fold_increase
-                    if protection_call == 'no_change':
-                        mag_change.append(nucleotide.get_control_sub_mutation_rate())
-                        fold_change.append(control_fold_change)
-                        annotation.append('%s_%s%d' %(rRNA_name,nucleotide.identity,position))
-                    elif protection_call == 'deprotected':
-                        deprot_mag_change.append(nucleotide.get_control_sub_mutation_rate())
-                        deprot_fold_change.append(control_fold_change)
-                        deprot_annotation.append('%s_%s%d' %(rRNA_name,nucleotide.identity,position))
-                    elif protection_call == 'protected':
-                        prot_mag_change.append(nucleotide.get_control_sub_mutation_rate())
-                        prot_fold_change.append(control_fold_change)
-                        prot_annotation.append('%s_%s%d' %(rRNA_name,nucleotide.identity,position))
-        source = ColumnDataSource(data=dict(x = mag_change, y = fold_change, label = annotation))
-        prot_source = ColumnDataSource(data=dict(x = prot_mag_change, y = prot_fold_change, label = prot_annotation))
-        deprot_source = ColumnDataSource(data=dict(x = deprot_mag_change, y = deprot_fold_change,
-                                                   label = deprot_annotation))
-        TOOLS = "pan,wheel_zoom,reset,save,hover"
-        PlotFig = figure(x_axis_label = "mutation rate [%s] - [%s]" % (library.lib_settings.sample_name, library.get_normalizing_lib_with_mod().lib_settings.sample_name),
-                         y_axis_label = "fold change [%s]/[%s]" % (library.lib_settings.sample_name, library.get_normalizing_lib_with_mod().lib_settings.sample_name),
-                         y_axis_type="log", tools=TOOLS, toolbar_location="right")
-        PlotFig.circle("x", "y", size = 5, source=source, color=mod_utils.bokeh_black)
-        PlotFig.circle("x", "y", size = 5, source=prot_source, color=mod_utils.bokeh_vermillion)
-        PlotFig.circle("x", "y", size = 5, source=deprot_source, color=mod_utils.bokeh_bluishGreen)
-        PlotFig.x_range = Range1d(start=-0.2, end=0.2)
-        PlotFig.y_range = Range1d(start=.001, end=100)
-
-        #adjust what information you get when you hover over it
-        Hover = PlotFig.select(dict(type=HoverTool))
-        Hover.tooltips = OrderedDict([("nuc", "@label")])
-        plot_figs.append([PlotFig])
-    p = gridplot(plot_figs)
-    save(p)
-
 def ma_plots_interactive(libraries, out_prefix, nucleotides_to_count='ATCG', exclude_constitutive=False,
                          max_fold_reduction=0.001, max_fold_increase=100):
     """
@@ -363,7 +290,7 @@ def ma_plots_interactive(libraries, out_prefix, nucleotides_to_count='ATCG', exc
             for position in library.rRNA_mutation_data[rRNA_name].nucleotides:
                 nucleotide = library.rRNA_mutation_data[rRNA_name].nucleotides[position]
                 if (exclude_constitutive and nucleotide.exclude_constitutive)or nucleotide.identity not in nucleotides_to_count:
-                    pass
+                    continue
                 else:
                     protection_call = nucleotide.determine_protection_status(confidence_interval=library.experiment_settings.get_property('confidence_interval_cutoff'),
                                                                    fold_change_cutoff=library.experiment_settings.get_property('fold_change_cutoff'))
@@ -443,7 +370,7 @@ def ma_plots_interactive_by_count(libraries, out_prefix, nucleotides_to_count='A
             for position in library.rRNA_mutation_data[rRNA_name].nucleotides:
                 nucleotide = library.rRNA_mutation_data[rRNA_name].nucleotides[position]
                 if (exclude_constitutive and nucleotide.exclude_constitutive)or nucleotide.identity not in nucleotides_to_count:
-                    pass
+                    continue
                 else:
                     protection_call = nucleotide.determine_protection_status(confidence_interval=library.experiment_settings.get_property('confidence_interval_cutoff'),
                                                                    fold_change_cutoff=library.experiment_settings.get_property('fold_change_cutoff'), lowess_correct=lowess_correct)
@@ -525,7 +452,7 @@ def ma_plots_interactive_complex(libraries, out_prefix, nucleotides_to_count='AT
             for position in library.rRNA_mutation_data[rRNA_name].nucleotides:
                 nucleotide = library.rRNA_mutation_data[rRNA_name].nucleotides[position]
                 if (exclude_constitutive and nucleotide.exclude_constitutive)or nucleotide.identity not in nucleotides_to_count:
-                    pass
+                    continue
                 else:
                     protection_call = nucleotide.determine_protection_status(confidence_interval=library.experiment_settings.get_property('confidence_interval_cutoff'),
                                                                    fold_change_cutoff=library.experiment_settings.get_property('fold_change_cutoff'))
@@ -601,7 +528,7 @@ def plot_changes_vs_control(libraries, out_prefix, nucleotides_to_count='ATCG', 
             for position in library.rRNA_mutation_data[rRNA_name].nucleotides:
                 nucleotide = library.rRNA_mutation_data[rRNA_name].nucleotides[position]
                 if (exclude_constitutive and nucleotide.exclude_constitutive)or nucleotide.identity not in nucleotides_to_count:
-                    pass
+                    continue
                 else:
                     protection_call = nucleotide.determine_protection_status(confidence_interval=library.experiment_settings.get_property('confidence_interval_cutoff'),
                                                                    fold_change_cutoff=library.experiment_settings.get_property('fold_change_cutoff'))
@@ -666,7 +593,7 @@ def ma_plots(libraries, out_prefix, nucleotides_to_count='ATCG', exclude_constit
             for position in library.rRNA_mutation_data[rRNA_name].nucleotides:
                 nucleotide = library.rRNA_mutation_data[rRNA_name].nucleotides[position]
                 if (exclude_constitutive and nucleotide.exclude_constitutive)or nucleotide.identity not in nucleotides_to_count:
-                    pass
+                    continue
                 else:
                     protection_call = nucleotide.determine_protection_status(confidence_interval=library.experiment_settings.get_property('confidence_interval_cutoff'),
                                                                    fold_change_cutoff=library.experiment_settings.get_property('fold_change_cutoff'))
@@ -732,7 +659,7 @@ def ma_plots_by_count(libraries, out_prefix, nucleotides_to_count='ATCG', exclud
             for position in library.rRNA_mutation_data[rRNA_name].nucleotides:
                 nucleotide = library.rRNA_mutation_data[rRNA_name].nucleotides[position]
                 if (exclude_constitutive and nucleotide.exclude_constitutive)or nucleotide.identity not in nucleotides_to_count:
-                    pass
+                    continue
                 else:
                     protection_call = nucleotide.determine_protection_status(confidence_interval=library.experiment_settings.get_property('confidence_interval_cutoff'),
                                                                    fold_change_cutoff=library.experiment_settings.get_property('fold_change_cutoff'))
@@ -841,13 +768,13 @@ def color_by_change(libraries, out_prefix, nucleotides_to_count='ATCG', exclude_
                         library.rRNA_mutation_data[rRNA_name].nucleotides[nucleotide].\
                                 get_control_fold_change_in_mutation_rate(subtract_background=subtract_background) not in [0.0, float('inf'), float('-inf')]:
                     if exclude_constitutive and library.rRNA_mutation_data[rRNA_name].nucleotides[nucleotide].exclude_constitutive:
-                        pass
+                        continue
                     else:
                         log_fold_changes[rRNA_name][nucleotide] = math.log(library.rRNA_mutation_data[rRNA_name].nucleotides[nucleotide].get_control_fold_change_in_mutation_rate(subtract_background=subtract_background), 10)
                         maxval = max(maxval, log_fold_changes[rRNA_name][nucleotide])
                         minval = min(minval, log_fold_changes[rRNA_name][nucleotide])
                 else:
-                    pass
+                    continue
         absmax = max(abs(maxval), abs(minval))
         output_file = open(os.path.join(out_prefix, "%s.txt" % (library.lib_settings.sample_name)), 'w')
         reference_pymol_script_file = open(library.experiment_settings.get_property('pymol_base_script_colorchange'), 'rU')

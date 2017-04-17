@@ -138,9 +138,10 @@ class ModLib:
         return self.rRNA_mutation_data[rRNA_name].nucleotides[position].mutation_rate
 
     def write_tsv_tables(self, tsv_filename, subtract_background=False, subtract_control=False, exclude_constitutive=False,
-                         lowess_correct = False):
+                         lowess_correct = False,):
         if lowess_correct:
-            self.lowess_correct_fold_changes(nucleotides_to_count=self.settings.get_property('affected_nucleotides'), exclude_constitutive=exclude_constitutive)
+            nucleotides_to_count=self.settings.get_property('affected_nucleotides')
+            self.lowess_correct_fold_changes(nucleotides_to_count=nucleotides_to_count, exclude_constitutive=exclude_constitutive)
         if subtract_background and subtract_control:
             raise SyntaxError('Cannot subtract background and control simultaneously')
 
@@ -158,6 +159,8 @@ class ModLib:
         for rRNA_name in self.rRNA_mutation_data:
             for position in self.rRNA_mutation_data[rRNA_name].nucleotides:
                 nucleotide = self.rRNA_mutation_data[rRNA_name].nucleotides[position]
+                if lowess_correct and nucleotide.identity not in nucleotides_to_count:
+                    continue
                 if exclude_constitutive and nucleotide.exclude_constitutive:
                     if subtract_background:
                         f.write(self.rRNA_mutation_data[rRNA_name].rRNA_name+'\t'+str(nucleotide.position)+'\t'
@@ -189,7 +192,7 @@ class ModLib:
                                 (rRNA_name, nucleotide.position, nucleotide.identity, nucleotide.mutation_rate,
                                 exp_wil_bottom, exp_wil_top, ctrl_nuc.mutation_rate,
                                 ctrl_wil_bottom, ctrl_wil_top, nucleotide.get_control_sub_mutation_rate(),
-                                nucleotide.get_control_sub_error(), nucleotide.get_control_fold_change_in_mutation_rate(),
+                                nucleotide.get_control_sub_error(), fold_change,
                                 nucleotide.determine_protection_status(confidence_interval=self.experiment_settings.get_property('confidence_interval_cutoff'),
                                                                        fold_change_cutoff=self.experiment_settings.get_property('fold_change_cutoff'), lowess_correct = lowess_correct)))
                     elif not subtract_background and not subtract_control:
@@ -393,7 +396,7 @@ class rRNA_mutations:
         counts = defaultdict(int)
         for nucleotide in self.nucleotides.values():
             if exclude_constitutive and nucleotide.exclude_constitutive:
-                pass
+                continue
             else:
                 if subtract_background and subtract_control:
                     raise SyntaxError('Cannot subtract background and control simultaneously')
@@ -417,7 +420,7 @@ class rRNA_mutations:
         counts = defaultdict((lambda : defaultdict(int)))
         for nucleotide in self.nucleotides.values():
             if exclude_constitutive and nucleotide.exclude_constitutive:
-                pass
+                continue
             else:
                 for mutation_type in nucleotide.mutations_by_type:
                     counts[nucleotide.identity][mutation_type] += nucleotide.mutations_by_type[mutation_type]
@@ -433,7 +436,7 @@ class rRNA_mutations:
         for nucleotide in self.nucleotides.values():
             if nucleotide.identity in nucleotides_to_count:
                 if exclude_constitutive and nucleotide.exclude_constitutive:
-                    pass
+                    continue
                 else:
                     if subtract_background and subtract_control:
                         raise SyntaxError('Cannot subtract background and control simultaneously')
@@ -460,10 +463,10 @@ class rRNA_mutations:
         for nucleotide in self.nucleotides.values():
             if nucleotide.identity in nucleotides_to_count:
                 if exclude_constitutive and nucleotide.exclude_constitutive:
-                    pass
+                    continue
                 elif nucleotide.get_control_fold_change_in_mutation_rate() == 0.0 or \
                                 nucleotide.get_control_fold_change_in_mutation_rate() == float('inf'):
-                    pass
+                    continue
                 else:
                     rates.append(nucleotide.get_control_fold_change_in_mutation_rate())
         return rates
@@ -474,7 +477,7 @@ class rRNA_mutations:
         for nucleotide in self.nucleotides.values():
             if nucleotide.identity in nucleotides_to_count:
                 if exclude_constitutive and nucleotide.exclude_constitutive:
-                    pass
+                    continue
                 else:
                     prot_call = nucleotide.determine_protection_status(confidence_interval=confidence_interval,
                                                            fold_change_cutoff=fold_change_cutoff,
@@ -495,7 +498,7 @@ class rRNA_mutations:
         for nucleotide in self.nucleotides.values():
             if nucleotide.identity in nucleotides_to_count:
                 if exclude_constitutive and nucleotide.exclude_constitutive:
-                    pass
+                    continue
                 else:
                     nucleotides.append(nucleotide)
         return nucleotides

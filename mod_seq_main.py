@@ -211,6 +211,8 @@ class mod_seq_run:
         self.write_mutation_rates_tsv('mutation_rates.tsv', exclude_constitutive=exclude_constitutive)
         self.write_mutation_rates_tsv('back_subtracted_mutation_rates.tsv', subtract_background=True, exclude_constitutive=exclude_constitutive)
         self.write_mutation_rates_tsv('control_subtracted_mutation_rates.tsv', subtract_control=True, exclude_constitutive=exclude_constitutive)
+        self.write_mutation_rates_tsv('control_subtracted_mutation_rates.tsv', subtract_control=True,
+                                      exclude_constitutive=exclude_constitutive, lowess_correct=True)
         self.write_combined_mutation_rates_tsv()
         self.write_combined_mutation_rates_tsv(exclude_constitutive=True)
 
@@ -370,9 +372,6 @@ class mod_seq_run:
                                              nucleotides_to_count=self.settings.get_property('affected_nucleotides'),
                                              exclude_constitutive=exclude_constitutive)
         '''
-        # mod_plotting.plot_changes_vs_control(self.get_normalizable_libs(), os.path.join(rdir, 'changes'+file_tag),
-        #                                      nucleotides_to_count=self.settings.get_property('affected_nucleotides'),
-        #                                      exclude_constitutive=exclude_constitutive)
         mod_plotting.ma_plots(self.get_normalizable_libs(), os.path.join(rdir, 'MA'+file_tag),
                                              nucleotides_to_count=self.settings.get_property('affected_nucleotides'),
                                              exclude_constitutive=exclude_constitutive)
@@ -380,12 +379,6 @@ class mod_seq_run:
                                              nucleotides_to_count=self.settings.get_property('affected_nucleotides'),
                                              exclude_constitutive=exclude_constitutive)
         if self.settings.get_property('make_interactive_plots'):
-
-                # mod_plotting.plot_changes_vs_control_interactive(self.get_normalizable_libs(), os.path.join(rdir, 'interactive', 'changes'+file_tag),
-                #                                          nucleotides_to_count=self.settings.get_property('affected_nucleotides'),
-                #                                          exclude_constitutive=False)
-
-
                 mod_plotting.ma_plots_interactive(self.get_normalizable_libs(), os.path.join(rdir, 'interactive', 'MA'+file_tag),
                                                          nucleotides_to_count=self.settings.get_property('affected_nucleotides'),
                                                          exclude_constitutive=False)
@@ -394,12 +387,10 @@ class mod_seq_run:
                                                   nucleotides_to_count=self.settings.get_property(
                                                       'affected_nucleotides'),
                                                   exclude_constitutive=False)
-
-                mod_plotting.ma_plots_interactive_complex(self.get_normalizable_libs(),
-                                                  os.path.join(rdir, 'interactive', 'MA_complex' + file_tag),
-                                                  nucleotides_to_count=self.settings.get_property(
-                                                      'affected_nucleotides'),
-                                                  exclude_constitutive=False)
+                mod_plotting.ma_plots_interactive_by_count(self.get_normalizable_libs(),
+                                                  os.path.join(rdir, 'interactive', 'MA_counts' + file_tag),
+                                                  nucleotides_to_count=self.settings.get_property('affected_nucleotides'),
+                                                           exclude_constitutive=False, lowess_correct=True)
 
     def annotate_structures(self, exclude_constitutive=False):
         if exclude_constitutive:
