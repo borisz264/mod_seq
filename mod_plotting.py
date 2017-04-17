@@ -566,7 +566,7 @@ def ma_plots(libraries, out_prefix, nucleotides_to_count='ATCG', exclude_constit
     plt.savefig(output_file, transparent='True', format='pdf')
 
 def ma_plots_by_count(libraries, out_prefix, nucleotides_to_count='ATCG', exclude_constitutive=False,
-             max_fold_reduction=0.001, max_fold_increase=100):
+             max_fold_reduction=0.001, max_fold_increase=100, lowess_correct=False):
     """
 
     :param libraries:
@@ -588,6 +588,10 @@ def ma_plots_by_count(libraries, out_prefix, nucleotides_to_count='ATCG', exclud
     fig.subplots_adjust(wspace=0.4, hspace=0.4)
     plot_index =1
     for library in libraries:
+        if lowess_correct:
+            library.lowess_correct_fold_changes(nucleotides_to_count = nucleotides_to_count,
+                                                exclude_constitutive=exclude_constitutive,
+                                                max_fold_reduction=max_fold_reduction, max_fold_increase=max_fold_increase)
         plot = fig.add_subplot(num_plots_high, num_plots_wide, plot_index)
         mag, fold_change, annotation = [], [], []
         prot_mag, prot_fold_change, prot_annotation = [], [], []
@@ -599,8 +603,12 @@ def ma_plots_by_count(libraries, out_prefix, nucleotides_to_count='ATCG', exclud
                     continue
                 else:
                     protection_call = nucleotide.determine_protection_status(confidence_interval=library.experiment_settings.get_property('confidence_interval_cutoff'),
-                                                                   fold_change_cutoff=library.experiment_settings.get_property('fold_change_cutoff'))
-                    control_fold_change = nucleotide.get_control_fold_change_in_mutation_rate()
+                                                                   fold_change_cutoff=library.experiment_settings.get_property('fold_change_cutoff'),
+                                                                             lowess_correct=lowess_correct)
+                    if lowess_correct:
+                        control_fold_change = nucleotide.lowess_fc
+                    else:
+                        control_fold_change = nucleotide.get_control_fold_change_in_mutation_rate()
                     avg_mutation_counts = (nucleotide.total_mutation_counts+nucleotide.get_control_nucleotide().total_mutation_counts)/2.0
                     if control_fold_change == 0:
                         control_fold_change = max_fold_reduction
@@ -618,6 +626,11 @@ def ma_plots_by_count(libraries, out_prefix, nucleotides_to_count='ATCG', exclud
                         prot_mag.append(avg_mutation_counts)
                         prot_fold_change.append(control_fold_change)
                         prot_annotation.append('%s_%s%d' %(rRNA_name,nucleotide.identity,position))
+        fc_log = [math.log(fc, 10) for fc in fold_change]
+        mag_log = [math.log(m, 10) if m>0 else -1. for m in mag]
+        lowess_fc_log = lowess(fc_log, mag_log, return_sorted=False)
+        lowess_fc = 10**lowess_fc_log
+        lowess_fc_sort_by_mag = [x for (y,x) in sorted(zip(mag,lowess_fc), key=lambda pair: pair[0])]
         plot.set_xlabel("average # mutations", fontsize = 8)
         plot.set_ylabel("[%s]/[%s]" % (library.lib_settings.sample_name, library.get_normalizing_lib_with_mod().lib_settings.sample_name), fontsize = 8)
         plot.set_yscale('log')
@@ -625,6 +638,7 @@ def ma_plots_by_count(libraries, out_prefix, nucleotides_to_count='ATCG', exclud
         plot.scatter(mag, fold_change, color=mod_utils.black, s=3)
         plot.scatter(prot_mag, prot_fold_change, color=mod_utils.vermillion, s=5)
         plot.scatter(deprot_mag, deprot_fold_change, color=mod_utils.bluishGreen, s=5)
+        plot.plot(sorted(mag), lowess_fc_sort_by_mag, linestyle='dashed', color='red')
         plot.set_xlim(1,100000)
         plot.set_ylim(.001,100)
         plot_figs.append(plot)
