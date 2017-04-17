@@ -31,8 +31,6 @@ class mod_settings:
     def get_wdir(self):
         mod_utils.make_dir(self.wdir)
         return self.wdir
-    def get_input_barcode(self):
-        return self.settings['library_seq_barcode']
 
     def iter_lib_settings(self):
         for i in range(len(self.sample_names)):
@@ -104,26 +102,6 @@ class mod_settings:
         mod_utils.make_dir(self.rdir)
         shutil.copy(settings_file, self.rdir)
 
-    def check_barcode_lens(self):
-        """
-        verifies that all the barcodes are the same length
-        """
-        barcode_lens = set(map(len, self.settings['barcodes']))
-        if 1 != len(barcode_lens):
-            raise ValueError('all barcodes must be the same length')
-        self.barcode_len = barcode_lens.pop()
-        self.settings['barcode_len'] = self.barcode_len
-
-    def check_barcodes_are_separated(self):
-        """
-        makes sure the barcodes are all totally distinguishable
-        """
-        for b1, b2 in itertools.combinations(self.settings['barcodes'], 2):
-            hamming_dist = mod_utils.hamming_distance(b1, b2)
-            if hamming_dist < 2:
-                raise ValueError('The barcodes supplied are not well '
-                  'separated: %s-%s' % (b1, b2))
-
     def get_rRNA_fasta(self):
         return self.get_property('rrna_fasta')
 
@@ -133,12 +111,6 @@ class mod_settings:
           'bowtie_indices',
           'rrna_index')
         return index
-
-    def get_genome_bowtie_index(self):
-        index = self.get_property('genome_index')
-        return index
-    def rRNA_bowtie_index_exists(self):
-        return mod_utils.file_exists(self.get_rRNA_bowtie_index()+'.1.bt2')
 
     def get_log(self):
         log = os.path.join(
@@ -155,12 +127,6 @@ class mod_settings:
         else:
             f.write(text)
         f.close()
-
-    def get_trimmed_pool_fasta(self):
-        log = os.path.join(
-          self.get_rdir(),
-          'trimmed_pool_seqs.fasta')
-        return log
 
     def get_shapemapper_config_file(self):
         fname = os.path.join(
@@ -200,14 +166,6 @@ class mod_lib_settings:
     def get_fastq_file(self):
         return self.fastq_gz_filehandle
 
-    def get_collapsed_reads(self):
-        collapsed_reads = os.path.join(
-          self.experiment_settings.get_rdir(),
-          'collapsed_reads',
-          '%(sample_name)s.fasta.gz' %
-           {'sample_name': self.sample_name})
-        return collapsed_reads
-
     def get_adaptor_trimmed_reads(self):
         collapsed_reads = os.path.join(
           self.experiment_settings.get_rdir(),
@@ -216,51 +174,11 @@ class mod_lib_settings:
            {'sample_name': self.sample_name})
         return collapsed_reads
 
-    def get_rRNA_mapping_stats(self):
-        rRNA_mapping_stats = os.path.join(
-          self.experiment_settings.get_rdir(),
-          'mapping_stats',
-          '%(sample_name)s.rRNA.txt' %
-           {'sample_name': self.sample_name})
-        return rRNA_mapping_stats
-
-    def get_mapped_reads(self):
-        mapped_reads = os.path.join(self.experiment_settings.get_rdir(), 'mapped_reads', '%(sample_name)s.bam' % {'sample_name': self.sample_name})
-        return mapped_reads
-
-    def get_mapped_reads_sam(self):
-        mapped_reads = os.path.join(self.experiment_settings.get_rdir(), 'mapped_reads', '%(sample_name)s.sam' % {'sample_name': self.sample_name})
-        return mapped_reads
-
-    def get_mapped_reads_bam(self):
-        mapped_reads = os.path.join(self.experiment_settings.get_rdir(), 'mapped_reads', '%(sample_name)s.bam' % {'sample_name': self.sample_name})
-        return mapped_reads
-
-    def get_mapped_reads_sam_gz(self):
-        mapped_reads = os.path.join(self.experiment_settings.get_rdir(), 'mapped_reads', '%(sample_name)s.sam.gz' % {'sample_name': self.sample_name})
-        return mapped_reads
-    def get_unmappable_reads(self):
-        unmapped_reads = os.path.join(
-          self.experiment_settings.get_rdir(),
-          'unmapped_reads',
-          '%(sample_name)s.unmappable.fasta.gz' %
-           {'sample_name': self.sample_name})
-        return unmapped_reads
-
-
     def get_trimmed_reads(self):
         trimmed_reads = os.path.join(
           self.experiment_settings.get_rdir(),
           'trimmed_reads',
           '%(sample_name)s.trimmed.fastq' %
-           {'sample_name': self.sample_name})
-        return trimmed_reads
-
-    def get_filtered_reads(self):
-        trimmed_reads = os.path.join(
-          self.experiment_settings.get_rdir(),
-          'quality_filtered_reads',
-          '%(sample_name)s.filtered.fastq.gz' %
            {'sample_name': self.sample_name})
         return trimmed_reads
 
@@ -271,32 +189,9 @@ class mod_lib_settings:
           '%(sample_name)s' %
            {'sample_name': self.sample_name})
 
-    def get_read_5p_counts(self):
-        return os.path.join(
-          self.experiment_settings.get_rdir(),
-          'read_counts',
-          '%(sample_name)s.5p_ends.pkl' %
-           {'sample_name': self.sample_name})
-
-    def get_normalized_mutation_counts(self):
-        return os.path.join(
-          self.experiment_settings.get_rdir(),
-          'normalized_mutation_counts',
-          '%(sample_name)s.norm_mut.pkl' %
-           {'sample_name': self.sample_name})
 
     def read_5p_counts_exists(self):
         return mod_utils.file_exists(self.get_read_5p_counts())
-
-    def get_positional_coverage(self):
-        return os.path.join(
-          self.experiment_settings.get_rdir(),
-          'read_counts',
-          '%(sample_name)s.coverage.pkl' %
-           {'sample_name': self.sample_name})
-
-    def positional_coverage_exists(self):
-        return mod_utils.file_exists(self.get_positional_coverage())
 
     def get_mutation_counts(self):
         return os.path.join(
@@ -308,32 +203,9 @@ class mod_lib_settings:
     def mutation_counts_exists(self):
         return mod_utils.file_exists(self.get_mutation_counts())
 
-    def counts_all_exist(self):
-        return self.mutation_counts_exists() and self.positional_coverage_exists() and self.read_5p_counts_exists()
-
-    def get_overall_contamination_summary(self):
-        summary_file = os.path.join(
-          self.experiment_settings.get_rdir(),
-          'QC',
-          '%(sample_name)s.contamination_summary.txt' %
-           {'sample_name': self.sample_name})
-        return summary_file
-
-    def split_reads_exist(self):
-        split_reads = self.get_split_reads()
-        return mod_utils.file_exists(split_reads)
-
-    def collapsed_reads_exist(self):
-        collapsed_reads = self.get_collapsed_reads()
-        return mod_utils.file_exists(collapsed_reads)
-
     def adaptorless_reads_exist(self):
         adaptorless_reads = self.get_adaptor_trimmed_reads()
         return mod_utils.file_exists(adaptorless_reads)
-
-    def primerless_reads_exist(self):
-        primerless_reads = self.get_primer_trimmed_reads()
-        return mod_utils.file_exists(primerless_reads)
 
     def trimmed_reads_exist(self):
         trimmed_reads = self.get_trimmed_reads()

@@ -50,6 +50,7 @@ class mod_seq_run:
             self.settings.write_to_log( 'trimming adaptors done')
 
     def remove_adaptor_one_lib(self, lib_settings):
+        #TODO: make this work with skewer
         lib_settings.write_to_log('adaptor trimming')
         if self.settings.get_property('discard_untrimmed'):
             command_to_run = 'cutadapt --adapter %s --overlap 3 --discard-untrimmed --minimum-length %d %s --output %s 1>>%s 2>>%s' % (self.settings.get_property('adaptor_sequence'), self.settings.get_property('min_post_adaptor_length'),
@@ -346,18 +347,12 @@ class mod_seq_run:
             #TODO: the names for the ROC curve chromosomes are hard coded and need to be changed between samples
             #mod_plotting.generate_roc_curves(self.settings.get_property('tptn_file_25s'), self.settings.rRNA_seqs, os.path.join(rdir, '23S_ROC_curves'), self.get_modified_libs(), 'E.c.23S_rRNA', self.settings.get_property('affected_nucleotides'))
             #mod_plotting.generate_roc_curves(self.settings.get_property('tptn_file_18s'), self.settings.rRNA_seqs, os.path.join(rdir, '16S_ROC_curves'), self.get_modified_libs(), 'E.c.16S_rRNA', self.settings.get_property('affected_nucleotides'))
-            # mod_plotting.plot_functional_group_changes(self.get_normalizable_libs(), os.path.join(rdir, 'functional_groups', 'group_changes'),
-            #                                            self.settings.get_property('functional_groupings'),
-            #                                            nucleotides_to_count=self.settings.get_property('affected_nucleotides'),
-            #                                            exclude_constitutive=exclude_constitutive,
-            #                                            max_fold_reduction=0.001, max_fold_increase=100)
-
         else:
             mod_utils.make_dir(self.rdir_path('plots'))
             mod_utils.make_dir(self.rdir_path('plots', 'interactive'))
             rdir = self.rdir_path('plots')
             file_tag = ''
-        '''
+
         mod_plotting.plot_mutated_nts_pie(self.libs, os.path.join(rdir, 'raw_mutation_fractions'+file_tag), exclude_constitutive=exclude_constitutive)
         mod_plotting.plot_mutation_breakdown_pie(self.libs, os.path.join(rdir, 'raw_mutation_types'+file_tag), exclude_constitutive=exclude_constitutive)
 
@@ -371,7 +366,7 @@ class mod_seq_run:
         mod_plotting.plot_mutation_rate_violins(self.libs, os.path.join(rdir, 'mutation_rate_cdf'+file_tag),
                                              nucleotides_to_count=self.settings.get_property('affected_nucleotides'),
                                              exclude_constitutive=exclude_constitutive)
-        '''
+
         mod_plotting.ma_plots(self.get_normalizable_libs(), os.path.join(rdir, 'MA'+file_tag),
                                              nucleotides_to_count=self.settings.get_property('affected_nucleotides'),
                                              exclude_constitutive=exclude_constitutive)
@@ -418,56 +413,6 @@ class mod_seq_run:
             # mod_plotting.color_by_change(self.get_normalizable_libs(), self.rdir_path('structures', 'colored_by_change'),
             #                              nucleotides_to_count=self.settings.get_property('affected_nucleotides'),
             #                              exclude_constitutive=exclude_constitutive)
-
-    def collapse_identical_reads(self):
-        """
-        collapses all identical reads using FASTX toolkit
-        :return:
-        """
-        self.settings.write_to_log('collapsing reads')
-        if not self.settings.get_property('force_recollapse'):
-            for lib_settings in self.settings.iter_lib_settings():
-                if not lib_settings.collapsed_reads_exist():
-                    break
-            else:
-                return
-        mod_utils.make_dir(self.rdir_path('collapsed_reads'))
-        if self.settings.get_property('collapse_identical_reads'):
-            mod_utils.parmap(lambda lib_setting: self.collapse_one_fastq_file(lib_setting), self.settings.iter_lib_settings(),
-                             nprocs = self.threads)
-        else:
-            mod_utils.parmap(lambda lib_setting: self.fastq_to_fasta(lib_setting), self.settings.iter_lib_settings(),
-                             nprocs = self.threads)
-        self.settings.write_to_log('collapsing reads complete')
-
-    def collapse_one_fastq_file(self, lib_settings):
-        lib_settings.write_to_log('collapsing_reads')
-        subprocess.Popen('gunzip -c %s | fastx_collapser -v -Q33 2>>%s | gzip > %s' % (lib_settings.get_fastq_file(),
-                                                                                  lib_settings.get_log(),
-                                                                                  lib_settings.get_collapsed_reads()
-                                                                                  ), shell=True).wait()
-        lib_settings.write_to_log('collapsing_reads_done')
-
-    def fastq_to_fasta(self, lib_settings):
-        lib_settings.write_to_log('fasta_conversion')
-        subprocess.Popen('gunzip -c %s | fastq_to_fasta -v -Q33 2>>%s | gzip > %s' % (lib_settings.get_fastq_file(),
-                                                                                  lib_settings.get_log(),
-                                                                                  lib_settings.get_collapsed_reads()
-                                                                                  ), shell=True).wait()
-        lib_settings.write_to_log('fasta_conversion done')
-
-    def get_barcode_match(self, barcode, barcodes):
-        """
-        takes a barcode and returns the one it matches (hamming <= 1)
-        else
-        empty string
-        """
-        if barcode in barcodes:
-            return barcode
-        for barcode_j in barcodes:
-            if mod_utils.hamming_N(barcode, barcode_j) <= self.settings.get_property('mismatches_allowed_in_barcode'):
-                return barcode_j
-        return ''
 
     def rdir_path(self, *args):
         return os.path.join(self.settings.get_rdir(), *args)
