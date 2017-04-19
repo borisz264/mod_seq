@@ -489,6 +489,57 @@ def ma_plots(libraries, out_prefix, nucleotides_to_count='ATCG', exclude_constit
         plot_index+=1
     plt.savefig(output_file, transparent='True', format='pdf')
 
+def mutation_rate_scatter(libraries, out_prefix, nucleotides_to_count='ATCG', exclude_constitutive=False):
+    """
+
+    :param libraries:
+    :param out_prefix:
+    :param nucleotides_to_count:
+    :param exclude_constitutive:
+    :return: for each library use bokeh to plot an interactive plot of magnitude of signal (experimental+control)/2
+            vs log10 fold change (experimental/control).
+            Protected and de-protected calls will be colored, based on a fold change cutoff and confidence interval.
+            All nucleotides will be labelled on mouseover.
+    """
+    output_file = "%s.pdf" % (out_prefix)
+    plot_figs=[]
+
+    num_subplots = len(libraries)
+    num_plots_wide = math.ceil(math.sqrt(num_subplots))
+    num_plots_high = num_plots_wide
+    fig = plt.figure(figsize=(4*num_plots_wide, 4*num_plots_high))
+    fig.subplots_adjust(wspace=0.4, hspace=0.4)
+    plot_index =1
+    for library in libraries:
+        plot = fig.add_subplot(num_plots_high, num_plots_wide, plot_index)
+        x, y, annotation = [], [], []
+        for rRNA_name in library.rRNA_mutation_data:
+            for position in library.rRNA_mutation_data[rRNA_name].nucleotides:
+                nucleotide = library.rRNA_mutation_data[rRNA_name].nucleotides[position]
+                if (exclude_constitutive and nucleotide.exclude_constitutive)or nucleotide.identity not in nucleotides_to_count:
+                    continue
+                else:
+                    x.append(nucleotide.mutation_rate)
+                    y.append(nucleotide.get_control_nucleotide().mutation_rate)
+        plot.set_xlabel("%s mismatch_fraction" % (library.lib_settings.sample_name), fontsize = 8)
+        plot.set_ylabel("%s mismatch_fraction" % (library.get_normalizing_lib_with_mod().lib_settings.sample_name), fontsize = 8)
+        plot.set_yscale('log')
+        plot.set_xscale('log')
+        x=numpy.array(x)
+        y=numpy.array(y)
+        plot.scatter(x, y, color=mod_utils.black, s=3)
+        logx=numpy.log10(x)
+        logy=numpy.log10(y)
+        logx, logy = mod_utils.filter_x_y_pairs(logx, logy)
+        r, p = stats.pearsonr(logx, logy)
+        plot.annotate("r^2 = {:.2f}".format(r**2),
+                    xy=(.1, .9), xycoords=plot.transAxes)
+        plot.set_xlim(0.00001,1)
+        plot.set_ylim(0.00001,1)
+        plot_figs.append(plot)
+        plot_index+=1
+    plt.savefig(output_file, transparent='True', format='pdf')
+
 def ma_plots_by_count(libraries, out_prefix, nucleotides_to_count='ATCG', exclude_constitutive=False,
              max_fold_reduction=0.001, max_fold_increase=100, lowess_correct=False):
     """

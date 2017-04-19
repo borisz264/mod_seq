@@ -376,6 +376,10 @@ class mod_seq_run:
         mod_plotting.ma_plots_by_count(self.get_normalizable_libs(), os.path.join(rdir, 'MA_raw_counts_lowess'+file_tag),
                                              nucleotides_to_count=self.settings.get_property('affected_nucleotides'),
                                              exclude_constitutive=exclude_constitutive, lowess_correct=True)
+        mod_plotting.mutation_rate_scatter(self.get_normalizable_libs(), os.path.join(rdir, 'scatter_mismatch_rate'+file_tag),
+                                             nucleotides_to_count=self.settings.get_property('affected_nucleotides'),
+                                             exclude_constitutive=exclude_constitutive)
+
         if self.settings.get_property('make_interactive_plots'):
                 mod_plotting.ma_plots_interactive(self.get_normalizable_libs(), os.path.join(rdir, 'interactive', 'MA'+file_tag),
                                                          nucleotides_to_count=self.settings.get_property('affected_nucleotides'),
