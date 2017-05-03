@@ -11,8 +11,11 @@ import operator
 import os
 import uniform_colormaps
 from statsmodels.nonparametric.smoothers_lowess import lowess
+from matplotlib import rc
 plt.rcParams['pdf.fonttype'] = 42 #leaves most text as actual text in PDFs, not outlines
-
+#plt.rcParams["font.family"] = "sans-serif"
+rc('font',**{'family':'sans-serif','sans-serif':['Bitstream Vera Sans']})
+#rc('text', usetex=True)
 
 def plot_mutated_nts_pie(libraries, out_prefix, subtract_background=False, subtract_control=False, exclude_constitutive=False):
     #Makes an array of pie charts, 1 per library
@@ -197,6 +200,7 @@ def plot_mutation_rate_cdfs(libraries, out_prefix, nucleotides_to_count='ATCG', 
     for plot in plots:
         plot.set_ylabel("cumulative fraction of %s nucleotides" % (nucleotides_to_count))
         plot.set_ylim(0, 1)
+    plt.tight_layout()
     plt.savefig(out_prefix + '.pdf', transparent='True', format='pdf')
     plt.clf()
 
@@ -614,7 +618,7 @@ def ma_plots_by_count(libraries, out_prefix, nucleotides_to_count='ATCG', exclud
         plot.scatter(prot_mag, prot_fold_change, color=mod_utils.vermillion, s=5)
         plot.scatter(deprot_mag, deprot_fold_change, color=mod_utils.bluishGreen, s=5)
         plot.plot(sorted(mag), lowess_fc_sort_by_mag, linestyle='dashed', color='red')
-        plot.set_xlim(1,100000)
+        plot.set_xlim(1,1000000)
         plot.set_ylim(.001,100)
         plot_figs.append(plot)
         plot_index+=1
