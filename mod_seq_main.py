@@ -27,12 +27,12 @@ class mod_seq_run:
         self.create_shapemapper_settings()
         self.run_shapemapper()
         self.initialize_libs()
-        self.make_plots()
+        #self.make_plots()
         self.make_plots(exclude_constitutive=True)
-        self.make_tables()
+        #self.make_tables()
         self.make_tables(exclude_constitutive=True)
-        self.annotate_structures()
-        self.annotate_structures(exclude_constitutive=True)
+        #self.annotate_structures()
+        #self.annotate_structures(exclude_constitutive=True)
 
     def remove_adaptor(self):
         if not self.settings.get_property('force_retrim'):
@@ -196,27 +196,29 @@ class mod_seq_run:
         return modified_libs
 
     def make_tables(self, exclude_constitutive=False):
-        subfolders = ['raw', 'background_subtracted', 'control_subtracted', 'fold_change']
+        #subfolders = ['raw', 'background_subtracted', 'control_subtracted', 'fold_change']
+        subfolders = ['raw', 'fold_change']
         for subfolder in subfolders:
             mod_utils.make_dir(self.rdir_path('tables', subfolder))
             mod_utils.make_dir(self.rdir_path('pickles', subfolder))
             mod_utils.make_dir(self.rdir_path('tables', subfolder, 'exclude_constitutive'))
             mod_utils.make_dir(self.rdir_path('pickles', subfolder, 'exclude_constitutive'))
         self.pickle_mutation_rates('mutation_rates.pkl', exclude_constitutive=exclude_constitutive)
-        self.pickle_mutation_rates('back_subtracted_mutation_rates.pkl', subtract_background=True, exclude_constitutive=exclude_constitutive)
-        self.pickle_mutation_rates('control_subtracted_mutation_rates.pkl', subtract_control=True, exclude_constitutive=exclude_constitutive)
-        self.pickle_fold_changes('mutation_rate_fold_changes.pkl', exclude_constitutive=True)
+        #self.pickle_mutation_rates('back_subtracted_mutation_rates.pkl', subtract_background=True, exclude_constitutive=exclude_constitutive)
+        #self.pickle_mutation_rates('control_subtracted_mutation_rates.pkl', subtract_control=True, exclude_constitutive=exclude_constitutive)
+        #self.pickle_fold_changes('mutation_rate_fold_changes.pkl', exclude_constitutive=True)
         self.write_wigs('')
         self.write_wigs('back_subtract', subtract_background=True)
         self.write_wigs('control_subtract', subtract_control=True)
         self.write_mutation_rates_tsv('mutation_rates.tsv', exclude_constitutive=exclude_constitutive)
-        self.write_mutation_rates_tsv('back_subtracted_mutation_rates.tsv', subtract_background=True, exclude_constitutive=exclude_constitutive)
-        self.write_mutation_rates_tsv('control_subtracted_mutation_rates.tsv', subtract_control=True, exclude_constitutive=exclude_constitutive)
-        self.write_mutation_rates_tsv('lowess_control_subtracted_mutation_rates.tsv', subtract_control=True,
-                                      exclude_constitutive=exclude_constitutive, lowess_correct=True)
+        #self.write_mutation_rates_tsv('back_subtracted_mutation_rates.tsv', subtract_background=True, exclude_constitutive=exclude_constitutive)
+        #self.write_mutation_rates_tsv('control_subtracted_mutation_rates.tsv', subtract_control=True, exclude_constitutive=exclude_constitutive)
+        #self.write_mutation_rates_tsv('lowess_control_subtracted_mutation_rates.tsv', subtract_control=True,
+        #                              exclude_constitutive=exclude_constitutive, lowess_correct=True)
         self.write_combined_mutation_rates_tsv()
         self.write_combined_mutation_rates_tsv(exclude_constitutive=True)
-
+        self.write_combined_mutation_counts_tsv()
+        self.write_combined_mutation_counts_tsv(exclude_constitutive=True)
 
     def write_mutation_rates_tsv(self, suffix, subtract_background=False, subtract_control=False, exclude_constitutive=False, lowess_correct=False):
         if subtract_background or subtract_control:
@@ -274,6 +276,30 @@ class mod_seq_run:
                         nuc_values.append(nucleotide.get_back_sub_mutation_rate())
                     elif subtract_control:
                         nuc_values.append(nucleotide.get_control_sub_mutation_rate())
+                assert len(nuc_values) == len(libs_to_write)
+                if exclude_constitutive and nucleotide.exclude_constitutive:
+                    f.write('%s\t%d\t%s\t%s\n' % (rRNA_name, position+1, nuc_identity, '\t'.join(['' for nuc_value in nuc_values])))
+                else:
+                    f.write('%s\t%d\t%s\t%s\n' % (rRNA_name, position+1, nuc_identity, '\t'.join([str(nuc_value) for nuc_value in nuc_values])))
+        f.close()
+
+    def write_combined_mutation_counts_tsv(self, exclude_constitutive=False):
+        libs_to_write = list(self.libs)
+        prefix = 'raw_'
+
+        if exclude_constitutive:
+            f = open(self.rdir_path('tables', prefix+'mutation_counts_exclude_constitutive.tsv'), 'w')
+        else:
+            f = open(self.rdir_path('tables', prefix+'mutation_counts.tsv'), 'w')
+        f.write('rRNA\tposition\tnucleotide\t%s\n' % ('\t'.join([lib.lib_settings.sample_name for lib in libs_to_write])))
+        for rRNA_name in sorted(self.settings.rRNA_seqs.keys()):
+            for position in range(len(self.settings.rRNA_seqs[rRNA_name])):
+                nuc_identity = self.settings.rRNA_seqs[rRNA_name][position]
+                nuc_values = []
+                for lib in libs_to_write:
+                    nucleotide = lib.get_nucleotide(rRNA_name, position+1)
+                    assert nucleotide.identity == nuc_identity
+                    nuc_values.append(nucleotide.total_mutation_counts)
                 assert len(nuc_values) == len(libs_to_write)
                 if exclude_constitutive and nucleotide.exclude_constitutive:
                     f.write('%s\t%d\t%s\t%s\n' % (rRNA_name, position+1, nuc_identity, '\t'.join(['' for nuc_value in nuc_values])))
@@ -384,6 +410,11 @@ class mod_seq_run:
                 mod_plotting.ma_plots_interactive(self.get_normalizable_libs(), os.path.join(rdir, 'interactive', 'MA'+file_tag),
                                                          nucleotides_to_count=self.settings.get_property('affected_nucleotides'),
                                                          exclude_constitutive=False)
+                mod_plotting.scatter_interactive(self.get_normalizable_libs(),
+                                                  os.path.join(rdir, 'interactive', 'scatter' + file_tag),
+                                                  nucleotides_to_count=self.settings.get_property(
+                                                      'affected_nucleotides'),
+                                                  exclude_constitutive=False)
                 mod_plotting.ma_plots_interactive_by_count(self.get_normalizable_libs(),
                                                   os.path.join(rdir, 'interactive', 'MA_counts' + file_tag),
                                                   nucleotides_to_count=self.settings.get_property(
