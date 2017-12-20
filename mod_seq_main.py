@@ -22,8 +22,7 @@ class mod_seq_run:
         self.settings = settings
         self.remove_adaptor()
         self.trim_reads()
-        #self.create_shapemapper_settings()
-        #self.run_shapemapper()
+        self.run_shapemapper()
         #self.initialize_libs()
         #self.make_plots()
         #self.make_plots(exclude_constitutive=True)
@@ -33,19 +32,19 @@ class mod_seq_run:
         #self.annotate_structures(exclude_constitutive=True)
 
     def remove_adaptor(self):
-        if not self.settings.get_property('force_retrim'):
-            for lib_settings in self.settings.iter_lib_settings():
-                if not lib_settings.adaptorless_reads_exist():
-                    break
-            else:
-                return
-        self.settings.write_to_log('trimming adaptors')
+        self.settings.write_to_log('removing adaptors with skewer')
+        for lib_settings in self.settings.iter_lib_settings():
+            if not lib_settings.adaptorless_reads_exist():
+                break
+        else:
+            self.settings.write_to_log('using existing adaptor-trimmed reads')
+            return
         mod_utils.make_dir(self.rdir_path('adaptor_removed'))
         num_datasets = len([lib for lib in self.settings.iter_lib_settings()])
         num_instances = min(num_datasets, self.threads)
         threads_per_instance = self.threads/num_instances
         mod_utils.parmap(lambda lib_setting: self.remove_adaptor_one_lib(lib_setting, threads_per_instance), self.settings.iter_lib_settings(), nprocs=num_instances)
-        self.settings.write_to_log('trimming adaptors done')
+        self.settings.write_to_log('removing adaptors done')
 
     def remove_adaptor_one_lib(self, lib_settings, threads):
         lib_settings.write_to_log('adaptor trimming')
@@ -73,13 +72,13 @@ class mod_seq_run:
         Trimming from 3' end can also help if mapping is problematic by reducing chance for indels to prevent mapping
         :return:
         """
-        self.settings.write_to_log( 'trimming reads')
-        if not self.settings.get_property('force_retrim'):
-            for lib_settings in self.settings.iter_lib_settings():
-                if not lib_settings.trimmed_reads_exist():
-                    break
-            else:
-                return
+        self.settings.write_to_log( 'trimming reads with seqtk')
+        for lib_settings in self.settings.iter_lib_settings():
+            if not lib_settings.trimmed_reads_exist():
+                break
+        else:
+            self.settings.write_to_log('using existing trimmed reads')
+            return
         mod_utils.make_dir(self.rdir_path('trimmed_reads'))
         mod_utils.parmap(lambda lib_setting: self.trim_one_lib(lib_setting), self.settings.iter_lib_settings(),
                        nprocs = self.threads)
@@ -94,56 +93,13 @@ class mod_seq_run:
                                                                                  lib_settings.get_log()), shell=True).wait()
         lib_settings.write_to_log('trimming_reads done')
 
-    def create_shapemapper_settings(self):
-        """
-        Create a preferences file from the default that will run shapemapper on all datasets.
-        The comparisons are essentially unimportant, as we joust want to get the mutation
-        rates that shapemapper spits out
-        :return:
-        """
-        self.settings.write_to_log('creating shapemapper config file and fasta files')
-        reference_config_file = open(self.settings.get_property('shapemapper_ref_file'))
-        output_config_file = open(self.settings.get_shapemapper_config_file(), 'w')
-        all_chromsomes = ', '.join(sorted(self.settings.rRNA_seqs.keys()))
-        for line in reference_config_file:
-            if line.startswith("<chromosome Identifiers go here>"):
-                #this is where we map all of the library names to which chromosomes we want to map to
-                for lib_settings in self.settings.iter_lib_settings():
-                    output_config_file.write('%s: %s = %s\n' % (lib_settings.sample_name,
-                                                                os.path.basename(lib_settings.get_trimmed_reads()), all_chromsomes))
-            elif line.startswith('<profiles go here>'):
-                for i in range(len(self.settings.get_property('experimentals'))):
-                    output_config_file.write('name = %s_%s\n' % (sorted(self.settings.rRNA_seqs.keys())[0],
-                                                                 self.settings.get_property('experimentals')[i]))
-                    output_config_file.write('target = %s\n' % (sorted(self.settings.rRNA_seqs.keys())[0]))
-                    output_config_file.write('plus_reagent = %s\n' % (self.settings.get_property('experimentals')[i]))
-                    output_config_file.write('minus_reagent = %s\n' % (self.settings.get_property('no_mod_controls')[i]))
-                    output_config_file.write('denat_control = %s\n\n' % (self.settings.get_property('with_mod_controls')[i]))
-            else:
-                output_config_file.write(line)
-        reference_config_file.close()
-        output_config_file.close()
-        #shapemapper needs an individual FASTA file for each RNA seq that's being mapped to
-        for rna_name in self.settings.rRNA_seqs:
-            f = open(os.path.join(os.path.dirname(lib_settings.get_trimmed_reads()), rna_name+'.fa'), 'w')
-            f.write('>%s\n' % rna_name)
-            f.write(self.settings.rRNA_seqs[rna_name])
-            f.close()
-        self.settings.write_to_log('done creating shapemapper config file and fasta files')
-
     def need_to_run_shapemapper(self):
-        if self.settings.get_property('force_shapemapper'):
-            return True
-        else:
-            shapemapper_output_dir = os.path.join(os.path.dirname(self.settings.get_shapemapper_config_file()),
-                                                  'output', 'counted_mutations_columns')
-            for sample_name in self.settings.get_property('experimentals') + self.settings.get_property(
-                    'no_mod_controls')+ self.settings.get_property('with_mod_controls'):
-                for rRNA_name in self.settings.rRNA_seqs:
-                    expected_file_name = os.path.join(shapemapper_output_dir, sample_name+'_'+rRNA_name+'.csv')
-                    if not mod_utils.file_exists(expected_file_name):
-                        return True
-            return False
+        for lib_setting in self.settings.iter_lib_settings():
+            for rRNA_name in self.settings.rRNA_seqs:
+                expected_file_name = os.path.join(lib_setting.get_shapemapper_out_dir(), lib_setting.sample_name+'_Modified_'+rRNA_name+'_mutation_counts.txt')
+                if not mod_utils.file_exists(expected_file_name):
+                    return True
+        return False
 
     def run_shapemapper(self):
         """
@@ -151,24 +107,35 @@ class mod_seq_run:
         :return:
         """
         self.settings.write_to_log('running shapemapper')
-        #first split settings files into batches of 3 or 2, as shapemapper expects 2 or 3 samples, even though I don't care about the distinction
-        analysis_batches = []
-        all_settings = [lib_setting for lib_setting in self.settings.iter_lib_settings()]
-        for i in range(0, len(all_settings), 2):
-            analysis_batches.append(all_settings[i:i+2])
-        if len(analysis_batches[-1]) == 1:
-            analysis_batches[-2].append(analysis_batches[-1][0])
-            analysis_batches = analysis_batches[:-1]
-        num_batches = len(analysis_batches)
-        num_instances = min(num_batches, self.threads)
-        threads_per_instance = self.threads/num_instances
-        mod_utils.parmap(lambda lib_setting: self.remove_adaptor_one_lib(lib_setting, threads_per_instance),
-                         self.settings.iter_lib_settings(), nprocs=num_instances)
-        subprocess.Popen('ShapeMapper.py %s' % (self.settings.get_shapemapper_config_file()), shell=True).wait()
+        if self.need_to_run_shapemapper():
+            mod_utils.make_dir(self.rdir_path('shapemapper'))
+            #first split settings files into batches of 3 or 2, as shapemapper expects 2 or 3 samples, even though I don't care about the distinction
+            analysis_batches = []
+            all_settings = [lib_setting for lib_setting in self.settings.iter_lib_settings()]
+            num_datasets = len(all_settings)
+            num_instances = min(num_datasets, self.threads)
+            threads_per_instance = self.threads/num_instances
+            mod_utils.parmap(lambda lib_setting: self.run_single_shapemapper(lib_setting, threads_per_instance), all_settings, nprocs=num_instances)
+        else:
+            self.settings.write_to_log('using existing shapemapper output')
         self.settings.write_to_log('done running shapemapper')
 
-    def run_single_shapemapper_batch(self):
-        pass
+    def run_single_shapemapper(self, lib_setting, threads_per_instance):
+        '''
+        :param lib_setting: 
+        :param threads_per_instance: 
+        :return: 
+        '''
+        command_to_run = 'shapemapper --target %s --name %s --nproc %d --output-counted-mutations --out %s --temp %s --min-depth 1 --overwrite --modified --U %s' %\
+                         (self.settings.get_property('rrna_fasta'),
+                          lib_setting.sample_name,
+                          threads_per_instance,
+                          lib_setting.get_shapemapper_out_dir(),
+                          lib_setting.get_shapemapper_temp_dir(),
+                          lib_setting.get_trimmed_reads())
+        subprocess.Popen(command_to_run, shell=True).wait()
+
+
     def initialize_libs(self):
         self.settings.write_to_log('initializing libraries, counting reads')
         self.libs = []

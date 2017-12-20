@@ -189,13 +189,28 @@ class mod_lib_settings:
            {'sample_name': self.sample_name})
         return trimmed_reads
 
+    def get_shapemapper_out_dir(self):
+        shapemapper_out = os.path.join(
+          self.experiment_settings.get_rdir(),
+          'shapemapper',
+          '%(sample_name)s_out' %
+           {'sample_name': self.sample_name})
+        return shapemapper_out
+
+    def get_shapemapper_temp_dir(self):
+        shapemapper_temp = os.path.join(
+          self.experiment_settings.get_rdir(),
+          'shapemapper',
+          '%(sample_name)s_temp' %
+           {'sample_name': self.sample_name})
+        return shapemapper_temp
+
     def get_counting_prefix(self):
         return os.path.join(
           self.experiment_settings.get_rdir(),
           'read_counts',
           '%(sample_name)s' %
            {'sample_name': self.sample_name})
-
 
     def read_5p_counts_exists(self):
         return mod_utils.file_exists(self.get_read_5p_counts())
