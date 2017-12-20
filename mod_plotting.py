@@ -95,7 +95,7 @@ def plot_mutation_rate_cdfs(libraries, out_prefix, nucleotides_to_count='ATCG', 
     plots = []
     plot = fig.add_subplot(231)
     plots.append(plot)
-    colormap = plt.get_cmap('spectral')
+    colormap = plt.get_cmap('nipy_spectral')
     colorindex = 0
     for library in libraries:
         all_mutation_rates = [val for val in
@@ -148,7 +148,7 @@ def plot_mutation_rate_cdfs(libraries, out_prefix, nucleotides_to_count='ATCG', 
 
     plot = fig.add_subplot(234)
     plots.append(plot)
-    colormap = plt.get_cmap('spectral')
+    colormap = plt.get_cmap('nipy_spectral')
     colorindex = 0
     for library in libraries:
         all_mutation_rates = [math.log(val, 10) for val in
@@ -858,7 +858,7 @@ def generate_roc_curves(tp_tn_annotations, genome_fasta, outprefix, libraries, r
     def plot_ROC_curves(roc_curves, title, out_prefix):
         fig = plt.figure(figsize=(8,8))
         plot = fig.add_subplot(111)#first a pie chart of mutated nts
-        colormap = plt.get_cmap('spectral')
+        colormap = plt.get_cmap('nipy_spectral')
         color_index = 0
         for name in sorted(roc_curves.keys()):
             x, y = roc_curves[name]
