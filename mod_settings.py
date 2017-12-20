@@ -185,7 +185,7 @@ class mod_lib_settings:
         trimmed_reads = os.path.join(
           self.experiment_settings.get_rdir(),
           'trimmed_reads',
-          '%(sample_name)s.trimmed.fastq' %
+          '%(sample_name)s.trimmed.fastq.gz' %
            {'sample_name': self.sample_name})
         return trimmed_reads
 
