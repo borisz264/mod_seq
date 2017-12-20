@@ -29,14 +29,13 @@ class ModLib:
 
 
     def parse_shapemapper_output_files(self):
-        shapemapper_output_dir = os.path.join(os.path.dirname(self.experiment_settings.get_shapemapper_config_file()),
-                                                  'output', 'counted_mutations_columns')
+        shapemapper_output_dir = self.lib_settings.get_shapemapper_out_dir()
         sample_name = self.lib_settings.sample_name
         for rRNA_name in self.experiment_settings.rRNA_seqs:
-            shapemapper_output_file = os.path.join(shapemapper_output_dir, sample_name+'_'+rRNA_name+'.csv')
+            shapemapper_output_file = os.path.join(self.lib_settings.get_shapemapper_out_dir(),
+                                                   'Pipeline_Modified_'+rRNA_name+'_mutation_counts.txt')
             assert mod_utils.file_exists(shapemapper_output_file)
-            self.rRNA_mutation_data[rRNA_name] = rRNA_mutations(self, self.lib_settings, self.experiment_settings,
-                                                                shapemapper_output_file)
+            self.rRNA_mutation_data[rRNA_name] = rRNA_mutations(self, self.lib_settings, self.experiment_settings, shapemapper_output_file, rRNA_name)
 
     def count_mutation_rates_by_nucleotide(self, subtract_background = False, subtract_control = False, exclude_constitutive=False):
         """
@@ -370,25 +369,25 @@ class ModLib:
             nucs[i].lowess_fc = nucs[i].get_control_fold_change_in_mutation_rate()/lowess_fc[i]
 
 class rRNA_mutations:
-    def __init__(self, lib, lib_settings, experiment_settings, mutation_filename):
+    def __init__(self, lib, lib_settings, experiment_settings, mutation_filename, rRNA_name):
         self.lib = lib
         self.lib_settings = lib_settings
         self.experiment_settings = experiment_settings
         self.nucleotides = {}
+        self.rRNA_name = rRNA_name
         self.parse_mutations_columns(mutation_filename)
 
     def parse_mutations_columns(self, filename):
         f= open(filename, 'rU')
         lines =  f.readlines()
-        sample_name = lines[0].split(',')[0]
-        assert sample_name == self.lib_settings.sample_name
-        self.rRNA_name = lines[1].split(',')[0]
         self.sequence = self.experiment_settings.rRNA_seqs[self.rRNA_name]
-        headers = lines[2].strip().split(',')
-        for line in lines[3:]:
-            if line.strip().strip(',') != '':
-                nucleotide_data = Nucleotide(self, headers, line, self.lib_settings)
+        headers = lines[0].strip().split('\t')
+        position = 1
+        for line in lines[1:]:
+            if line.strip().strip('\t') != '':
+                nucleotide_data = Nucleotide(self, position, headers, line, self.lib_settings)
                 self.nucleotides[nucleotide_data.position] = nucleotide_data
+                position += 1
         f.close()
 
     def count_mutation_rates_by_nucleotide(self, subtract_background=False, subtract_control=False, exclude_constitutive=False):
@@ -512,12 +511,15 @@ class rRNA_mutations:
 
 
 class Nucleotide:
-    def __init__(self, rRNA, headers, mutation_data_line, lib_settings):
+    def __init__(self, rRNA, position, headers, mutation_data_line, lib_settings):
         self.rRNA = rRNA
+        self.position = position
+        self.identity = rRNA.sequence[self.position-1]
         self.mutations_by_type = {} #will map each type of mutation to the number of such mutations detected
         self.lib_settings = lib_settings
         self.parse_mutation_data_line(headers, mutation_data_line)
         self.set_exclusion_flag()
+
 
 
     def __str__(self):
@@ -525,17 +527,15 @@ class Nucleotide:
 
 
     def parse_mutation_data_line(self, headers, mutation_data_line):
-        ll = mutation_data_line.strip().split(',')
-        self.position = int(ll[0])
-        self.identity = ll[1]
-        assert self.rRNA.sequence[self.position-1] == self.identity #the rRNA is 1-indexed, but python strings 0-indexed
-        self.total_mutation_counts = sum([float(ll[i]) for i in range(2, 18)])
-        self.sequencing_depth = float(ll[19])
+        ll = mutation_data_line.strip().split('\t')
+        self.total_mutation_counts = sum([float(ll[i]) for i in range(0, 26)])
+        self.sequencing_depth = float(ll[26])
+        self.effective_sequencing_depth = float(ll[27])
         try:
             self.mutation_rate = self.total_mutation_counts/self.sequencing_depth
         except:
             self.mutation_rate = 0
-        for i in range(2, 18):
+        for i in range(0, 26):
             self.mutations_by_type[headers[i]] = float(ll[i])
 
     def set_exclusion_flag(self):
@@ -547,7 +547,6 @@ class Nucleotide:
                     self.exclude_constitutive = False
             except KeyError:
                 self.exclude_constitutive = False
-
 
     def get_back_sub_mutation_rate(self):
         return (self.mutation_rate - self.get_background_nucleotide().mutation_rate)

@@ -4,6 +4,8 @@ __author__ = 'Boris Zinshteyn'
 Intended for processing of DMS or other chemical probing data on rRNA
 Based on Alex Robertson's original RNA Bind n Seq pipeline, available on github
 """
+import matplotlib
+matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 plt.rcParams['pdf.fonttype'] = 42  #leaves most text as actual text in PDFs, not outlines
 import os
@@ -23,11 +25,11 @@ class mod_seq_run:
         self.remove_adaptor()
         self.trim_reads()
         self.run_shapemapper()
-        #self.initialize_libs()
+        self.initialize_libs()
         #self.make_plots()
-        #self.make_plots(exclude_constitutive=True)
+        self.make_plots(exclude_constitutive=True)
         #self.make_tables()
-        #self.make_tables(exclude_constitutive=True)
+        self.make_tables(exclude_constitutive=True)
         #self.annotate_structures()
         #self.annotate_structures(exclude_constitutive=True)
 
@@ -96,7 +98,7 @@ class mod_seq_run:
     def need_to_run_shapemapper(self):
         for lib_setting in self.settings.iter_lib_settings():
             for rRNA_name in self.settings.rRNA_seqs:
-                expected_file_name = os.path.join(lib_setting.get_shapemapper_out_dir(), lib_setting.sample_name+'_Modified_'+rRNA_name+'_mutation_counts.txt')
+                expected_file_name = os.path.join(lib_setting.get_shapemapper_out_dir(), 'Pipeline_Modified_'+rRNA_name+'_mutation_counts.txt')
                 if not mod_utils.file_exists(expected_file_name):
                     return True
         return False

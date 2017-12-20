@@ -1,6 +1,8 @@
 __author__ = 'boris'
 from scipy.stats.mstats import winsorize
 import scipy.stats as stats
+import matplotlib
+matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 from collections import defaultdict
 import numpy
