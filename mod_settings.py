@@ -197,6 +197,15 @@ class mod_lib_settings:
            {'sample_name': self.sample_name})
         return shapemapper_out
 
+    def get_shapemapper_log(self):
+        shapemapper_out = os.path.join(
+          self.experiment_settings.get_rdir(),
+          'shapemapper',
+          '%(sample_name)s_out' %
+           {'sample_name': self.sample_name}, '%(sample_name)s_shapemapper.log' %
+           {'sample_name': self.sample_name})
+        return shapemapper_out
+
     def get_shapemapper_temp_dir(self):
         shapemapper_temp = os.path.join(
           self.experiment_settings.get_rdir(),

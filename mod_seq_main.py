@@ -126,12 +126,13 @@ class mod_seq_run:
         :param threads_per_instance: 
         :return: 
         '''
-        command_to_run = 'shapemapper --target %s --name %s --nproc %d --output-counted-mutations --out %s --temp %s --min-depth 1 --overwrite --modified --U %s' %\
+        command_to_run = 'shapemapper --target %s --name %s --nproc %d --output-counted-mutations --out %s --temp %s --log %s --min-depth 1 --overwrite --modified --U %s' %\
                          (self.settings.get_property('rrna_fasta'),
                           lib_setting.sample_name,
                           threads_per_instance,
                           lib_setting.get_shapemapper_out_dir(),
                           lib_setting.get_shapemapper_temp_dir(),
+                          lib_setting.get_shapemapper_log(),
                           lib_setting.get_trimmed_reads())
         subprocess.Popen(command_to_run, shell=True).wait()
 
