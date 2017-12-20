@@ -87,22 +87,11 @@ class mod_seq_run:
 
     def trim_one_lib(self, lib_settings):
         lib_settings.write_to_log('trimming_reads')
-        first_base_to_keep = self.settings.get_property('first_base_to_keep')  #the trimmer is 1-indexed. 1 means keep
-                                                                               #  every base
-        last_base_to_keep = self.settings.get_property('last_base_to_keep')  #Will keep entire 3' end if this is greater
-                                                                             #than or equal to the read length
-        if self.settings.get_property('trim_adaptor'):
-            subprocess.Popen('gunzip -c %s | fastx_trimmer -f %d -Q33 -l %d -o %s >>%s 2>>%s' % (lib_settings.get_adaptor_trimmed_reads(),
-                                                                                      first_base_to_keep, last_base_to_keep,
-                                                                                      lib_settings.get_trimmed_reads(),
-                                                                                      lib_settings.get_log(),
-                                                                                      lib_settings.get_log()), shell=True).wait()
-        else:
-            subprocess.Popen('gunzip -c %s | fastx_trimmer -f %d -Q33 -l %d -o %s >>%s 2>>%s' % (lib_settings.get_fastq_file(),
-                                                                                      first_base_to_keep, last_base_to_keep,
-                                                                                      lib_settings.get_trimmed_reads(),
-                                                                                      lib_settings.get_log(),
-                                                                                      lib_settings.get_log()), shell=True).wait()
+        bases_to_trim = self.settings.get_property('first_base_to_keep')-1
+        subprocess.Popen('seqtk trimfq -b %d -e 0 %s | gzip > %s 2>>%s' % (bases_to_trim,
+                                                                                 lib_settings.get_adaptor_trimmed_reads(),
+                                                                                 lib_settings.get_trimmed_reads(),
+                                                                                 lib_settings.get_log()), shell=True).wait()
         lib_settings.write_to_log('trimming_reads done')
 
     def create_shapemapper_settings(self):
@@ -158,15 +147,28 @@ class mod_seq_run:
 
     def run_shapemapper(self):
         """
-        runs shapemapper from the preferences file created above
+        runs shapemapper2.0 on the samples in batches
         :return:
         """
         self.settings.write_to_log('running shapemapper')
-        os.chdir(os.path.dirname(self.settings.get_shapemapper_config_file()))
-        if self.need_to_run_shapemapper():
-            subprocess.Popen('ShapeMapper.py %s' % (self.settings.get_shapemapper_config_file()), shell=True).wait()
+        #first split settings files into batches of 3 or 2, as shapemapper expects 2 or 3 samples, even though I don't care about the distinction
+        analysis_batches = []
+        all_settings = [lib_setting for lib_setting in self.settings.iter_lib_settings()]
+        for i in range(0, len(all_settings), 2):
+            analysis_batches.append(all_settings[i:i+2])
+        if len(analysis_batches[-1]) == 1:
+            analysis_batches[-2].append(analysis_batches[-1][0])
+            analysis_batches = analysis_batches[:-1]
+        num_batches = len(analysis_batches)
+        num_instances = min(num_batches, self.threads)
+        threads_per_instance = self.threads/num_instances
+        mod_utils.parmap(lambda lib_setting: self.remove_adaptor_one_lib(lib_setting, threads_per_instance),
+                         self.settings.iter_lib_settings(), nprocs=num_instances)
+        subprocess.Popen('ShapeMapper.py %s' % (self.settings.get_shapemapper_config_file()), shell=True).wait()
         self.settings.write_to_log('done running shapemapper')
 
+    def run_single_shapemapper_batch(self):
+        pass
     def initialize_libs(self):
         self.settings.write_to_log('initializing libraries, counting reads')
         self.libs = []
