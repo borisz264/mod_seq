@@ -23,7 +23,7 @@ Download ShapeMapper from http://www.chem.unc.edu/rna/software.html compile it, 
 note: increasing maxProc in shapemapper.py in shapemapper package improves parrallelization when run locally with multiple
 cores available.
 
-cutadapt is required: http://cutadapt.readthedocs.org/en/stable/guide.html
+skewer is required: https://github.com/relipmoc/skewer
 
 fastX toolkit is required: http://hannonlab.cshl.edu/fastx_toolkit/
 

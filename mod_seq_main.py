@@ -1,11 +1,9 @@
-import operator
 
 __author__ = 'Boris Zinshteyn'
 """
 Intended for processing of DMS or other chemical probing data on rRNA
 Based on Alex Robertson's original RNA Bind n Seq pipeline, available on github
 """
-import sys
 import matplotlib.pyplot as plt
 plt.rcParams['pdf.fonttype'] = 42  #leaves most text as actual text in PDFs, not outlines
 import os
@@ -24,13 +22,13 @@ class mod_seq_run:
         self.settings = settings
         self.remove_adaptor()
         self.trim_reads()
-        self.create_shapemapper_settings()
-        self.run_shapemapper()
-        self.initialize_libs()
+        #self.create_shapemapper_settings()
+        #self.run_shapemapper()
+        #self.initialize_libs()
         #self.make_plots()
-        self.make_plots(exclude_constitutive=True)
+        #self.make_plots(exclude_constitutive=True)
         #self.make_tables()
-        self.make_tables(exclude_constitutive=True)
+        #self.make_tables(exclude_constitutive=True)
         #self.annotate_structures()
         #self.annotate_structures(exclude_constitutive=True)
 
@@ -41,26 +39,32 @@ class mod_seq_run:
                     break
             else:
                 return
+        self.settings.write_to_log('trimming adaptors')
+        mod_utils.make_dir(self.rdir_path('adaptor_removed'))
+        num_datasets = len([lib for lib in self.settings.iter_lib_settings()])
+        num_instances = min(num_datasets, self.threads)
+        threads_per_instance = self.threads/num_instances
+        mod_utils.parmap(lambda lib_setting: self.remove_adaptor_one_lib(lib_setting, threads_per_instance), self.settings.iter_lib_settings(), nprocs=num_instances)
+        self.settings.write_to_log('trimming adaptors done')
 
-        if self.settings.get_property('trim_adaptor'):
-            self.settings.write_to_log( 'trimming adaptors')
-            mod_utils.make_dir(self.rdir_path('adaptor_removed'))
-            mod_utils.parmap(lambda lib_setting: self.remove_adaptor_one_lib(lib_setting),
-                           self.settings.iter_lib_settings(), nprocs=self.threads)
-            self.settings.write_to_log( 'trimming adaptors done')
-
-    def remove_adaptor_one_lib(self, lib_settings):
-        #TODO: make this work with skewer
+    def remove_adaptor_one_lib(self, lib_settings, threads):
         lib_settings.write_to_log('adaptor trimming')
-        if self.settings.get_property('discard_untrimmed'):
-            command_to_run = 'cutadapt --adapter %s --overlap 3 --discard-untrimmed --minimum-length %d %s --output %s 1>>%s 2>>%s' % (self.settings.get_property('adaptor_sequence'), self.settings.get_property('min_post_adaptor_length'),
-                               lib_settings.get_fastq_file(), lib_settings.get_adaptor_trimmed_reads(), lib_settings.get_log(),
-                               lib_settings.get_log())
-        else:
-            command_to_run = 'cutadapt --adapter %s --overlap 1 --minimum-length %d %s --output %s 1>>%s 2>>%s' % (self.settings.get_property('adaptor_sequence'), self.settings.get_property('min_post_adaptor_length'),
-                   lib_settings.get_fastq_file(), lib_settings.get_adaptor_trimmed_reads(), lib_settings.get_log(),
-                   lib_settings.get_log())
+        """
+        -x specifies the 3' adaptor to trim from the forward read
+        -Q specifies the lowest acceptable mean read quality before trimming
+        -l specifies the minimum post-trimming read length
+        -L specifies the maximum post-trimming read length
+        -o is the output prefix
+        --threads specifies number of threads to use
+        """
+        command_to_run = 'skewer -x %s  -k 1 -o %s --quiet --threads %s %s 1>>%s 2>>%s' % (
+            self.settings.get_property('adaptor_sequence'),
+            lib_settings.get_adaptor_trimmed_reads(prefix_only=True),
+            threads,
+            lib_settings.get_fastq_file(),
+            lib_settings.get_log(), lib_settings.get_log())
         subprocess.Popen(command_to_run, shell=True).wait()
+        subprocess.Popen('gzip %s-trimmed.fastq' % (lib_settings.get_adaptor_trimmed_reads(prefix_only=True)), shell=True).wait()
         lib_settings.write_to_log('adaptor trimming done')
 
     def trim_reads(self):

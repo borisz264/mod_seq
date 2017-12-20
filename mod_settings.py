@@ -166,13 +166,20 @@ class mod_lib_settings:
     def get_fastq_file(self):
         return self.fastq_gz_filehandle
 
-    def get_adaptor_trimmed_reads(self):
-        collapsed_reads = os.path.join(
-          self.experiment_settings.get_rdir(),
-          'adaptor_removed',
-          '%(sample_name)s.fastq.gz' %
-           {'sample_name': self.sample_name})
-        return collapsed_reads
+    def get_adaptor_trimmed_reads(self, prefix_only=False):
+        if prefix_only:
+            trimmed_reads = os.path.join(
+                self.experiment_settings.get_rdir(),
+                'adaptor_removed',
+                '%(sample_name)s' %
+                {'sample_name': self.sample_name})
+        else:
+            trimmed_reads = os.path.join(
+              self.experiment_settings.get_rdir(),
+              'adaptor_removed',
+              '%(sample_name)s-trimmed.fastq.gz' %
+               {'sample_name': self.sample_name})
+        return trimmed_reads
 
     def get_trimmed_reads(self):
         trimmed_reads = os.path.join(
