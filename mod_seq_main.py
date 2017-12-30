@@ -188,7 +188,7 @@ class mod_seq_run:
         self.write_wigs('control_subtract', subtract_control=True)
         self.write_mutation_rates_tsv('mutation_rates.tsv', exclude_constitutive=exclude_constitutive)
         #self.write_mutation_rates_tsv('back_subtracted_mutation_rates.tsv', subtract_background=True, exclude_constitutive=exclude_constitutive)
-        #self.write_mutation_rates_tsv('control_subtracted_mutation_rates.tsv', subtract_control=True, exclude_constitutive=exclude_constitutive)
+        self.write_mutation_rates_tsv('control_subtracted_mutation_rates_lowess.tsv', subtract_control=True, exclude_constitutive=exclude_constitutive, lowess_correct = True)
         #self.write_mutation_rates_tsv('lowess_control_subtracted_mutation_rates.tsv', subtract_control=True,
         #                              exclude_constitutive=exclude_constitutive, lowess_correct=True)
         self.write_combined_mutation_rates_tsv()
@@ -206,7 +206,7 @@ class mod_seq_run:
         elif subtract_background == True and subtract_control == False:
             prefix = 'background_subtracted'
         elif subtract_background == False and subtract_control == True:
-            prefix = 'control_subtracted'
+            prefix = 'fold_change'
 
         if exclude_constitutive:
             for lib in libs_to_write:
