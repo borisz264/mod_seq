@@ -18,14 +18,12 @@ Python dependencies (install with pip):
     scipy
 
 This package requires installation of the ShapeMapper package from Kevin Weeks' lab.
-Download ShapeMapper from http://www.chem.unc.edu/rna/software.html compile it, and add it to your PATH.
-
-note: increasing maxProc in shapemapper.py in shapemapper package improves parrallelization when run locally with multiple
-cores available.
+Download ShapeMapper 2 from http://www.chem.unc.edu/rna/software.html compile it, and add it to your PATH.
 
 skewer is required: https://github.com/relipmoc/skewer
 
-fastX toolkit is required: http://hannonlab.cshl.edu/fastx_toolkit/
+seqtk is required: https://github.com/lh3/seqtk
+STAR is required, add to PATH: https://github.com/alexdobin/STAR
 
 the bokeh interactive plotting package is optionally required:
 http://bokeh.pydata.org/en/latest/docs/user_guide/quickstart.html#userguide-quickstart
