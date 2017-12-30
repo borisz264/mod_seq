@@ -534,7 +534,7 @@ class Nucleotide:
         try:
             self.mutation_rate = self.total_mutation_counts/self.sequencing_depth
         except:
-            self.mutation_rate = 0
+            self.mutation_rate = 0      
         for i in range(0, 26):
             self.mutations_by_type[headers[i]] = float(ll[i])
 
@@ -612,7 +612,7 @@ class Nucleotide:
             num_error = self.get_error()
             denom = background_nuc.mutation_rate
             denom_error = background_nuc.get_error()
-            return ratio*math.sqrt((num_error/num)**2+(denom_error/denom)**2)
+            return 2*ratio*math.sqrt((num_error/num)**2+(denom_error/denom)**2)
         except ZeroDivisionError:
             return float('inf')
 
