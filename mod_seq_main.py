@@ -25,11 +25,13 @@ class mod_seq_run:
         self.remove_adaptor()
         self.trim_reads()
         self.run_shapemapper()
-        self.initialize_libs()
+        self.generate_mapping_index()
+        self.map_reads()
+        #self.initialize_libs()
         #self.make_plots()
-        self.make_plots(exclude_constitutive=True)
+        #self.make_plots(exclude_constitutive=True)
         #self.make_tables()
-        self.make_tables(exclude_constitutive=True)
+        #self.make_tables(exclude_constitutive=True)
         #self.annotate_structures()
         #self.annotate_structures(exclude_constitutive=True)
 
@@ -111,8 +113,6 @@ class mod_seq_run:
         self.settings.write_to_log('running shapemapper')
         if self.need_to_run_shapemapper():
             mod_utils.make_dir(self.rdir_path('shapemapper'))
-            #first split settings files into batches of 3 or 2, as shapemapper expects 2 or 3 samples, even though I don't care about the distinction
-            analysis_batches = []
             all_settings = [lib_setting for lib_setting in self.settings.iter_lib_settings()]
             num_datasets = len(all_settings)
             num_instances = min(num_datasets, self.threads)
@@ -138,6 +138,45 @@ class mod_seq_run:
                           lib_setting.get_trimmed_reads())
         subprocess.Popen(command_to_run, shell=True).wait()
 
+    def generate_mapping_index(self):
+        """
+        builds a STAR index from the input fasta file
+        """
+        self.settings.write_to_log('building STAR index')
+        if not self.settings.star_index_exists():
+            mod_utils.make_dir(self.settings.get_star_index())
+            subprocess.Popen('STAR --runThreadN %d --runMode genomeGenerate --genomeDir %s --genomeFastaFiles %s --genomeSAindexNbases 4 1>>%s 2>>%s' %
+                             (self.threads, self.settings.get_star_index(), self.settings.get_rRNA_fasta(), self.settings.get_log(), self.settings.get_log()), shell=True).wait()
+        self.settings.write_to_log('building STAR index complete')
+
+    def map_reads(self):
+        """
+        map all reads using STAR
+        :return:
+        """
+        self.settings.write_to_log('mapping reads')
+        for lib_settings in self.settings.iter_lib_settings():
+            if not lib_settings.mapped_reads_exist():
+                break
+        else:
+            return
+        mod_utils.make_dir(self.rdir_path('mapped_reads'))
+        all_settings = [lib_setting for lib_setting in self.settings.iter_lib_settings()]
+        num_datasets = len(all_settings)
+        num_instances = min(num_datasets, self.threads)
+        threads_per_instance = self.threads/num_instances
+        mod_utils.parmap(lambda lib_setting: self.map_one_library(lib_setting, threads_per_instance), all_settings, nprocs=num_instances)
+        self.settings.write_to_log( 'finished mapping reads')
+
+    def map_one_library(self, lib_settings, threads):
+        lib_settings.write_to_log('mapping_reads')
+        command_to_run = 'STAR --limitBAMsortRAM 20000000000 --runThreadN %d --genomeDir %s --readFilesIn %s --readFilesCommand gunzip -c --outWigNorm None --outSAMtype BAM SortedByCoordinate --outFilterType BySJout --outFilterMultimapNmax 1 --outWigType wiggle read1_5p --outFileNamePrefix %s --outReadsUnmapped FastX 1>>%s 2>>%s' %\
+                         (threads, self.settings.get_star_index(), lib_settings.get_trimmed_reads(),
+                          lib_settings.get_mapped_reads_prefix(), lib_settings.get_log(), lib_settings.get_log())
+
+        subprocess.Popen(command_to_run, shell=True).wait()
+        subprocess.Popen('samtools index %s' % (lib_settings.get_mapped_reads()), shell=True).wait()
+        lib_settings.write_to_log('mapping_reads done')
 
     def initialize_libs(self):
         self.settings.write_to_log('initializing libraries, counting reads')

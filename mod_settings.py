@@ -103,12 +103,15 @@ class mod_settings:
     def get_rRNA_fasta(self):
         return self.get_property('rrna_fasta')
 
-    def get_rRNA_bowtie_index(self):
+    def get_star_index(self):
         index = os.path.join(
           self.get_rdir(),
-          'bowtie_indices',
-          'rrna_index')
+          'star_index')
         return index
+
+    def star_index_exists(self):
+        star_index = self.get_star_index()
+        return mod_utils.file_exists(star_index)
 
     def get_log(self):
         log = os.path.join(
@@ -219,6 +222,16 @@ class mod_lib_settings:
           '%(sample_name)s' %
            {'sample_name': self.sample_name})
 
+    def get_mapped_reads_prefix(self):
+        mapped_reads = os.path.join(self.experiment_settings.get_rdir(), 'mapped_reads',
+                                    '%(sample_name)s' % {'sample_name': self.sample_name})
+        return mapped_reads
+
+    def get_mapped_reads(self):
+        mapped_reads = '%(prefix)sAligned.sortedByCoord.out.bam' % {'prefix': self.get_mapped_reads_prefix()}
+        return mapped_reads
+
+
     def read_5p_counts_exists(self):
         return mod_utils.file_exists(self.get_read_5p_counts())
 
@@ -240,10 +253,7 @@ class mod_lib_settings:
         trimmed_reads = self.get_trimmed_reads()
         return mod_utils.file_exists(trimmed_reads)
 
-    def filtered_reads_exist(self):
-        filtered_reads = self.get_filtered_reads()
-        return mod_utils.file_exists(filtered_reads)
 
     def mapped_reads_exist(self):
-        mapped_reads = self.get_mapped_reads_sam_gz()
+        mapped_reads = self.get_mapped_reads()
         return mod_utils.file_exists(mapped_reads)
