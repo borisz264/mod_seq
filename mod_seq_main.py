@@ -27,7 +27,7 @@ class mod_seq_run:
         self.run_shapemapper()
         self.generate_mapping_index()
         self.map_reads()
-        #self.initialize_libs()
+        self.initialize_libs()
         #self.make_plots()
         #self.make_plots(exclude_constitutive=True)
         #self.make_tables()

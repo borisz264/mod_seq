@@ -57,6 +57,40 @@ def plot_mutated_nts_pie(libraries, out_prefix, subtract_background=False, subtr
     plt.savefig(out_prefix + '.pdf', transparent='True', format='pdf')
     plt.clf()
 
+def plot_rt_stop_pie(libraries, out_prefix, subtract_background=False, subtract_control=False, exclude_constitutive=False):
+    #Makes an array of pie charts, 1 per library
+    if subtract_background:
+        #if subtracting background, need to only look at those which have a defined control
+        libraries = [library for library in libraries if (library.lib_settings.sample_name in
+                     library.experiment_settings.get_property('experimentals')) or (library.lib_settings.sample_name in
+                     library.experiment_settings.get_property('with_mod_controls'))]
+    num_subplots = len(libraries)
+    num_plots_wide = math.ceil(math.sqrt(num_subplots))
+    num_plots_high = num_plots_wide
+    fig = plt.figure(figsize=(4*num_plots_wide, 4*num_plots_high))
+    fig.subplots_adjust(wspace=0.4, hspace=0.4)
+    plot_index =1
+    for library in libraries:
+        plot = fig.add_subplot(num_plots_high, num_plots_wide, plot_index)
+        mutated_nts_count = library.count_mutation_rates_by_nucleotide(subtract_background=subtract_background, subtract_control=subtract_control,
+                                                                       exclude_constitutive=exclude_constitutive)
+        labels = sorted(mutated_nts_count.keys())
+        sizes = numpy.array([mutated_nts_count[nt] for nt in labels])
+        total = float(sum(sizes))
+        sizes = sizes/total
+        merged_labels = ['%s %.3f' % (labels[i], sizes[i]) for i in range(len(sizes))]
+        plot.pie(sizes, labels = merged_labels, colors = mod_utils.rainbow)
+        plot.set_title(library.lib_settings.sample_name)
+        plot_index += 1
+    if subtract_background:
+        plt.suptitle('background-subtracted mutation rate fractions')
+    if subtract_control:
+        plt.suptitle('control-subtracted mutation rate fractions')
+    else:
+        plt.suptitle('mutation rate fractions')
+    plt.savefig(out_prefix + '.pdf', transparent='True', format='pdf')
+    plt.clf()
+
 def plot_mutation_breakdown_pie(libraries, out_prefix, exclude_constitutive=False):
     #Makes an array of pie charts, 4 pers library, with types of mutations for each nt
     num_subplots = len(libraries)*4
@@ -370,9 +404,9 @@ def ma_plots_interactive_by_count(libraries, out_prefix, nucleotides_to_count='A
         prot_mag, prot_fold_change, prot_annotation = [], [], []
         deprot_mag, deprot_fold_change, deprot_annotation = [], [], []
         if lowess_correct:
-            library.lowess_correct_fold_changes(nucleotides_to_count = nucleotides_to_count,
-                                                exclude_constitutive=exclude_constitutive,
-                                                max_fold_reduction=max_fold_reduction, max_fold_increase=max_fold_increase)
+            library.lowess_correct_mutation_fold_changes(nucleotides_to_count = nucleotides_to_count,
+                                                         exclude_constitutive=exclude_constitutive,
+                                                         max_fold_reduction=max_fold_reduction, max_fold_increase=max_fold_increase)
         for rRNA_name in library.rRNA_mutation_data:
             for position in library.rRNA_mutation_data[rRNA_name].nucleotides:
                 nucleotide = library.rRNA_mutation_data[rRNA_name].nucleotides[position]
@@ -644,9 +678,9 @@ def ma_plots_by_count(libraries, out_prefix, nucleotides_to_count='ATCG', exclud
     plot_index =1
     for library in libraries:
         if lowess_correct:
-            library.lowess_correct_fold_changes(nucleotides_to_count = nucleotides_to_count,
-                                                exclude_constitutive=exclude_constitutive,
-                                                max_fold_reduction=max_fold_reduction, max_fold_increase=max_fold_increase)
+            library.lowess_correct_mutation_fold_changes(nucleotides_to_count = nucleotides_to_count,
+                                                         exclude_constitutive=exclude_constitutive,
+                                                         max_fold_reduction=max_fold_reduction, max_fold_increase=max_fold_increase)
         plot = fig.add_subplot(num_plots_high, num_plots_wide, plot_index)
         mag, fold_change, annotation = [], [], []
         prot_mag, prot_fold_change, prot_annotation = [], [], []
@@ -930,7 +964,7 @@ def plot_functional_group_changes(libraries, out_prefix, groups_file, nucleotide
         plot_index =1
         plot = fig.add_subplot(num_plots_high, num_plots_wide, plot_index)
         colorindex = 0
-        all_fold_changes = library.list_fold_changes(nucleotides_to_count=nucleotides_to_count, exclude_constitutive=exclude_constitutive)
+        all_fold_changes = library.list_mutation_fold_changes(nucleotides_to_count=nucleotides_to_count, exclude_constitutive=exclude_constitutive)
         hist, bin_edges = numpy.histogram(all_fold_changes, bins=10000)
         cum_hist = numpy.cumsum(hist)
         cum_hist = cum_hist/float(max(cum_hist))

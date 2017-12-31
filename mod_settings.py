@@ -231,6 +231,9 @@ class mod_lib_settings:
         mapped_reads = '%(prefix)sAligned.sortedByCoord.out.bam' % {'prefix': self.get_mapped_reads_prefix()}
         return mapped_reads
 
+    def get_5p_count_wig(self):
+        wig = '%(prefix)sSignal.Unique.str1.out.wig' % {'prefix': self.get_mapped_reads_prefix()}
+        return wig
 
     def read_5p_counts_exists(self):
         return mod_utils.file_exists(self.get_read_5p_counts())

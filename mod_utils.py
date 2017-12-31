@@ -373,3 +373,15 @@ def rna_to_dna(dna_seq):
 def dna_to_rna(dna_seq):
     return dna_seq.replace('T','U').replace('t', 'u')
 
+def parse_wig(filename):
+    mydict = {}
+    for line in open(filename):
+        if "variableStep" in line:
+            chrom = line.strip().split('=')[-1]
+            mydict[chrom] = {}
+
+        else:
+            ll = line.strip().split('\t')
+            mydict[chrom][int(ll[0])] = float(ll[1])
+
+    return mydict

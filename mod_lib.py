@@ -27,10 +27,7 @@ class ModLib:
                                         # objects for that rRNA
         self.parse_shapemapper_output_files()
 
-
     def parse_shapemapper_output_files(self):
-        shapemapper_output_dir = self.lib_settings.get_shapemapper_out_dir()
-        sample_name = self.lib_settings.sample_name
         for rRNA_name in self.experiment_settings.rRNA_seqs:
             shapemapper_output_file = os.path.join(self.lib_settings.get_shapemapper_out_dir(),
                                                    'Pipeline_Modified_'+rRNA_name+'_mutation_counts.txt')
@@ -96,7 +93,7 @@ class ModLib:
         all_mutation_rates = []
         for rRNA_name in self.rRNA_mutation_data:
             all_mutation_rates.extend(self.rRNA_mutation_data[rRNA_name].
-                                      list_fold_changes(nucleotides_to_count = nucleotides_to_count, exclude_constitutive=exclude_constitutive))
+                                      list_mutation_fold_changes(nucleotides_to_count = nucleotides_to_count, exclude_constitutive=exclude_constitutive))
         return all_mutation_rates
 
     def get_normalizing_lib(self):
@@ -148,8 +145,8 @@ class ModLib:
         elif subtract_control:
             if lowess_correct:
                 nucleotides_to_count = self.experiment_settings.get_property('affected_nucleotides')
-                self.lowess_correct_fold_changes(nucleotides_to_count=nucleotides_to_count,
-                                                 exclude_constitutive=exclude_constitutive)
+                self.lowess_correct_mutation_fold_changes(nucleotides_to_count=nucleotides_to_count,
+                                                          exclude_constitutive=exclude_constitutive)
                 f.write('CHROMOSOME\tPOSITION\tNUC\tEXP_MUTATION_RATE\tEXP_99%_min\tEXP_99%_max\tCTRL_MUT_RATE'
                         '\tCTRL_99%_min\tCTRL_99%_max\tEXP-CTRL\tCTRL_POISSON_SUB_ERROR\tFOLD_CHANGE\tPROTECTION_CALL\n')
 
@@ -342,7 +339,7 @@ class ModLib:
                                                     exclude_constitutive=exclude_constitutive)
         return nucleotides
 
-    def lowess_correct_fold_changes(self, nucleotides_to_count = 'ATCG', exclude_constitutive=False, max_fold_reduction=0.001, max_fold_increase=100):
+    def lowess_correct_mutation_fold_changes(self, nucleotides_to_count ='ATCG', exclude_constitutive=False, max_fold_reduction=0.001, max_fold_increase=100):
         """
         Add a lowess regression corrected fold change, by regressing on the
         :param nucleotides_to_count:
@@ -376,6 +373,8 @@ class rRNA_mutations:
         self.nucleotides = {}
         self.rRNA_name = rRNA_name
         self.parse_mutations_columns(mutation_filename)
+        self.total_rt_stops = 0.0
+        self.assign_rt_stops()
 
     def parse_mutations_columns(self, filename):
         f= open(filename, 'rU')
@@ -389,6 +388,15 @@ class rRNA_mutations:
                 self.nucleotides[nucleotide_data.position] = nucleotide_data
                 position += 1
         f.close()
+
+    def assign_rt_stops(self):
+        read_counts = mod_utils.parse_wig(self.lib_settings.get_5p_count_wig())
+        for rRNA_name in read_counts:
+            for position in read_counts[rRNA_name]:
+                if position in self.nucleotides:
+                    nuc = self.nucleotides[position]
+                    nuc.rt_stops = read_counts[rRNA_name][position]
+                    self.total_rt_stops += nuc.rt_stops
 
     def count_mutation_rates_by_nucleotide(self, subtract_background=False, subtract_control=False, exclude_constitutive=False):
         """
@@ -459,7 +467,7 @@ class rRNA_mutations:
                         rates.append(nucleotide.mutation_rate)
         return rates
 
-    def list_fold_changes(self, nucleotides_to_count='ATCG', exclude_constitutive=False):
+    def list_mutation_fold_changes(self, nucleotides_to_count='ATCG', exclude_constitutive=False):
         """
         #note that these values may be less than zero when background is subtracted
         :param subtract_background:
@@ -733,5 +741,6 @@ class Nucleotide:
         except ZeroDivisionError:
             return float('inf')
 
-
+    def rt_stop_rpm(self):
+        return self.rt_stops/(self.rRNA.total_rt_stops/1000000.0)
 
