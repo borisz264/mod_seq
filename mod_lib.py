@@ -49,6 +49,20 @@ class ModLib:
                 total_counts[nucleotide_type] += rRNA_counts[nucleotide_type]
         return total_counts
 
+    def count_rt_stop_rpm_by_nucleotide(self, subtract_background = False, subtract_control = False, exclude_constitutive=False):
+        """
+        counts, over all RNAs, the total number of RT stops at each of A, T, C, G
+        This is to get an idea of which nucleotides are being affected by a modification.
+        :return: a dict like {A: 1054, T:32, C: 604, G:99}
+        """
+        total_counts = defaultdict(int)
+
+        for rRNA_name in self.rRNA_mutation_data:
+            rRNA_counts = self.rRNA_mutation_data[rRNA_name].count_rt_stop_rpm_by_nucleotide(subtract_background=subtract_background, exclude_constitutive=exclude_constitutive)
+            for nucleotide_type in rRNA_counts:
+                total_counts[nucleotide_type] += rRNA_counts[nucleotide_type]
+        return total_counts
+
     def count_mutation_types_by_nucleotide(self, subtract_background = False, subtract_control = False, exclude_constitutive=False):
         """
         counts, over all RNAs, the total number of each type ofmutation rates at each of A, T, C, G
@@ -132,6 +146,9 @@ class ModLib:
 
     def get_mutation_rate_at_position(self, rRNA_name, position):
         return self.rRNA_mutation_data[rRNA_name].nucleotides[position].mutation_rate
+
+    def get_rt_stop_rpm_at_position(self, rRNA_name, position):
+        return self.rRNA_mutation_data[rRNA_name].nucleotides[position].get_rt_stop_rpm()
 
     def write_tsv_tables(self, tsv_filename, subtract_background=False, subtract_control=False, exclude_constitutive=False,
                          lowess_correct = False):
@@ -424,6 +441,32 @@ class rRNA_mutations:
                     counts[nucleotide.identity] += nucleotide.mutation_rate
         return counts
 
+    def count_rt_stop_rpm_by_nucleotide(self, subtract_background=False, subtract_control=False, exclude_constitutive=False):
+        """
+        counts, over this RNA, the total number of mutations at each of A, T, C, G
+        This is to get an idea of which nucleotides are being affected by a modification.
+
+        NOTE that this will set any background-subtracted rate of less than zero to zero
+
+        :return: a dict like {A: 1054, T:32, C: 604, G:99}
+        """
+        counts = defaultdict(int)
+        for nucleotide in self.nucleotides.values():
+            if exclude_constitutive and nucleotide.exclude_constitutive:
+                continue
+            else:
+                if subtract_background and subtract_control:
+                    raise SyntaxError('Cannot subtract background and control simultaneously')
+
+                if subtract_background:
+                    counts[nucleotide.identity] += max((nucleotide.get_rt_stop_rpm() - self.lib.get_normalizing_lib().
+                                                    get_mutation_rate_at_position(self.rRNA_name, nucleotide.position)), 0.)
+                elif subtract_control:
+                    counts[nucleotide.identity] += nucleotide.get_rt_stop_rpm() - self.lib.get_normalizing_lib_with_mod().get_rt_stop_rpm_at_position(self.rRNA_name, nucleotide.position)
+                else:
+                    counts[nucleotide.identity] += nucleotide.get_rt_stop_rpm()
+        return counts
+
     def count_mutation_types_by_nucleotide(self, subtract_background=False, subtract_control=False, exclude_constitutive=False):
         """
         counts, over this RNA, the total number of mutation of each type at each of A, T, C, G
@@ -524,6 +567,7 @@ class Nucleotide:
         self.position = position
         self.identity = rRNA.sequence[self.position-1]
         self.mutations_by_type = {} #will map each type of mutation to the number of such mutations detected
+        self.rt_stops = 0
         self.lib_settings = lib_settings
         self.parse_mutation_data_line(headers, mutation_data_line)
         self.set_exclusion_flag()
@@ -741,6 +785,6 @@ class Nucleotide:
         except ZeroDivisionError:
             return float('inf')
 
-    def rt_stop_rpm(self):
+    def get_rt_stop_rpm(self):
         return self.rt_stops/(self.rRNA.total_rt_stops/1000000.0)
 

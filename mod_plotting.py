@@ -72,10 +72,10 @@ def plot_rt_stop_pie(libraries, out_prefix, subtract_background=False, subtract_
     plot_index =1
     for library in libraries:
         plot = fig.add_subplot(num_plots_high, num_plots_wide, plot_index)
-        mutated_nts_count = library.count_mutation_rates_by_nucleotide(subtract_background=subtract_background, subtract_control=subtract_control,
+        rt_stop_count = library.count_rt_stop_rpm_by_nucleotide(subtract_background=subtract_background, subtract_control=subtract_control,
                                                                        exclude_constitutive=exclude_constitutive)
-        labels = sorted(mutated_nts_count.keys())
-        sizes = numpy.array([mutated_nts_count[nt] for nt in labels])
+        labels = sorted(rt_stop_count.keys())
+        sizes = numpy.array([rt_stop_count[nt] for nt in labels])
         total = float(sum(sizes))
         sizes = sizes/total
         merged_labels = ['%s %.3f' % (labels[i], sizes[i]) for i in range(len(sizes))]
@@ -83,11 +83,9 @@ def plot_rt_stop_pie(libraries, out_prefix, subtract_background=False, subtract_
         plot.set_title(library.lib_settings.sample_name)
         plot_index += 1
     if subtract_background:
-        plt.suptitle('background-subtracted mutation rate fractions')
-    if subtract_control:
-        plt.suptitle('control-subtracted mutation rate fractions')
+        plt.suptitle('background-subtracted fraction of RT stops')
     else:
-        plt.suptitle('mutation rate fractions')
+        plt.suptitle('fraction of RT stops')
     plt.savefig(out_prefix + '.pdf', transparent='True', format='pdf')
     plt.clf()
 

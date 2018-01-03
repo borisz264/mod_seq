@@ -28,10 +28,10 @@ class mod_seq_run:
         self.generate_mapping_index()
         self.map_reads()
         self.initialize_libs()
-        #self.make_plots()
-        #self.make_plots(exclude_constitutive=True)
-        #self.make_tables()
-        #self.make_tables(exclude_constitutive=True)
+        self.make_plots()
+        self.make_plots(exclude_constitutive=True)
+        self.make_tables()
+        self.make_tables(exclude_constitutive=True)
         #self.annotate_structures()
         #self.annotate_structures(exclude_constitutive=True)
 
@@ -395,11 +395,14 @@ class mod_seq_run:
             file_tag = ''
 
         mod_plotting.plot_mutated_nts_pie(self.libs, os.path.join(rdir, 'raw_mutation_fractions'+file_tag), exclude_constitutive=exclude_constitutive)
+        mod_plotting.plot_rt_stop_pie(self.libs, os.path.join(rdir, 'raw_rt_stops'+file_tag), exclude_constitutive=exclude_constitutive)
         mod_plotting.plot_mutation_breakdown_pie(self.libs, os.path.join(rdir, 'raw_mutation_types'+file_tag), exclude_constitutive=exclude_constitutive)
 
         mod_plotting.plot_mutated_nts_pie(self.libs,
                                           os.path.join(rdir, 'background_sub_mutation_fractions'+file_tag),
                                           subtract_background = True, exclude_constitutive=exclude_constitutive)
+        mod_plotting.plot_rt_stop_pie(self.libs, os.path.join(rdir, 'back_sub_rt_stops'+file_tag), subtract_background = True, exclude_constitutive=exclude_constitutive)
+
         mod_plotting.plot_mutation_rate_cdfs(self.libs, os.path.join(rdir, 'mutation_rate_cdf'+file_tag),
                                              nucleotides_to_count=self.settings.get_property('affected_nucleotides'),
                                              exclude_constitutive=exclude_constitutive)
