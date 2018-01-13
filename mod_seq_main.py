@@ -502,5 +502,5 @@ def main():
     settings = mod_settings.mod_settings(args.settings_file)
     all_datasets = mod_seq_run(settings, args.threads)
 
-
-main()
+if __name__ == "__main__":
+    main()
