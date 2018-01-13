@@ -28,9 +28,9 @@ class mod_seq_run:
         self.generate_mapping_index()
         self.map_reads()
         self.initialize_libs()
-        self.make_plots()
+        #self.make_plots()
         self.make_plots(exclude_constitutive=True)
-        self.make_tables()
+        #self.make_tables()
         self.make_tables(exclude_constitutive=True)
         #self.annotate_structures()
         #self.annotate_structures(exclude_constitutive=True)
@@ -380,69 +380,74 @@ class mod_seq_run:
 
     def make_plots(self, exclude_constitutive=False):
         if exclude_constitutive:
-            mod_utils.make_dir(self.rdir_path('plots', 'exclude_constitutive'))
-            mod_utils.make_dir(self.rdir_path('plots', 'exclude_constitutive', 'functional_groups'))
-            mod_utils.make_dir(self.rdir_path('plots', 'exclude_constitutive', 'interactive'))
-            rdir = self.rdir_path('plots','exclude_constitutive')
+            mod_utils.make_dir(self.rdir_path('mutation_plots', 'exclude_constitutive'))
+            mod_utils.make_dir(self.rdir_path('mutation_plots', 'exclude_constitutive', 'interactive'))
+            mut_dir = self.rdir_path('mutation_plots','exclude_constitutive')
+            mod_utils.make_dir(self.rdir_path('rt_stop_plots', 'exclude_constitutive'))
+            mod_utils.make_dir(self.rdir_path('rt_stop_plots', 'exclude_constitutive', 'interactive'))
+            stop_dir = self.rdir_path('rt_stop_plots','exclude_constitutive')
             file_tag = '_exclude_constitutive'
             #TODO: the names for the ROC curve chromosomes are hard coded and need to be changed between samples
             #mod_plotting.generate_roc_curves(self.settings.get_property('tptn_file_25s'), self.settings.rRNA_seqs, os.path.join(rdir, '23S_ROC_curves'), self.get_modified_libs(), 'E.c.23S_rRNA', self.settings.get_property('affected_nucleotides'))
             #mod_plotting.generate_roc_curves(self.settings.get_property('tptn_file_18s'), self.settings.rRNA_seqs, os.path.join(rdir, '16S_ROC_curves'), self.get_modified_libs(), 'E.c.16S_rRNA', self.settings.get_property('affected_nucleotides'))
         else:
-            mod_utils.make_dir(self.rdir_path('plots'))
-            mod_utils.make_dir(self.rdir_path('plots', 'interactive'))
-            rdir = self.rdir_path('plots')
+            mod_utils.make_dir(self.rdir_path('mutation_plots'))
+            mod_utils.make_dir(self.rdir_path('mutation_plots', 'interactive'))
+            mut_dir = self.rdir_path('mutation_plots')
+            mod_utils.make_dir(self.rdir_path('rt_stop_plots'))
+            mod_utils.make_dir(self.rdir_path('rt_stop_plots', 'interactive'))
+            stop_dir = self.rdir_path('rt_stop_plots')
             file_tag = ''
-
-        mod_plotting.plot_mutated_nts_pie(self.libs, os.path.join(rdir, 'raw_mutation_fractions'+file_tag), exclude_constitutive=exclude_constitutive)
-        mod_plotting.plot_rt_stop_pie(self.libs, os.path.join(rdir, 'raw_rt_stops'+file_tag), exclude_constitutive=exclude_constitutive)
-        mod_plotting.plot_mutation_breakdown_pie(self.libs, os.path.join(rdir, 'raw_mutation_types'+file_tag), exclude_constitutive=exclude_constitutive)
+        #MUTATION PLOTS
+        mod_plotting.plot_mutated_nts_pie(self.libs, os.path.join(mut_dir, 'raw_mutation_fractions'+file_tag), exclude_constitutive=exclude_constitutive)
+        mod_plotting.plot_mutation_breakdown_pie(self.libs, os.path.join(mut_dir, 'raw_mutation_types'+file_tag), exclude_constitutive=exclude_constitutive)
 
         mod_plotting.plot_mutated_nts_pie(self.libs,
-                                          os.path.join(rdir, 'background_sub_mutation_fractions'+file_tag),
+                                          os.path.join(mut_dir, 'background_sub_mutation_fractions'+file_tag),
                                           subtract_background = True, exclude_constitutive=exclude_constitutive)
-        mod_plotting.plot_rt_stop_pie(self.libs, os.path.join(rdir, 'back_sub_rt_stops'+file_tag), subtract_background = True, exclude_constitutive=exclude_constitutive)
 
-        mod_plotting.plot_mutation_rate_cdfs(self.libs, os.path.join(rdir, 'mutation_rate_cdf'+file_tag),
-                                             nucleotides_to_count=self.settings.get_property('affected_nucleotides'),
-                                             exclude_constitutive=exclude_constitutive)
-
-        mod_plotting.plot_mutation_rate_violins(self.libs, os.path.join(rdir, 'mutation_rate_cdf'+file_tag),
+        mod_plotting.plot_mutation_rate_cdfs(self.libs, os.path.join(mut_dir, 'mutation_rate_cdf'+file_tag),
                                              nucleotides_to_count=self.settings.get_property('affected_nucleotides'),
                                              exclude_constitutive=exclude_constitutive)
 
-        mod_plotting.ma_plots(self.get_normalizable_libs(), os.path.join(rdir, 'MA'+file_tag),
+        mod_plotting.plot_mutation_rate_violins(self.libs, os.path.join(mut_dir, 'mutation_rate_violin'+file_tag),
                                              nucleotides_to_count=self.settings.get_property('affected_nucleotides'),
                                              exclude_constitutive=exclude_constitutive)
-        mod_plotting.ma_plots_by_count(self.get_normalizable_libs(), os.path.join(rdir, 'MA_raw_counts'+file_tag),
+        mod_plotting.ma_plots_by_count(self.get_normalizable_libs(), os.path.join(mut_dir, 'MA_raw_counts'+file_tag),
                                              nucleotides_to_count=self.settings.get_property('affected_nucleotides'),
                                              exclude_constitutive=exclude_constitutive)
-        mod_plotting.ma_plots_by_count(self.get_normalizable_libs(), os.path.join(rdir, 'MA_raw_counts_lowess'+file_tag),
+        mod_plotting.ma_plots_by_count(self.get_normalizable_libs(), os.path.join(mut_dir, 'MA_raw_counts_lowess'+file_tag),
                                              nucleotides_to_count=self.settings.get_property('affected_nucleotides'),
                                              exclude_constitutive=exclude_constitutive, lowess_correct=True)
-        mod_plotting.mutation_rate_scatter(self.get_normalizable_libs(), os.path.join(rdir, 'scatter_mismatch_rate'+file_tag),
+        mod_plotting.mutation_rate_scatter(self.get_normalizable_libs(), os.path.join(mut_dir, 'scatter_mismatch_rate'+file_tag),
                                              nucleotides_to_count=self.settings.get_property('affected_nucleotides'),
                                              exclude_constitutive=exclude_constitutive)
 
         if self.settings.get_property('make_interactive_plots'):
-                mod_plotting.ma_plots_interactive(self.get_normalizable_libs(), os.path.join(rdir, 'interactive', 'MA'+file_tag),
-                                                         nucleotides_to_count=self.settings.get_property('affected_nucleotides'),
-                                                         exclude_constitutive=False)
                 mod_plotting.scatter_interactive(self.get_normalizable_libs(),
-                                                  os.path.join(rdir, 'interactive', 'scatter' + file_tag),
+                                                  os.path.join(mut_dir, 'interactive', 'scatter' + file_tag),
                                                   nucleotides_to_count=self.settings.get_property(
                                                       'affected_nucleotides'),
                                                   exclude_constitutive=False)
                 mod_plotting.ma_plots_interactive_by_count(self.get_normalizable_libs(),
-                                                  os.path.join(rdir, 'interactive', 'MA_counts' + file_tag),
+                                                  os.path.join(mut_dir, 'interactive', 'MA_counts' + file_tag),
                                                   nucleotides_to_count=self.settings.get_property(
                                                       'affected_nucleotides'),
                                                   exclude_constitutive=False)
                 mod_plotting.ma_plots_interactive_by_count(self.get_normalizable_libs(),
-                                                  os.path.join(rdir, 'interactive', 'MA_counts_lowess' + file_tag),
+                                                  os.path.join(mut_dir, 'interactive', 'MA_counts_lowess' + file_tag),
                                                   nucleotides_to_count=self.settings.get_property('affected_nucleotides'),
                                                            exclude_constitutive=False, lowess_correct=True)
 
+    #RT STOP PLOTS
+        mod_plotting.plot_rt_stop_pie(self.libs, os.path.join(stop_dir, 'raw_rt_stops'+file_tag), exclude_constitutive=exclude_constitutive)
+        mod_plotting.plot_rt_stop_pie(self.libs, os.path.join(stop_dir, 'back_sub_rt_stops'+file_tag), subtract_background = True, exclude_constitutive=exclude_constitutive)
+        mod_plotting.plot_rt_stop_cdfs(self.libs, os.path.join(stop_dir, 'rt_stop_cdf'+file_tag),
+                                             nucleotides_to_count=self.settings.get_property('affected_nucleotides'),
+                                             exclude_constitutive=exclude_constitutive)
+        mod_plotting.plot_rt_stop_violins(self.libs, os.path.join(stop_dir, 'rt_stop_violin'+file_tag),
+                                             nucleotides_to_count=self.settings.get_property('affected_nucleotides'),
+                                             exclude_constitutive=exclude_constitutive)
     def annotate_structures(self, exclude_constitutive=False):
         if exclude_constitutive:
             mod_utils.make_dir(self.rdir_path('structures', 'protections_highlighted', 'exclude_constitutive'))

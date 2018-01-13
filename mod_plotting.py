@@ -123,9 +123,9 @@ def plot_mutation_rate_cdfs(libraries, out_prefix, nucleotides_to_count='ATCG', 
     #Makes 2 CDF plots. One of all libraries, showing the coverage-normalized mutation rates
     # and one showing background-subtracted mutation rates
 
-    fig = plt.figure(figsize=(24, 16))
+    fig = plt.figure(figsize=(16, 16))
     plots = []
-    plot = fig.add_subplot(231)
+    plot = fig.add_subplot(221)
     plots.append(plot)
     colormap = plt.get_cmap('nipy_spectral')
     colorindex = 0
@@ -142,7 +142,7 @@ def plot_mutation_rate_cdfs(libraries, out_prefix, nucleotides_to_count='ATCG', 
     lg.draw_frame(False)
     plot.set_xlim(-0.001, 0.02)
 
-    plot = fig.add_subplot(232)
+    plot = fig.add_subplot(222)
     plots.append(plot)
     colorindex = 0
     libraries_to_plot = [library for library in libraries if library.lib_settings.sample_name in
@@ -160,25 +160,7 @@ def plot_mutation_rate_cdfs(libraries, out_prefix, nucleotides_to_count='ATCG', 
     lg.draw_frame(False)
     plot.set_xlim(-0.001, 0.02)
 
-    plot = fig.add_subplot(233)
-    plots.append(plot)
-    colorindex = 0
-    libraries_to_plot = [library for library in libraries if library.lib_settings.sample_name in
-             library.experiment_settings.get_property('experimentals')]
-    for library in libraries_to_plot:
-        all_mutation_rates = [val for val in
-                              library.list_mutation_rates(subtract_background=False, subtract_control=True,
-                                                          nucleotides_to_count=nucleotides_to_count, exclude_constitutive=exclude_constitutive)]
-        plot.hist(all_mutation_rates, 10000, normed=1, cumulative=True, histtype='step', color=colormap(colorindex/float(len(libraries))),
-                  label=library.lib_settings.sample_name, lw=2)
-        colorindex += 1
-    plot.set_xlabel("control-subtracted mutation rate")
-    plot.set_title('control normalized mutation rates')
-    lg=plt.legend(loc=4,prop={'size':6}, labelspacing=0.2)
-    lg.draw_frame(False)
-    plot.set_xlim(-0.001, 0.02)
-
-    plot = fig.add_subplot(234)
+    plot = fig.add_subplot(223)
     plots.append(plot)
     colormap = plt.get_cmap('nipy_spectral')
     colorindex = 0
@@ -195,7 +177,7 @@ def plot_mutation_rate_cdfs(libraries, out_prefix, nucleotides_to_count='ATCG', 
     lg.draw_frame(False)
     plot.set_xlim(-5, -1)
 
-    plot = fig.add_subplot(235)
+    plot = fig.add_subplot(224)
     plots.append(plot)
     colorindex = 0
     libraries_to_plot = [library for library in libraries if library.lib_settings.sample_name in
@@ -213,23 +195,88 @@ def plot_mutation_rate_cdfs(libraries, out_prefix, nucleotides_to_count='ATCG', 
     lg.draw_frame(False)
     plot.set_xlim(-5, -1)
 
-    plot = fig.add_subplot(236)
+    for plot in plots:
+        plot.set_ylabel("cumulative fraction of %s nucleotides" % (nucleotides_to_count))
+        plot.set_ylim(0, 1)
+    plt.tight_layout()
+    plt.savefig(out_prefix + '.pdf', transparent='True', format='pdf')
+    plt.clf()
+
+def plot_rt_stop_cdfs(libraries, out_prefix, nucleotides_to_count='ATCG', exclude_constitutive=False):
+    #Makes 2 CDF plots. One of all libraries, showing the coverage-normalized mutation rates
+    # and one showing background-subtracted mutation rates
+
+    fig = plt.figure(figsize=(16, 16))
+    plots = []
+    plot = fig.add_subplot(221)
+    plots.append(plot)
+    colormap = plt.get_cmap('nipy_spectral')
+    colorindex = 0
+    for library in libraries:
+        all_mutation_rates = [val for val in
+                              library.list_rt_stop_rpms(subtract_background=False, subtract_control=False,
+                                                          nucleotides_to_count=nucleotides_to_count, exclude_constitutive=exclude_constitutive)]
+        plot.hist(all_mutation_rates, 10000, normed=1, cumulative=True, histtype='step', color=colormap(colorindex/float(len(libraries))),
+                  label=library.lib_settings.sample_name, lw=2)
+        colorindex += 1
+    plot.set_xlabel("RT stop RPMs")
+    #plot.set_title('raw mutation rates')
+    lg=plt.legend(loc=4,prop={'size':6}, labelspacing=0.2)
+    lg.draw_frame(False)
+    plot.set_xlim(0, 10000)
+
+    plot = fig.add_subplot(222)
+    plots.append(plot)
+    colorindex = 0
+    libraries_to_plot = [library for library in libraries if library.lib_settings.sample_name in
+             library.experiment_settings.get_property('experimentals')]
+    for library in libraries_to_plot:
+        all_mutation_rates = [val for val in
+                              library.list_rt_stop_rpms(subtract_background=True, subtract_control=False,
+                                                          nucleotides_to_count=nucleotides_to_count, exclude_constitutive=exclude_constitutive)]
+        plot.hist(all_mutation_rates, 10000, normed=1, cumulative=True, histtype='step', color=colormap(colorindex/float(len(libraries))),
+                  label=library.lib_settings.sample_name, lw=2)
+        colorindex += 1
+    plot.set_xlabel("background-subtracted RT-stop RPMs")
+    #plot.set_title('normalized mutation rates')
+    lg=plt.legend(loc=4,prop={'size':6}, labelspacing=0.2)
+    lg.draw_frame(False)
+    plot.set_xlim(0, 10000)
+
+    plot = fig.add_subplot(223)
+    plots.append(plot)
+    colormap = plt.get_cmap('nipy_spectral')
+    colorindex = 0
+    for library in libraries:
+        all_mutation_rates = [math.log(val, 10) for val in
+                              library.list_rt_stop_rpms(subtract_background=False, subtract_control=False,
+                                                          nucleotides_to_count=nucleotides_to_count, exclude_constitutive=exclude_constitutive) if val>0]
+        plot.hist(all_mutation_rates, 10000, normed=1, cumulative=True, histtype='step', color=colormap(colorindex/float(len(libraries))),
+                  label=library.lib_settings.sample_name, lw=2)
+        colorindex += 1
+    plot.set_xlabel("log10 RT stop RPMs")
+    #plot.set_title('raw mutation rates')
+    lg=plt.legend(loc=2,prop={'size':6}, labelspacing=0.2)
+    lg.draw_frame(False)
+    plot.set_xlim(0, 5)
+
+    plot = fig.add_subplot(224)
     plots.append(plot)
     colorindex = 0
     libraries_to_plot = [library for library in libraries if library.lib_settings.sample_name in
              library.experiment_settings.get_property('experimentals')]
     for library in libraries_to_plot:
         all_mutation_rates = [math.log(val, 10) for val in
-                              library.list_mutation_rates(subtract_background=False, subtract_control=True,
+                              library.list_rt_stop_rpms(subtract_background=True, subtract_control=False,
                                                           nucleotides_to_count=nucleotides_to_count, exclude_constitutive=exclude_constitutive) if val>0]
         plot.hist(all_mutation_rates, 10000, normed=1, cumulative=True, histtype='step', color=colormap(colorindex/float(len(libraries))),
                   label=library.lib_settings.sample_name, lw=2)
         colorindex += 1
-    plot.set_xlabel("control-subtracted log10 mutation rate")
-    plot.set_title('control normalized mutation rates')
+    plot.set_xlabel("background-subtracted log10 RT stop RPMs")
+    #plot.set_title('normalized mutation rates')
     lg=plt.legend(loc=2,prop={'size':6}, labelspacing=0.2)
     lg.draw_frame(False)
-    plot.set_xlim(-5, -1)
+    plot.set_xlim(0, 5)
 
     for plot in plots:
         plot.set_ylabel("cumulative fraction of %s nucleotides" % (nucleotides_to_count))
@@ -237,6 +284,7 @@ def plot_mutation_rate_cdfs(libraries, out_prefix, nucleotides_to_count='ATCG', 
     plt.tight_layout()
     plt.savefig(out_prefix + '.pdf', transparent='True', format='pdf')
     plt.clf()
+
 
 def plot_mutation_rate_violins(libraries, out_prefix, nucleotides_to_count='ATCG', exclude_constitutive=False):
     #Makes violin plots of raw mutation rates
@@ -295,8 +343,69 @@ def plot_mutation_rate_violins(libraries, out_prefix, nucleotides_to_count='ATCG
     ax1.set_ylim(-5, 0)
     xtickNames = plt.setp(ax1, xticklabels=labels)
     plt.setp(xtickNames, rotation=90, fontsize=6)
-    plt.savefig(out_prefix+'_logviolin.pdf', transparent='True', format='pdf')
+    plt.savefig(out_prefix+'.pdf', transparent='True', format='pdf')
     plt.clf()
+
+def plot_rt_stop_violins(libraries, out_prefix, nucleotides_to_count='ATCG', exclude_constitutive=False):
+    #Makes violin plots of raw mutation rates
+    data = []
+    labels = []
+    for library in libraries:
+        labels.append(library.lib_settings.sample_name)
+        data.append([math.log10(val+1) for val in library.list_rt_stop_rpms(subtract_background=False, subtract_control=False,
+                                                        nucleotides_to_count=nucleotides_to_count,
+                                                        exclude_constitutive=exclude_constitutive)])
+
+    colormap = uniform_colormaps.viridis
+    fig = plt.figure(figsize=(5,8))
+    ax1 = fig.add_subplot(111)
+
+    # Hide the grid behind plot objects
+    ax1.yaxis.grid(True, linestyle='-', which='major', color='lightgrey', alpha=0.5)
+    ax1.set_axisbelow(True)
+
+    #ax1.set_xlabel(ylabel)
+    plt.subplots_adjust(left=0.1, right=0.95, top=0.9, bottom=0.25)
+
+    pos = range(1,len(libraries)+1)  # starts at 1 to play nice with boxplot
+    dist = max(pos)-min(pos)
+    w = min(0.15*max(dist,1.0),0.5)
+    for library,p in zip(libraries,pos):
+        d = [math.log10(val+1) for val in library.list_rt_stop_rpms(subtract_background=False, subtract_control=False,
+                                                        nucleotides_to_count=nucleotides_to_count,
+                                                        exclude_constitutive=exclude_constitutive)]
+        k = stats.gaussian_kde(d) #calculates the kernel density
+        m = k.dataset.min() #lower bound of violin
+        M = k.dataset.max() #upper bound of violin
+        x = numpy.arange(m,M,(M-m)/100.) # support for violin
+        v = k.evaluate(x) #violin profile (density curve)
+        v = v/v.max()*w #scaling the violin to the available space
+        plt.fill_betweenx(x,p,v+p,facecolor=colormap((p-1)/float(len(libraries))),alpha=0.3)
+        plt.fill_betweenx(x,p,-v+p,facecolor=colormap((p-1)/float(len(libraries))),alpha=0.3)
+    if True:
+        bplot = plt.boxplot(data,notch=1)
+        plt.setp(bplot['boxes'], color='black')
+        plt.setp(bplot['whiskers'], color='black')
+        plt.setp(bplot['fliers'], color='red', marker='.')
+
+    per50s = []
+    i = 1
+    for datum in data:
+        #per50s.append(stats.scoreatpercentile(datum, 50))
+        t = stats.scoreatpercentile(datum, 50)
+
+        per50s.append(t)
+        #ax1.annotate(str(round(t,3)), xy=(i+0.1, t), xycoords='data', arrowprops=None, fontsize='small', color='black')
+        i+= 1
+    #ax1.set_xticks([0.0, 0.5, 1.0, 1.5])
+    #ax1.set_yscale('log')
+    ax1.set_ylabel('log10 RT stop RPM +1')
+    ax1.set_ylim(0, 5)
+    xtickNames = plt.setp(ax1, xticklabels=labels)
+    plt.setp(xtickNames, rotation=90, fontsize=6)
+    plt.savefig(out_prefix+'.pdf', transparent='True', format='pdf')
+    plt.clf()
+
 
 def ma_plots_interactive(libraries, out_prefix, nucleotides_to_count='ATCG', exclude_constitutive=False,
                          max_fold_reduction=0.001, max_fold_increase=100):

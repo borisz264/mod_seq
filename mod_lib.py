@@ -26,6 +26,7 @@ class ModLib:
         self.rRNA_mutation_data = {}    #maps rRNA names to rRNA_mutations objects, which are containers for nucleotide
                                         # objects for that rRNA
         self.parse_shapemapper_output_files()
+        self.assign_rt_stops()
 
     def parse_shapemapper_output_files(self):
         for rRNA_name in self.experiment_settings.rRNA_seqs:
@@ -33,6 +34,17 @@ class ModLib:
                                                    'Pipeline_Modified_'+rRNA_name+'_mutation_counts.txt')
             assert mod_utils.file_exists(shapemapper_output_file)
             self.rRNA_mutation_data[rRNA_name] = rRNA_mutations(self, self.lib_settings, self.experiment_settings, shapemapper_output_file, rRNA_name)
+
+    def assign_rt_stops(self):
+        read_counts = mod_utils.parse_wig(self.lib_settings.get_5p_count_wig())
+        for rRNA_name in self.rRNA_mutation_data:
+            for position in read_counts[rRNA_name]:
+                #the rt stop is BEFORE it adds the nucleotide across from the modified one
+                #so the signal in read_counts[rRNA_name][position] is caused by the mod at self.nucleotides[position-1]
+                if position-1 in self.rRNA_mutation_data[rRNA_name].nucleotides:
+                    nuc = self.rRNA_mutation_data[rRNA_name].nucleotides[position-1]
+                    nuc.rt_stops = read_counts[rRNA_name][position]
+                    self.rRNA_mutation_data[rRNA_name].total_rt_stops += nuc.rt_stops
 
     def count_mutation_rates_by_nucleotide(self, subtract_background = False, subtract_control = False, exclude_constitutive=False):
         """
@@ -102,6 +114,16 @@ class ModLib:
                                       list_mutation_rates(subtract_background = subtract_background, subtract_control = subtract_control,
                                                           nucleotides_to_count = nucleotides_to_count, exclude_constitutive=exclude_constitutive))
         return all_mutation_rates
+
+    def list_rt_stop_rpms(self, subtract_background = False, subtract_control = False, nucleotides_to_count = 'ATCG', exclude_constitutive=False):
+        all_rt_stop_rpms = []
+        for rRNA_name in self.rRNA_mutation_data:
+            all_rt_stop_rpms.extend(self.rRNA_mutation_data[rRNA_name].
+                                      list_rt_stop_rpms(subtract_background = subtract_background, subtract_control = subtract_control,
+                                                          nucleotides_to_count = nucleotides_to_count, exclude_constitutive=exclude_constitutive))
+        return all_rt_stop_rpms
+
+
 
     def list_fold_changes(self, nucleotides_to_count = 'ATCG', exclude_constitutive=False):
         all_mutation_rates = []
@@ -183,7 +205,7 @@ class ModLib:
                                 +'0'+'\n')
                     elif subtract_control:
                         f.write(self.rRNA_mutation_data[rRNA_name].rRNA_name+'\t'+str(nucleotide.position)+
-                               str(nucleotide.identity)+'\t\t\t\t\t\t\t\t\t\t\t\t\n')
+                               str(nucleotide.identity)+'\t\t\t\t\t\t\t\t\t\t\t\n')
                     elif not subtract_background and not subtract_control:
                         f.write(self.rRNA_mutation_data[rRNA_name].rRNA_name+'\t'+str(nucleotide.position)+'\t'
                                 +'0'+'\t'+'0'+'\n')
@@ -391,7 +413,6 @@ class rRNA_mutations:
         self.rRNA_name = rRNA_name
         self.parse_mutations_columns(mutation_filename)
         self.total_rt_stops = 0.0
-        self.assign_rt_stops()
 
     def parse_mutations_columns(self, filename):
         f= open(filename, 'rU')
@@ -405,15 +426,6 @@ class rRNA_mutations:
                 self.nucleotides[nucleotide_data.position] = nucleotide_data
                 position += 1
         f.close()
-
-    def assign_rt_stops(self):
-        read_counts = mod_utils.parse_wig(self.lib_settings.get_5p_count_wig())
-        for rRNA_name in read_counts:
-            for position in read_counts[rRNA_name]:
-                if position in self.nucleotides:
-                    nuc = self.nucleotides[position]
-                    nuc.rt_stops = read_counts[rRNA_name][position]
-                    self.total_rt_stops += nuc.rt_stops
 
     def count_mutation_rates_by_nucleotide(self, subtract_background=False, subtract_control=False, exclude_constitutive=False):
         """
@@ -460,7 +472,7 @@ class rRNA_mutations:
 
                 if subtract_background:
                     counts[nucleotide.identity] += max((nucleotide.get_rt_stop_rpm() - self.lib.get_normalizing_lib().
-                                                    get_mutation_rate_at_position(self.rRNA_name, nucleotide.position)), 0.)
+                                                    get_rt_stop_rpm_at_position(self.rRNA_name, nucleotide.position)), 0.)
                 elif subtract_control:
                     counts[nucleotide.identity] += nucleotide.get_rt_stop_rpm() - self.lib.get_normalizing_lib_with_mod().get_rt_stop_rpm_at_position(self.rRNA_name, nucleotide.position)
                 else:
@@ -509,6 +521,34 @@ class rRNA_mutations:
                     else:
                         rates.append(nucleotide.mutation_rate)
         return rates
+
+    def list_rt_stop_rpms(self, subtract_background=False, subtract_control = False, nucleotides_to_count='ATCG', exclude_constitutive=False):
+        """
+        #note that these values may be less than zero when background is subtracted
+        :param subtract_background:
+        :return:
+        """
+        rates = []
+        for nucleotide in self.nucleotides.values():
+            if nucleotide.identity in nucleotides_to_count:
+                if exclude_constitutive and nucleotide.exclude_constitutive:
+                    continue
+                else:
+                    if subtract_background and subtract_control:
+                        raise SyntaxError('Cannot subtract background and control simultaneously')
+
+                    if subtract_background:
+
+                        rates.append((nucleotide.get_rt_stop_rpm() - self.lib.get_normalizing_lib().
+                                                        get_rt_stop_rpm_at_position(self.rRNA_name, nucleotide.position)))
+                    elif subtract_control:
+
+                        rates.append((nucleotide.get_rt_stop_rpm() - self.lib.get_normalizing_lib_with_mod().
+                                                        get_rt_stop_rpm_at_position(self.rRNA_name, nucleotide.position)))
+                    else:
+                        rates.append(nucleotide.get_rt_stop_rpm())
+        return rates
+
 
     def list_mutation_fold_changes(self, nucleotides_to_count='ATCG', exclude_constitutive=False):
         """
