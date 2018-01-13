@@ -28,12 +28,6 @@ class mod_seq_run:
         self.generate_mapping_index()
         self.map_reads()
         self.initialize_libs()
-        #self.make_plots()
-        self.make_plots(exclude_constitutive=True)
-        #self.make_tables()
-        self.make_tables(exclude_constitutive=True)
-        #self.annotate_structures()
-        #self.annotate_structures(exclude_constitutive=True)
 
     def remove_adaptor(self):
         self.settings.write_to_log('removing adaptors with skewer')
@@ -501,6 +495,11 @@ def main():
     args = parse_args()
     settings = mod_settings.mod_settings(args.settings_file)
     all_datasets = mod_seq_run(settings, args.threads)
-
+    # self.make_plots()
+    all_datasets.make_plots(exclude_constitutive=True)
+    # self.make_tables()
+    all_datasets.make_tables(exclude_constitutive=True)
+    # self.annotate_structures()
+    # self.annotate_structures(exclude_constitutive=True)
 if __name__ == "__main__":
     main()
