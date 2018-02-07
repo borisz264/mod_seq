@@ -333,6 +333,24 @@ class ModLib:
                                                 nucleotides[position].mutation_rate))
         wig.close()
 
+    def write_rt_stops_to_wig(self, output_prefix):
+        """
+        write out mutation rates to a wig file that can be opened with a program like IGV or mochiview,
+        given the corresponding rRNA fasta as a genome, of course
+        :param output_prefix:
+        :param subtract_background:
+        :param subtract_control
+        :return:
+        """
+        wig = gzip.open(output_prefix+'.wig.gz', 'w')
+
+        wig.write('track type=wiggle_0 name=%s\n' % (self.lib_settings.sample_name))
+        for rRNA_name in self.rRNA_mutation_data:
+                wig.write('variableStep chrom=%s\n' % (rRNA_name))
+                for position in sorted(self.rRNA_mutation_data[rRNA_name].nucleotides.keys()):
+                        wig.write('%d\t%f\n' % (position+1, self.get_rt_stop_rpm_at_position(rRNA_name, position)))
+        wig.close()
+
     def get_changed_nucleotides(self, change_type, nucleotides_to_count='ATCG', exclude_constitutive=False,
                                   confidence_interval = 0.99, fold_change_cutoff = 3, subtract_background=False):
         changed_nucleotides = {}
