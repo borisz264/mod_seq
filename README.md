@@ -23,6 +23,9 @@ Download ShapeMapper 2 from http://www.chem.unc.edu/rna/software.html compile it
 skewer is required: https://github.com/relipmoc/skewer
 
 seqtk is required: https://github.com/lh3/seqtk
+
+pigz is required: https://zlib.net/pigz/
+
 STAR is required, add to PATH: https://github.com/alexdobin/STAR
 
 the bokeh interactive plotting package is optionally required:
