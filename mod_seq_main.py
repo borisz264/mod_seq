@@ -61,7 +61,7 @@ class mod_seq_run:
             lib_settings.get_fastq_file(),
             lib_settings.get_log(), lib_settings.get_log())
         subprocess.Popen(command_to_run, shell=True).wait()
-        subprocess.Popen('gzip %s-trimmed.fastq' % (lib_settings.get_adaptor_trimmed_reads(prefix_only=True)), shell=True).wait()
+        subprocess.Popen('pigz %s-trimmed.fastq' % (lib_settings.get_adaptor_trimmed_reads(prefix_only=True)), shell=True).wait()
         lib_settings.write_to_log('adaptor trimming done')
 
     def trim_reads(self):
@@ -78,15 +78,19 @@ class mod_seq_run:
             self.settings.write_to_log('using existing trimmed reads')
             return
         mod_utils.make_dir(self.rdir_path('trimmed_reads'))
-        mod_utils.parmap(lambda lib_setting: self.trim_one_lib(lib_setting), self.settings.iter_lib_settings(),
+        num_datasets = len([lib for lib in self.settings.iter_lib_settings()])
+        num_instances = min(num_datasets, self.threads)
+        threads_per_instance = max((self.threads / num_instances)-1, 1)
+        mod_utils.parmap(lambda lib_setting: self.trim_one_lib(lib_setting, threads_per_instance), self.settings.iter_lib_settings(),
                        nprocs = self.threads)
         self.settings.write_to_log('trimming reads complete')
 
-    def trim_one_lib(self, lib_settings):
+    def trim_one_lib(self, lib_settings, threads_per_instance):
         lib_settings.write_to_log('trimming_reads')
         bases_to_trim = self.settings.get_property('first_base_to_keep')-1
-        subprocess.Popen('seqtk trimfq -b %d -e 0 %s | gzip > %s 2>>%s' % (bases_to_trim,
+        subprocess.Popen('seqtk trimfq -b %d -e 0 %s | pigz -p %d > %s 2>>%s' % (bases_to_trim,
                                                                                  lib_settings.get_adaptor_trimmed_reads(),
+                                                                                 threads_per_instance,
                                                                                  lib_settings.get_trimmed_reads(),
                                                                                  lib_settings.get_log()), shell=True).wait()
         lib_settings.write_to_log('trimming_reads done')
@@ -158,7 +162,7 @@ class mod_seq_run:
         all_settings = [lib_setting for lib_setting in self.settings.iter_lib_settings()]
         num_datasets = len(all_settings)
         num_instances = min(num_datasets, self.threads)
-        threads_per_instance = self.threads/num_instances
+        threads_per_instance = max(self.threads/num_instances-1, 1)
         mod_utils.parmap(lambda lib_setting: self.map_one_library(lib_setting, threads_per_instance), all_settings, nprocs=num_instances)
         self.settings.write_to_log( 'finished mapping reads')
 
@@ -208,26 +212,28 @@ class mod_seq_run:
         #subfolders = ['raw', 'background_subtracted', 'control_subtracted', 'fold_change']
         subfolders = ['raw', 'fold_change']
         for subfolder in subfolders:
-            mod_utils.make_dir(self.rdir_path('tables', subfolder))
-            mod_utils.make_dir(self.rdir_path('pickles', subfolder))
-            mod_utils.make_dir(self.rdir_path('tables', subfolder, 'exclude_constitutive'))
-            mod_utils.make_dir(self.rdir_path('pickles', subfolder, 'exclude_constitutive'))
-        self.pickle_mutation_rates('mutation_rates.pkl', exclude_constitutive=exclude_constitutive)
+            mod_utils.make_dir(self.rdir_path('rt_stop_tables', subfolder))
+            mod_utils.make_dir(self.rdir_path('mutation_tables', subfolder))
+            #mod_utils.make_dir(self.rdir_path('pickles', subfolder))
+            mod_utils.make_dir(self.rdir_path('rt_stop_tables', subfolder, 'exclude_constitutive'))
+            mod_utils.make_dir(self.rdir_path('mutation_tables', subfolder, 'exclude_constitutive'))
+            #mod_utils.make_dir(self.rdir_path('pickles', subfolder, 'exclude_constitutive'))
+        #self.pickle_mutation_rates('mutation_rates.pkl', exclude_constitutive=exclude_constitutive)
         #self.pickle_mutation_rates('back_subtracted_mutation_rates.pkl', subtract_background=True, exclude_constitutive=exclude_constitutive)
         #self.pickle_mutation_rates('control_subtracted_mutation_rates.pkl', subtract_control=True, exclude_constitutive=exclude_constitutive)
         #self.pickle_fold_changes('mutation_rate_fold_changes.pkl', exclude_constitutive=True)
         self.write_wigs('')
-        self.write_wigs('back_subtract', subtract_background=True)
-        self.write_wigs('control_subtract', subtract_control=True)
+        #self.write_wigs('back_subtract', subtract_background=True)
+        #self.write_wigs('control_subtract', subtract_control=True)
         self.write_mutation_rates_tsv('mutation_rates.tsv', exclude_constitutive=exclude_constitutive)
         #self.write_mutation_rates_tsv('back_subtracted_mutation_rates.tsv', subtract_background=True, exclude_constitutive=exclude_constitutive)
         self.write_mutation_rates_tsv('control_subtracted_mutation_rates_lowess.tsv', subtract_control=True, exclude_constitutive=exclude_constitutive, lowess_correct = True)
         #self.write_mutation_rates_tsv('lowess_control_subtracted_mutation_rates.tsv', subtract_control=True,
         #                              exclude_constitutive=exclude_constitutive, lowess_correct=True)
         self.write_combined_mutation_rates_tsv()
-        self.write_combined_mutation_rates_tsv(exclude_constitutive=True)
         self.write_combined_mutation_counts_tsv()
-        self.write_combined_mutation_counts_tsv(exclude_constitutive=True)
+        self.write_combined_rt_stop_tsv(as_rpm=True)
+        self.write_combined_rt_stop_tsv()
 
     def write_mutation_rates_tsv(self, suffix, subtract_background=False, subtract_control=False, exclude_constitutive=False, lowess_correct=False):
         if subtract_background or subtract_control:
@@ -243,12 +249,12 @@ class mod_seq_run:
 
         if exclude_constitutive:
             for lib in libs_to_write:
-                lib.write_tsv_tables(os.path.join(self.rdir_path('tables', prefix, 'exclude_constitutive'),
+                lib.write_tsv_tables(os.path.join(self.rdir_path('mutation_tables', prefix, 'exclude_constitutive'),
                                                   lib.lib_settings.sample_name+'_'+suffix[:-4]+'_exclude_constitutive'+suffix[-4:]),
                                      subtract_background=subtract_background, subtract_control=subtract_control, exclude_constitutive=exclude_constitutive, lowess_correct=lowess_correct)
         else:
             for lib in libs_to_write:
-                lib.write_tsv_tables(os.path.join(self.rdir_path('tables', prefix), lib.lib_settings.sample_name+'_'+suffix),
+                lib.write_tsv_tables(os.path.join(self.rdir_path('mutation_tables', prefix), lib.lib_settings.sample_name+'_'+suffix),
                                      subtract_background=subtract_background, subtract_control=subtract_control, exclude_constitutive=exclude_constitutive, lowess_correct=lowess_correct)
 
     def write_combined_mutation_rates_tsv(self, subtract_background=False, subtract_control=False, exclude_constitutive=False):
@@ -267,10 +273,10 @@ class mod_seq_run:
         elif subtract_background == False and subtract_control == True:
             prefix = 'control_subtracted_'
         if exclude_constitutive:
-            f = open(self.rdir_path('tables', prefix+'all_datasets_exclude_constitutive.tsv'), 'w')
+            f = open(self.rdir_path('mutation_tables', prefix+'all_datasets_exclude_constitutive.tsv'), 'w')
 
         else:
-            f = open(self.rdir_path('tables', prefix+'all_datasets.tsv'), 'w')
+            f = open(self.rdir_path('mutation_tables', prefix+'all_datasets.tsv'), 'w')
         f.write('rRNA\tposition\tnucleotide\t%s\n' % ('\t'.join([lib.lib_settings.sample_name for lib in libs_to_write])))
         for rRNA_name in sorted(self.settings.rRNA_seqs.keys()):
             for position in range(len(self.settings.rRNA_seqs[rRNA_name])):
@@ -292,14 +298,36 @@ class mod_seq_run:
                     f.write('%s\t%d\t%s\t%s\n' % (rRNA_name, position+1, nuc_identity, '\t'.join([str(nuc_value) for nuc_value in nuc_values])))
         f.close()
 
+    def write_combined_rt_stop_tsv(self, as_rpm = False):
+        libs_to_write = list(self.libs)
+        if as_rpm:
+            f = open(self.rdir_path('rt_stop_tables', 'rt_stop_rpm_all_datasets.tsv'), 'w')
+        else:
+            f = open(self.rdir_path('rt_stop_tables', 'rt_stops_all_datasets.tsv'), 'w')
+        f.write('rRNA\tposition\tnucleotide\t%s\n' % ('\t'.join([lib.lib_settings.sample_name for lib in libs_to_write])))
+        for rRNA_name in sorted(self.settings.rRNA_seqs.keys()):
+            for position in range(len(self.settings.rRNA_seqs[rRNA_name])):
+                nuc_identity = self.settings.rRNA_seqs[rRNA_name][position]
+                nuc_values = []
+                for lib in libs_to_write:
+                    nucleotide = lib.get_nucleotide(rRNA_name, position+1)
+                    assert nucleotide.identity == nuc_identity
+                    if as_rpm:
+                        nuc_values.append(nucleotide.get_rt_stop_rpm())
+                    else:
+                        nuc_values.append(nucleotide.rt_stops)
+                assert len(nuc_values) == len(libs_to_write)
+                f.write('%s\t%d\t%s\t%s\n' % (rRNA_name, position+1, nuc_identity, '\t'.join([str(nuc_value) for nuc_value in nuc_values])))
+        f.close()
+
     def write_combined_mutation_counts_tsv(self, exclude_constitutive=False):
         libs_to_write = list(self.libs)
         prefix = 'raw_'
 
         if exclude_constitutive:
-            f = open(self.rdir_path('tables', prefix+'mutation_counts_exclude_constitutive.tsv'), 'w')
+            f = open(self.rdir_path('mutation_tables', prefix+'mutation_counts_exclude_constitutive.tsv'), 'w')
         else:
-            f = open(self.rdir_path('tables', prefix+'mutation_counts.tsv'), 'w')
+            f = open(self.rdir_path('mutation_tables', prefix+'mutation_counts.tsv'), 'w')
         f.write('rRNA\tposition\tnucleotide\t%s\n' % ('\t'.join([lib.lib_settings.sample_name for lib in libs_to_write])))
         for rRNA_name in sorted(self.settings.rRNA_seqs.keys()):
             for position in range(len(self.settings.rRNA_seqs[rRNA_name])):
@@ -317,18 +345,20 @@ class mod_seq_run:
         f.close()
 
     def write_wigs(self, suffix, subtract_background=False, subtract_control=False):
-        mod_utils.make_dir(self.rdir_path('wigs'))
+        mod_utils.make_dir(self.rdir_path('mutation_wigs'))
+        mod_utils.make_dir(self.rdir_path('rt_stop_wigs'))
         if subtract_background or subtract_control:
             libs_to_write = self.get_normalizable_libs()
         else:
             libs_to_write = self.libs
         #will also write a file to make batch import into mochiview easier
-        f = open(os.path.join(self.rdir_path('wigs'), 'mochi_batch_'+suffix+'.txt'), 'w')
+        f = open(os.path.join(self.rdir_path('mutation_wigs'), 'mochi_batch_'+suffix+'.txt'), 'w')
         f.write('SEQUENCE_SET\tFILE_NAME\tDATA_TYPE\tNAME\n')
         for lib in libs_to_write:
             f.write('<replace>\t%s\t<replace>\t%s\n' % (lib.lib_settings.sample_name+'_'+suffix+'.wig.gz', lib.lib_settings.sample_name+'_'+suffix))
-            lib.write_mutation_rates_to_wig(os.path.join(self.rdir_path('wigs'), lib.lib_settings.sample_name+'_'+suffix),
+            lib.write_mutation_rates_to_wig(os.path.join(self.rdir_path('mutation_wigs'), lib.lib_settings.sample_name+'_'+suffix),
                                       subtract_background=subtract_background, subtract_control=subtract_control)
+            lib.write_rt_stops_to_wig(os.path.join(self.rdir_path('rt_stop_wigs'), lib.lib_settings.sample_name+'_'+suffix))
         f.close()
 
     def pickle_mutation_rates(self, suffix, subtract_background=False, subtract_control=False, exclude_constitutive=False):
