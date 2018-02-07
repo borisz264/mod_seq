@@ -631,7 +631,7 @@ def ma_plots(libraries, out_prefix, nucleotides_to_count='ATCG', exclude_constit
         plot.scatter(prot_mag, prot_fold_change, color=mod_utils.vermillion, s=5)
         plot.scatter(deprot_mag, deprot_fold_change, color=mod_utils.bluishGreen, s=5)
         plot.set_xlim(0.00001,1)
-        plot.set_ylim(.001,100)
+        plot.set_ylim(1/15.,15)
         plot_figs.append(plot)
         plot_index+=1
     plt.savefig(output_file, transparent='True', format='pdf')
@@ -836,7 +836,7 @@ def ma_plots_by_count(libraries, out_prefix, nucleotides_to_count='ATCG', exclud
         plot.scatter(deprot_mag, deprot_fold_change, color=mod_utils.bluishGreen, s=5)
         plot.plot(sorted(mag), lowess_fc_sort_by_mag, linestyle='dashed', color='red')
         plot.set_xlim(1,1000000)
-        plot.set_ylim(.001,100)
+        plot.set_ylim(1/15.,15)
         plot_figs.append(plot)
         plot_index+=1
     plt.savefig(output_file, transparent='True', format='pdf')
