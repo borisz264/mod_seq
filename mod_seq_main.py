@@ -228,6 +228,8 @@ class mod_seq_run:
         self.write_mutation_rates_tsv('mutation_rates.tsv', exclude_constitutive=exclude_constitutive)
         #self.write_mutation_rates_tsv('back_subtracted_mutation_rates.tsv', subtract_background=True, exclude_constitutive=exclude_constitutive)
         self.write_mutation_rates_tsv('control_subtracted_mutation_rates_lowess.tsv', subtract_control=True, exclude_constitutive=exclude_constitutive, lowess_correct = True)
+        self.write_mutation_rates_tsv('control_subtracted_mutation_rates.tsv', subtract_control=True, exclude_constitutive=exclude_constitutive, lowess_correct = False)
+
         #self.write_mutation_rates_tsv('lowess_control_subtracted_mutation_rates.tsv', subtract_control=True,
         #                              exclude_constitutive=exclude_constitutive, lowess_correct=True)
         self.write_combined_mutation_rates_tsv()
@@ -525,9 +527,7 @@ def main():
     args = parse_args()
     settings = mod_settings.mod_settings(args.settings_file)
     all_datasets = mod_seq_run(settings, args.threads)
-    # self.make_plots()
     all_datasets.make_plots(exclude_constitutive=True)
-    # self.make_tables()
     all_datasets.make_tables(exclude_constitutive=True)
     # self.annotate_structures()
     # self.annotate_structures(exclude_constitutive=True)
