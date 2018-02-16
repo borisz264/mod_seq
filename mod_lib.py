@@ -186,8 +186,8 @@ class ModLib:
                 nucleotides_to_count = self.experiment_settings.get_property('affected_nucleotides')
                 self.lowess_correct_mutation_fold_changes(nucleotides_to_count=nucleotides_to_count,
                                                           exclude_constitutive=exclude_constitutive)
-                f.write('CHROMOSOME\tPOSITION\tNUC\tEXP_MUTATION_RATE\tEXP_99%_min\tEXP_99%_max\tCTRL_MUT_RATE'
-                        '\tCTRL_99%_min\tCTRL_99%_max\tEXP-CTRL\tCTRL_POISSON_SUB_ERROR\tFOLD_CHANGE\tPROTECTION_CALL\n')
+            f.write('CHROMOSOME\tPOSITION\tNUC\tEXP_MUTATION_RATE\tEXP_99%_min\tEXP_99%_max\tCTRL_MUT_RATE'
+                    '\tCTRL_99%_min\tCTRL_99%_max\tEXP-CTRL\tCTRL_POISSON_SUB_ERROR\tFOLD_CHANGE\tPROTECTION_CALL\n')
 
         elif not subtract_background and not subtract_control:
                 f.write('CHROMOSOME\tPOSITION\tMUTATION_RATE\tERROR\n')
@@ -204,7 +204,7 @@ class ModLib:
                                 +'0'+'\t'+'0'+'\t'
                                 +'0'+'\n')
                     elif subtract_control:
-                        f.write(self.rRNA_mutation_data[rRNA_name].rRNA_name+'\t'+str(nucleotide.position)+
+                        f.write(self.rRNA_mutation_data[rRNA_name].rRNA_name+'\t'+str(nucleotide.position)+'\t'+
                                str(nucleotide.identity)+'\t\t\t\t\t\t\t\t\t\t\t\n')
                     elif not subtract_background and not subtract_control:
                         f.write(self.rRNA_mutation_data[rRNA_name].rRNA_name+'\t'+str(nucleotide.position)+'\t'
