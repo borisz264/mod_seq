@@ -1,16 +1,12 @@
 from collections import defaultdict
-import matplotlib.pyplot as plt
-import re
-import scipy.stats
-import subprocess
 import os
-import cPickle
 import mod_utils
 import gzip
 import numpy as np
-from collections import Counter
 import math
 from statsmodels.nonparametric.smoothers_lowess import lowess
+import scipy.stats.mstats as mstats
+
 
 class ModLib:
     def __init__(self, experiment, experiment_settings, lib_settings):
@@ -27,6 +23,7 @@ class ModLib:
                                         # objects for that rRNA
         self.parse_shapemapper_output_files()
         self.assign_rt_stops()
+        self.winsorize_rt_stops()
 
     def parse_shapemapper_output_files(self):
         for rRNA_name in self.experiment_settings.rRNA_seqs:
@@ -45,6 +42,21 @@ class ModLib:
                     nuc = self.rRNA_mutation_data[rRNA_name].nucleotides[position-1]
                     nuc.rt_stops = read_counts[rRNA_name][position]
                     self.rRNA_mutation_data[rRNA_name].total_rt_stops += nuc.rt_stops
+
+    def winsorize_rt_stops(self):
+        #winsorize the data  by setting all RT stop counts above "winsorization_upper_percentile" to the value of the RT stops at that percentile
+        #collect list of all values, winsorize these to get max value, then use the max to filter RT stop counts and save new value
+        #then divide all by the max to get an RT stop or reactivity score.
+        all_rt_stop_counts = self.list_rt_stop_counts()
+        winsorized_counts = mstats.winsorize(all_rt_stop_counts, limits=(0, 1.-self.get_property('winsorization_upper_limit')), inplace=False)
+        winsorized_max = max(winsorized_counts)
+        for rRNA in self.rRNA_mutation_data.values():
+            for nucleotide in rRNA.nucleotides.values():
+                if nucleotide.rt_stops > winsorized_max:
+                    nucleotide.winsorized_rt_stops = winsorized_max
+                else:
+                    nucleotide.winsorized_rt_stops = nucleotide.rt_stops
+                nucleotide.rt_stop_score = float(nucleotide.winsorized_rt_stops)/float(winsorized_max)
 
     def count_mutation_rates_by_nucleotide(self, subtract_background = False, subtract_control = False, exclude_constitutive=False):
         """
@@ -123,6 +135,11 @@ class ModLib:
                                                           nucleotides_to_count = nucleotides_to_count, exclude_constitutive=exclude_constitutive))
         return all_rt_stop_rpms
 
+    def list_rt_stop_counts(self, nucleotides_to_count = 'ATCG'):
+        all_rt_stop_counts = []
+        for rRNA_name in self.rRNA_mutation_data:
+            all_rt_stop_counts.extend(self.rRNA_mutation_data[rRNA_name].list_rt_stop_counts(nucleotides_to_count=nucleotides_to_count))
+        return all_rt_stop_counts
 
 
     def list_fold_changes(self, nucleotides_to_count = 'ATCG', exclude_constitutive=False):
@@ -172,6 +189,10 @@ class ModLib:
     def get_rt_stop_rpm_at_position(self, rRNA_name, position):
         return self.rRNA_mutation_data[rRNA_name].nucleotides[position].get_rt_stop_rpm()
 
+    def get_rt_stop_score_at_position(self, rRNA_name, position):
+        return self.rRNA_mutation_data[rRNA_name].nucleotides[position].rt_stop_score
+
+
     def write_tsv_tables(self, tsv_filename, subtract_background=False, subtract_control=False, exclude_constitutive=False,
                          lowess_correct = False):
 
@@ -186,7 +207,7 @@ class ModLib:
                 nucleotides_to_count = self.experiment_settings.get_property('affected_nucleotides')
                 self.lowess_correct_mutation_fold_changes(nucleotides_to_count=nucleotides_to_count,
                                                           exclude_constitutive=exclude_constitutive)
-            f.write('CHROMOSOME\tPOSITION\tNUC\tEXP_MUTATION_RATE\tEXP_99%_min\tEXP_99%_max\tCTRL_MUT_RATE'
+            f.write('CHROMOSOME\tPOSITION\tNUC\tEXP_MUTATION_RATE\tEXP_MUTATION_COUNTS\tEXP_99%_min\tEXP_99%_max\tCTRL_MUT_RATE\tCTRL_MUT_counts'
                     '\tCTRL_99%_min\tCTRL_99%_max\tEXP-CTRL\tCTRL_POISSON_SUB_ERROR\tFOLD_CHANGE\tPROTECTION_CALL\n')
 
         elif not subtract_background and not subtract_control:
@@ -205,7 +226,7 @@ class ModLib:
                                 +'0'+'\n')
                     elif subtract_control:
                         f.write(self.rRNA_mutation_data[rRNA_name].rRNA_name+'\t'+str(nucleotide.position)+'\t'+
-                               str(nucleotide.identity)+'\t\t\t\t\t\t\t\t\t\t\t\n')
+                               str(nucleotide.identity)+'\t\t\t\t\t\t\t\t\t\t\t\t\n')
                     elif not subtract_background and not subtract_control:
                         f.write(self.rRNA_mutation_data[rRNA_name].rRNA_name+'\t'+str(nucleotide.position)+'\t'
                                 +'0'+'\t'+'0'+'\n')
@@ -225,9 +246,9 @@ class ModLib:
                             fold_change = nucleotide.get_control_fold_change_in_mutation_rate()
                         exp_wil_bottom, exp_wil_top = nucleotide.get_wilson_approximate_score_interval()
                         ctrl_wil_bottom, ctrl_wil_top = ctrl_nuc.get_wilson_approximate_score_interval()
-                        f.write('%s\t%d\t%s\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%s\n' %
-                                (rRNA_name, nucleotide.position, nucleotide.identity, nucleotide.mutation_rate,
-                                exp_wil_bottom, exp_wil_top, ctrl_nuc.mutation_rate,
+                        f.write('%s\t%d\t%s\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%s\n' %
+                                (rRNA_name, nucleotide.position, nucleotide.identity, nucleotide.mutation_rate, nucleotide.total_mutation_counts,
+                                exp_wil_bottom, exp_wil_top, ctrl_nuc.mutation_rate, ctrl_nuc.total_mutation_counts,
                                 ctrl_wil_bottom, ctrl_wil_top, nucleotide.get_control_sub_mutation_rate(),
                                 nucleotide.get_control_sub_error(), fold_change,
                                 nucleotide.determine_protection_status(confidence_interval=self.experiment_settings.get_property('confidence_interval_cutoff'),
@@ -349,6 +370,24 @@ class ModLib:
                 wig.write('variableStep chrom=%s\n' % (rRNA_name))
                 for position in sorted(self.rRNA_mutation_data[rRNA_name].nucleotides.keys()):
                         wig.write('%d\t%f\n' % (position+1, self.get_rt_stop_rpm_at_position(rRNA_name, position)))
+        wig.close()
+
+    def write_rt_stop_scores_to_wig(self, output_prefix):
+        """
+        write out mutation rates to a wig file that can be opened with a program like IGV or mochiview,
+        given the corresponding rRNA fasta as a genome, of course
+        :param output_prefix:
+        :param subtract_background:
+        :param subtract_control
+        :return:
+        """
+        wig = gzip.open(output_prefix+'.wig.gz', 'w')
+
+        wig.write('track type=wiggle_0 name=%s\n' % (self.lib_settings.sample_name))
+        for rRNA_name in self.rRNA_mutation_data:
+                wig.write('variableStep chrom=%s\n' % (rRNA_name))
+                for position in sorted(self.rRNA_mutation_data[rRNA_name].nucleotides.keys()):
+                        wig.write('%d\t%f\n' % (position+1, self.get_rt_stop_score_at_position(rRNA_name, position)))
         wig.close()
 
     def get_changed_nucleotides(self, change_type, nucleotides_to_count='ATCG', exclude_constitutive=False,
@@ -565,6 +604,18 @@ class rRNA_mutations:
                                                         get_rt_stop_rpm_at_position(self.rRNA_name, nucleotide.position)))
                     else:
                         rates.append(nucleotide.get_rt_stop_rpm())
+        return rates
+
+    def list_rt_stop_counts(self, nucleotides_to_count='ATCG'):
+        """
+        #note that these values may be less than zero when background is subtracted
+        :param subtract_background:
+        :return:
+        """
+        rates = []
+        for nucleotide in self.nucleotides.values():
+            if nucleotide.identity in nucleotides_to_count:
+                rates.append(nucleotide.rt_stops)
         return rates
 
 

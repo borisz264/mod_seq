@@ -234,8 +234,9 @@ class mod_seq_run:
         #                              exclude_constitutive=exclude_constitutive, lowess_correct=True)
         self.write_combined_mutation_rates_tsv()
         self.write_combined_mutation_counts_tsv()
-        self.write_combined_rt_stop_tsv(as_rpm=True)
-        self.write_combined_rt_stop_tsv()
+        self.write_combined_rt_stop_tsv(type='rpm')
+        self.write_combined_rt_stop_tsv(type='count')
+        self.write_combined_rt_stop_tsv(type='score')
 
     def write_mutation_rates_tsv(self, suffix, subtract_background=False, subtract_control=False, exclude_constitutive=False, lowess_correct=False):
         if subtract_background or subtract_control:
@@ -300,12 +301,17 @@ class mod_seq_run:
                     f.write('%s\t%d\t%s\t%s\n' % (rRNA_name, position+1, nuc_identity, '\t'.join([str(nuc_value) for nuc_value in nuc_values])))
         f.close()
 
-    def write_combined_rt_stop_tsv(self, as_rpm = False):
+    def write_combined_rt_stop_tsv(self, type = 'score'):
+        #possible types = score, rpm, counts
         libs_to_write = list(self.libs)
-        if as_rpm:
+        if type == 'rpm':
             f = open(self.rdir_path('rt_stop_tables', 'rt_stop_rpm_all_datasets.tsv'), 'w')
+        elif type == 'score':
+            f = open(self.rdir_path('rt_stop_tables', 'rt_stop_score_all_datasets.tsv'), 'w')
+        elif type == 'count':
+            f = open(self.rdir_path('rt_stop_tables', 'rt_stop_counts_all_datasets.tsv'), 'w')
         else:
-            f = open(self.rdir_path('rt_stop_tables', 'rt_stops_all_datasets.tsv'), 'w')
+            print 'ERROR: unknown rt stop type'
         f.write('rRNA\tposition\tnucleotide\t%s\n' % ('\t'.join([lib.lib_settings.sample_name for lib in libs_to_write])))
         for rRNA_name in sorted(self.settings.rRNA_seqs.keys()):
             for position in range(len(self.settings.rRNA_seqs[rRNA_name])):
@@ -314,9 +320,11 @@ class mod_seq_run:
                 for lib in libs_to_write:
                     nucleotide = lib.get_nucleotide(rRNA_name, position+1)
                     assert nucleotide.identity == nuc_identity
-                    if as_rpm:
+                    if type == 'rpm':
                         nuc_values.append(nucleotide.get_rt_stop_rpm())
-                    else:
+                    elif type == 'score':
+                        nuc_values.append(nucleotide.rt_stop_score)
+                    elif type == 'count':
                         nuc_values.append(nucleotide.rt_stops)
                 assert len(nuc_values) == len(libs_to_write)
                 f.write('%s\t%d\t%s\t%s\n' % (rRNA_name, position+1, nuc_identity, '\t'.join([str(nuc_value) for nuc_value in nuc_values])))
