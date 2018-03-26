@@ -773,7 +773,7 @@ class Nucleotide:
             num_error = self.get_error()
             denom = background_nuc.mutation_rate
             denom_error = background_nuc.get_error()
-            return 2*ratio*math.sqrt((num_error/num)**2+(denom_error/denom)**2)
+            return ratio*math.sqrt((num_error/num)**2+(denom_error/denom)**2)
         except ZeroDivisionError:
             return float('inf')
 
@@ -860,7 +860,7 @@ class Nucleotide:
         mean = math.log(fold_change) #natural log to make dist more gaussian
         standard_deviation = test_nuc.get_signal_error(background_nuc)/fold_change #error propogation for natural log
         p, z = mod_utils.computePfromMeanAndStDevZscore(mean, standard_deviation, 0) #what is the chance that no change could come from this dist?
-        if (p > 1.0-confidence_interval and p<confidence_interval):
+        if (p<confidence_interval):
             return False
         elif test_nuc.mutation_rate-background_nuc.mutation_rate<0:
             return False
